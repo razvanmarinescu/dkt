@@ -1075,7 +1075,11 @@ class GP_progression_model(object):
     def predictBiomkAndScale(self, newX):
       ''' performs scaling of Xs before prediction and Ys after prediction '''
 
-      xsScaled = self.applyScalingXForward(newX, biomk=0)
+      xsScaled = self.applyScalingXForward(newX.reshape(-1,1), biomk=0)
+
+      assert self.minX <= np.min(xsScaled)
+      assert self.maxX >= np.max(xsScaled)
+
       ys = self.predictBiomk(xsScaled)
       ysScaled = self.applyScalingYAllBiomk(ys)
 

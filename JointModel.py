@@ -240,15 +240,13 @@ class JointModel(DisProgBuilder.DPMInterface):
     # newXs are assumed to be already scaled and in the right space
     # not a longitudinal list
 
-    assert self.disModels[disNr].minX <= np.min(newXs)
-    assert self.disModels[disNr].maxX >= np.max(newXs)
 
     # first predict the dysfunctionality scores in the disease specific model
-    dysfuncPredXU = self.disModels[disNr].predictBiomk(newX)
+    dysfuncPredXU = self.disModels[disNr].predictBiomkAndScale(newXs)
 
 
     # then predict the inidividual biomarkers in the disease agnostic models
-    biomkPredXB = np.zeros((newXs, self.nrBiomk))
+    biomkPredXB = np.zeros((newXs.shape[0], self.nrBiomk))
     for u in range(self.nrFuncUnits):
 
       biomkPredXB[:, self.mapBiomkToFuncUnits == u] = \
