@@ -158,7 +158,7 @@ class GP_progression_model(object):
 
     def applyScalingYAllBiomk(self, biomksXB):
       biomksNewXB = np.zeros(biomksXB.shape)
-      for b in range(gpModel.N_biom):
+      for b in range(self.N_biom):
         biomksNewXB[:, b] = self.applyScalingY(biomksXB[:, b], b)
 
       return biomksNewXB
