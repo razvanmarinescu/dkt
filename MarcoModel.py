@@ -198,6 +198,8 @@ class GP_progression_model(object):
       meanAll = np.mean(XarrayAllBiomk)
       stdAll = np.std(XarrayAllBiomk)
 
+      print('self.Y_array', self.Y_array)
+      print('self.Y_array', self.Y_array)
 
       # print('meanAll', meanAll)
       # print('stdAll', stdAll)
@@ -229,7 +231,7 @@ class GP_progression_model(object):
 
         self.X_array[l] = self.X_array[l]/self.max_X[l]
 
-
+      # print('self.Y_array', self.Y_array)
       # print('self.X_array', self.X_array)
       # print(adsa)
 

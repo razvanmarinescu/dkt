@@ -171,7 +171,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
         # make the functional scores be between [0,1]
         dysfuncScoresU[u] = [ (x - minDys) / (maxDys - minDys) for x in  dysfuncScoresU[u]]
-        # print('dysfuncScoresU[u]', dysfuncScoresU[u])
+        print('dysfuncScoresU[u]', dysfuncScoresU[u])
         # print(adsa)
 
 
@@ -187,13 +187,13 @@ class JointModel(DisProgBuilder.DPMInterface):
       disLabels = self.params['disLabels']
       nrDis = len(disLabels)
       self.disModels = [_ for _ in range(nrDis)]
-      for disNr in range(nrDis):
+      for disNr in [1]: #range(nrDis):
 
         xDysfunSubjUCopy = copy.deepcopy(xDysfunSubjU)
         dysfuncScoresUCopy = copy.deepcopy(dysfuncScoresU)
 
-        xDysfunSubjUCopy += [self.params['X'][i] for i in params['otherBiomkPerDisease'][disNr]]
-        dysfuncScoresUCopy += [self.params['Y'][i] for i in params['otherBiomkPerDisease'][disNr]]
+        xDysfunSubjUCopy += [self.params['X'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
+        dysfuncScoresUCopy += [self.params['Y'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
 
         # first filter the data .. keep only subj in current disease
         xDysfunSubjCurrDisU = [_ for _ in range(nrBiomkDisModel)]
@@ -207,7 +207,7 @@ class JointModel(DisProgBuilder.DPMInterface):
           print(self.params['diag'].shape)
           xDysfunSubjCurrDisU[b] = [xDysfunSubjUCopy[b][s] for s in range(nrSubj)
             if self.params['diag'][s] in self.params['diagsSetInDis'][disNr]]
-          dysfuncScoresCurrDisU[b] = [xDysfunSubjUCopy[b][s] for s in range(nrSubj)
+          dysfuncScoresCurrDisU[b] = [dysfuncScoresUCopy[b][s] for s in range(nrSubj)
             if self.params['diag'][s] in self.params['diagsSetInDis'][disNr]]
 
 
@@ -226,7 +226,8 @@ class JointModel(DisProgBuilder.DPMInterface):
         print('xDysfunSubjCurrDisU[1]', xDysfunSubjCurrDisU[1][:5])
         print('dysfuncScoresCurrDisU[1]', dysfuncScoresCurrDisU[1][:5])
 
-        print('dysfuncScoresU[:][15]', [dysfuncScoresU[u][15] for u in range(self.nrFuncUnits)])
+        print('dysfuncScoresU[:][:5]', [xDysfunSubjCurrDisU[u][:5] for u in range(nrBiomkDisModel)])
+        print('dysfuncScoresU[:][:5]', [dysfuncScoresCurrDisU[u][:5] for u in range(nrBiomkDisModel)])
         # print(ads)
 
         outFolderCurDis = '%s/%s' % (self.outFolder, self.params['disLabels'][disNr])

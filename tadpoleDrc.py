@@ -987,7 +987,7 @@ def main():
   else:
     expName = '%sPen%.1f' % (expName, args.penalty)
 
-  params['runPartStd'] = ['R', 'R']
+  params['runPartStd'] = ['L', 'R']
   params['runPartMain'] = ['R', 'I', 'I'] # [mainPart, plot, stage]
   params['masterProcess'] = args.runIndex == 0
 
