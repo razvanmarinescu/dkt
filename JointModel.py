@@ -88,7 +88,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     nrSubj = self.unitModels[0].N_samples
 
     if runPart[1] == 'R':
-      nrGlobIter = 20
+      nrGlobIter = 10
       iterParams = 80
       iterShifts = 100
       dysfuncScoresU = [0 for x in range(self.nrFuncUnits)]
@@ -171,6 +171,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       disLabels = self.params['disLabels']
       nrDis = len(disLabels)
       self.disModels = [_ for _ in range(nrDis)]
+      
       for disNr in range(nrDis):
 
         xDysfunSubjUCopy = copy.deepcopy(xDysfunSubjU)
