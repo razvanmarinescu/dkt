@@ -76,6 +76,10 @@ elif args.cluster:
   freesurfPath = '/share/apps/freesurfer-5.3.0'
   homeDir = '/home/rmarines'
   blenderPath = '/share/apps/blender-2.75/blender'
+elif hostName == 'planell-VirtualBox':
+  homeDir = '/home/planell'
+  freesurfPath = ""
+  blenderPath = ""
 else:
   raise ValueError('Wrong hostname. If running on new machine, add '
                    'application paths in python code above')
@@ -93,9 +97,9 @@ plotTrajParams['legendCols'] = 4
 plotTrajParams['diagLabels'] = {CTL:'CTL ADNI', MCI:'MCI ADNI', AD:'AD ADNI',
   CTL2:'CTL DRC', PCA:'PCA DRC', AD2:'AD DRC'}
 
-plotTrajParams['freesurfPath'] = freesurfPath
+#plotTrajParams['freesurfPath'] = freesurfPath
 # plotTrajParams['ylimitsRandPoints'] = (-3,2)
-plotTrajParams['blenderPath'] = blenderPath
+#plotTrajParams['blenderPath'] = blenderPath
 plotTrajParams['isSynth'] = True
 
 
@@ -119,6 +123,10 @@ elif hostName == 'razvan-Precision-T1700':
 elif args.cluster:
   homeDir = '/home/rmarines'
   freesurfPath = '/home/rmarines/src/freesurfer-6.0.0'
+elif hostName == 'planell-VirtualBox':
+  homeDir = '/home/planell'
+  freesurfPath = ""
+  blenderPath = ""
 else:
   raise ValueError('wrong hostname or cluster flag')
 
@@ -868,7 +876,7 @@ def main():
   random.seed(1)
   pd.set_option('display.max_columns', 50)
   tinyData = True
-  regenerateData = True
+  regenerateData = False#True
   if tinyData:
     finalDataFile = 'tadpoleDrcTiny.npz'
   else:
@@ -987,7 +995,7 @@ def main():
   else:
     expName = '%sPen%.1f' % (expName, args.penalty)
 
-  params['runPartStd'] = ['L', 'R']
+  params['runPartStd'] = ['R', 'R']
   params['runPartMain'] = ['R', 'I', 'I'] # [mainPart, plot, stage]
   params['masterProcess'] = args.runIndex == 0
 
