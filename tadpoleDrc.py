@@ -868,7 +868,7 @@ def main():
   random.seed(1)
   pd.set_option('display.max_columns', 50)
   tinyData = True
-  regenerateData = False
+  regenerateData = True
   if tinyData:
     finalDataFile = 'tadpoleDrcTiny.npz'
   else:
