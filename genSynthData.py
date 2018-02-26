@@ -5,12 +5,12 @@ from GPModel import *
 from env import *
 import scipy
 import scipy.stats
-from aux import *
+from auxFunc import *
 import ParHierModel
 import pandas as pd
 
 import MarcoModel
-import aux
+import auxFunc
 
 
 def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperLim, model,
@@ -181,7 +181,7 @@ def convertToMarcoFormat(data, labels, yearsSinceBlScan, partCode, diag):
   df.insert(0, 'RID', partCode)
   df.insert(0, 'SUB', np.array(range(data.shape[0])))
 
-  X,Y,RID,list_biomarkers, diag = aux.convert_table_marco(df, list_biomarkers=labels)
+  X,Y,RID,list_biomarkers, diag = auxFunc.convert_table_marco(df, list_biomarkers=labels)
 
   return X,Y,np.array(RID)
 

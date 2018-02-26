@@ -2,7 +2,7 @@ import os
 import sys
 import numpy as np
 import math
-from aux import *
+from auxFunc import *
 import scipy
 #import scipy.cluster.hierarchy
 import pickle

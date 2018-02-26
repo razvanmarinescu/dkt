@@ -52,7 +52,7 @@ import genSynthData
 import GPModel
 import ParHierModel
 import Plotter
-from aux import *
+from auxFunc import *
 import evaluationFramework
 from matplotlib import pyplot as pl
 

@@ -4,7 +4,7 @@ import math
 import pickle
 
 import os.path
-from aux import *
+from auxFunc import *
 import sys
 from matplotlib import pyplot as pl
 import gc

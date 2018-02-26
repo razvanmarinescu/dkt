@@ -11,7 +11,7 @@ import copy
 import pandas as pd
 import pickle
 import random
-import aux
+import auxFunc
 import scipy
 import scipy.io as sio
 import scipy.stats
@@ -59,7 +59,7 @@ import genSynthData
 import GPModel
 import ParHierModel
 import Plotter
-from aux import *
+from auxFunc import *
 import evaluationFramework
 from matplotlib import pyplot as pl
 
@@ -830,7 +830,7 @@ def prepareData(finalDataFile, tinyData):
   # print(adsa)
 
   X, Y, RID, list_biomarkers, diag = \
-    aux.convert_table_marco(dataDfAll, list_biomarkers=selectedBiomk)
+    auxFunc.convert_table_marco(dataDfAll, list_biomarkers=selectedBiomk)
 
   ds = dict(X=X, Y=Y, RID=RID, list_biomarkers=list_biomarkers,
     dataDfAll=dataDfAll, regParamsICV=regParamsICV,
