@@ -47,6 +47,15 @@ parser.add_argument('--nrCols', dest='nrCols', type=int,
 parser.add_argument('--penalty', dest='penalty', type=float,
   help='penalty value for non-monotonic trajectories. between 0 (no effect) and 10 (strong effect). ')
 
+parser.add_argument('--regData', action="store_true", default=False,
+  help=' add this flag to regenerate the data')
+
+parser.add_argument('--runPartStd', dest='runPartStd', default='RR',
+  help=' choose whether to (R) run or (L) load from the checkpoints: '
+  'either LL, RR, LR or RL. ')
+
+
+
 args = parser.parse_args()
 
 if args.agg:
@@ -868,7 +877,7 @@ def main():
   random.seed(1)
   pd.set_option('display.max_columns', 50)
   tinyData = True
-  regenerateData = True
+  regenerateData = args.regData
   if tinyData:
     finalDataFile = 'tadpoleDrcTiny.npz'
   else:
@@ -987,7 +996,8 @@ def main():
   else:
     expName = '%sPen%.1f' % (expName, args.penalty)
 
-  params['runPartStd'] = ['L', 'R']
+  # params['runPartStd'] = ['L', 'L']
+  params['runPartStd'] = args.runPartStd
   params['runPartMain'] = ['R', 'I', 'I'] # [mainPart, plot, stage]
   params['masterProcess'] = args.runIndex == 0
 

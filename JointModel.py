@@ -252,6 +252,23 @@ class JointModel(DisProgBuilder.DPMInterface):
     res = None
     return res
 
+  def predictBiomkSubjGivenXs(self, newXs, disNr):
+    # newXs is an array as with np.linspace(minX, maxX)
+    # not a longitudinal list
+
+    # first predict the dysfunctionality scores in the disease specific model
+    # self.disModels[disNr].predictBiomk
+
+
+    # then predict the inidividual biomarkers in the disease agnostic model
+
+    for b in range(self.nrBiomk):
+      u = self.mapBiomkToFuncUnits[b]
+
+      self.unitModels[u].predictBiomk(newXs)
+
+
+
   def createPlotTrajParamsFuncUnit(self, nrCurrFuncUnit):
 
     plotTrajParamsFuncUnit = copy.deepcopy(self.params['plotTrajParams'])
