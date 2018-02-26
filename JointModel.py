@@ -82,12 +82,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       pickle.dump(self.unitModels, open(filePath, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
     else:
       self.unitModels = pickle.load(open(filePath, 'rb'))
-      # for u in range(self.nrFuncUnits):
-      #   plotTrajParamsFuncUnit = self.createPlotTrajParamsFuncUnit(nrCurrFuncUnit = u)
-      #   plotterObjCurrFuncUnit = Plotter.PlotterGP(plotTrajParamsFuncUnit)  # set separate plotter for the
-      #   fig = plotterObjCurrFuncUnit.plotCompWithTrueParams(self.gpModels[u], replaceFig=True)
-      #   outFolderCurrUnit = '%s/unit%d' % (self.outFolder, u)
-      #   fig.savefig('%s/compTrueFinal.png' % outFolderCurrUnit)
+
 
     disModelsFile = '%s/disModels.npz' % self.outFolder
     nrSubj = self.unitModels[0].N_samples
@@ -101,27 +96,15 @@ class JointModel(DisProgBuilder.DPMInterface):
       for u in range(self.nrFuncUnits):
         xs = np.linspace(self.unitModels[u].minX, self.unitModels[u].maxX, num=100).reshape([100, 1])
 
-        # _, meanStagesS = self.gpModels[u].StageSubjects(self.gpModels[u].X,self.gpModels[u].Y, xs)
-
-
         dysfuncScoresU[u] = [[] for _ in range(nrSubj)]
         xDysfunSubjU[u] = [[] for _ in range(nrSubj)]
         xsNewGpTest = [[] for _ in range(nrSubj)]
-
-        XarraysScaledB = [self.unitModels[u].applyScalingX(self.unitModels[u].X_array[b], b)
-                          for b in range(self.unitModels[u].N_biom)]
-
-        # newGPTest = MarcoModel.GP_progression_model(self.unitModels[u].X, self.unitModels[u].Y,
-        #                                             int(10), self.unitModels[u].outFolder, self.unitModels[u].plotter, None)
-
 
         for sub in range(self.unitModels[u].N_samples):
           for b in range(self.unitModels[u].N_biom):
             xDysfunSubjUCurrSubj = self.unitModels[u].X[b][sub]  # Xs in the unit model
             xDysfunSubjU[u][sub] += list(xDysfunSubjUCurrSubj)
 
-            # dysfuncScoresCurrSubExtr = [XarraysScaledB[b][k][0] for k in range(int(np.sum(self.gpModels[
-            # u].N_obs_per_sub[b][:sub])), np.sum(self.gpModels[u].N_obs_per_sub[b][:sub + 1]))]
             dysfuncScoresCurrSubExtr = [self.unitModels[u].X_array[b][k][0] for k in range(int(np.sum(
               self.unitModels[u].N_obs_per_sub[b][:sub])), np.sum(self.unitModels[u].N_obs_per_sub[b][:sub + 1]))]
 
@@ -170,8 +153,9 @@ class JointModel(DisProgBuilder.DPMInterface):
         # print('maxDys', maxDys)
 
         # make the functional scores be between [0,1]
-        dysfuncScoresU[u] = [ (x - minDys) / (maxDys - minDys) for x in  dysfuncScoresU[u]]
-        print('dysfuncScoresU[u]', dysfuncScoresU[u])
+        # 26/02/18: actually this is not needed, re-scaling will be done in the plotting
+        # dysfuncScoresU[u] = [ (x - minDys) / (maxDys - minDys) for x in  dysfuncScoresU[u]]
+        # print('dysfuncScoresU[u]', dysfuncScoresU[u])
         # print(adsa)
 
 
@@ -254,18 +238,35 @@ class JointModel(DisProgBuilder.DPMInterface):
 
   def predictBiomkSubjGivenXs(self, newXs, disNr):
     # newXs is an array as with np.linspace(minX, maxX)
+    # newXs are assumed to be already scaled and in the right space
     # not a longitudinal list
 
+    assert self.disModels[disNr].minX <= np.min(newXs)
+    assert self.disModels[disNr].maxX >= np.max(newXs)
+
     # first predict the dysfunctionality scores in the disease specific model
-    # self.disModels[disNr].predictBiomk
+    dysfuncPredXU = self.disModels[disNr].predictBiomk(newX)
+    dysfuncPredRescXU = np.zeros(dysfuncPredXU.shape)
 
 
-    # then predict the inidividual biomarkers in the disease agnostic model
+    # then predict the inidividual biomarkers in the disease agnostic models
+    biomkPredXB = np.zeros((newXs, self.nrBiomk))
+    for u in range(self.nrFuncUnits):
 
-    for b in range(self.nrBiomk):
-      u = self.mapBiomkToFuncUnits[b]
+      # first re-scale the Xs to the space of the unitModel.
+      # biomk doens't matter, all have same scaling
+      dysfuncPredRescXU[:,u] = \
+        self.unitModels[u].applyScalingXForward(dysfuncPredXU[:,u], biomk=0)
 
-      self.unitModels[u].predictBiomk(newXs)
+      biomkPredCurr = \
+        self.unitModels[u].predictBiomk(dysfuncPredRescXU[:, u])
+
+      biomkPredXB[:, self.mapBiomkToFuncUnits == u] = \
+        self.unitModels[u].applyScalingYAllBiomk(biomkPredCurr)
+
+    biomkIndNotInFuncUnits = np.where(self.mapBiomkToFuncUnits == -1)[0]
+
+    # biomkPredXB[:, biomkIndNotInFuncUnits] =
 
 
 

@@ -156,6 +156,14 @@ class GP_progression_model(object):
       scaleY = self.max_Y[biomk] * self.mean_std_Y[biomk][1]
       return scaleY * y_data + self.mean_std_Y[biomk][0]
 
+    def applyScalingYAllBiomk(self, biomksXB):
+      biomksNewXB = np.zeros(biomksXB.shape)
+      for b in range(gpModel.N_biom):
+        biomksNewXB[:, b] = self.applyScalingY(biomksXB[:, b], b)
+
+      return biomksNewXB
+
+
     def applyScalingXForward(self, x_data, biomk):
       scaleX = self.max_X[biomk] * self.mean_std_X[biomk][1]
       return (x_data - self.mean_std_X[biomk][0])/scaleX
