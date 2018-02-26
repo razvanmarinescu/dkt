@@ -1112,7 +1112,50 @@ def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = Non
   dpmObjStd, res['std'] = evaluationFramework.runStdDPM(params,
     expName, dpmBuilder, params['runPartMain'])
 
+  # perform the validation against DRC data
+  validateDRCBiomk(dpmObjStd, params)
+
   return res
+
+
+def validateDRCBiomk(dpmObj, params):
+
+
+  # first predict subject DTI measures
+
+  X = params['X']
+  diag = params['diag']
+  disNr = 1 # predict for DRC subjects
+  indxSubjToKeepBin = np.in1d(params['diag'], params['diagsSetInDis'][disNr])
+  indxSubjToKeep = np.where(indxSubjToKeepBin)[0]
+  nrSubCurrDis = indxSubjToKeep.shape[0]
+  nrBiomk = len(X)
+
+  xsPred1S = []
+  ysPredBS = []
+
+  for s in range(nrSubCurrDis):
+    currSub = indxSubjToKeep[s]
+
+    xsCurrSub = np.unique([x2 for b in range(nrBiomk) for x2 in X[b][currSub]])
+
+    xsPred1S += [xsCurrSub]
+    ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(xsCurrSub, disNr)
+
+    for b in range(nrBiomk):
+      ysPredBS[b] += [ysCurrSubXB[:,b]]
+
+  print('ysPredBS', ysPredBS)
+  print('xsPred1S', xsPred1S)
+  print(adsa)
+
+  # TODO: now need to compare the predictions in ysPredBS with the actual DTI measurements
+
+
+
+
+
+
 
 
 

@@ -469,6 +469,7 @@ class PlotterGP:
     predictedBiomksXB = gpModel.predictBiomk(newXTraj)
     predTrajScaledXB = gpModel.applyScalingYAllBiomk(predictedBiomksXB)
 
+    for b in range(gpModel.N_biom):
       if self.plotTrajParams['zScoreTraj']:
         meanCtlB = np.zeros(gpModel.N_biom)
         stdCtlB = np.zeros(gpModel.N_biom)

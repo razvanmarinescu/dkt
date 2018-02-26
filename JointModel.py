@@ -230,8 +230,6 @@ class JointModel(DisProgBuilder.DPMInterface):
     elif runPart[1] == 'L':
       self.disModels = pickle.load(open(disModelsFile, 'rb'))
 
-    print('self.disModels', self.disModels)
-    print(adsa)
 
     res = None
     return res
@@ -266,9 +264,9 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     biomkIndNotInFuncUnits = np.where(self.mapBiomkToFuncUnits == -1)[0]
 
-    # biomkPredXB[:, biomkIndNotInFuncUnits] =
+    biomkPredXB[:, biomkIndNotInFuncUnits] = dysfuncPredXU[biomkIndNotInFuncUnits.shape[0]]
 
-
+    return biomkPredXB
 
   def createPlotTrajParamsFuncUnit(self, nrCurrFuncUnit):
 
