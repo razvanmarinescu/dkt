@@ -246,6 +246,9 @@ class JointModel(DisProgBuilder.DPMInterface):
     elif runPart[1] == 'L':
       self.disModels = pickle.load(open(disModelsFile, 'rb'))
 
+    print('self.disModels', self.disModels)
+    print(adsa)
+
     res = None
     return res
 
