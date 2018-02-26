@@ -85,6 +85,10 @@ elif args.cluster:
   freesurfPath = '/share/apps/freesurfer-5.3.0'
   homeDir = '/home/rmarines'
   blenderPath = '/share/apps/blender-2.75/blender'
+elif hostName == 'planell-VirtualBox':
+  homeDir = '/home/planell'
+  freesurfPath = ""
+  blenderPath = ""
 else:
   raise ValueError('Wrong hostname. If running on new machine, add '
                    'application paths in python code above')
@@ -128,6 +132,10 @@ elif hostName == 'razvan-Precision-T1700':
 elif args.cluster:
   homeDir = '/home/rmarines'
   freesurfPath = '/home/rmarines/src/freesurfer-6.0.0'
+elif hostName == 'planell-VirtualBox':
+  homeDir = '/home/planell'
+  freesurfPath = ""
+  blenderPath = ""
 else:
   raise ValueError('wrong hostname or cluster flag')
 
