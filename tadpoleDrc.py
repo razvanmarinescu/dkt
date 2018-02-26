@@ -149,8 +149,8 @@ def loadTadpole(tadpoleFile):
 
   cols = list(df.loc[:, ['RID', 'AGE', 'Month_bl', 'DXCHANGE']]) + cols
 
-  # df[cols] = df[cols].apply(pd.to_numeric, errors='coerce', axis=1)
-  # pickle.dump(df, open('tadpoleCleanDf.npz', 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+  df[cols] = df[cols].apply(pd.to_numeric, errors='coerce', axis=1)
+  pickle.dump(df, open('tadpoleCleanDf.npz', 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
   df = pickle.load(open('tadpoleCleanDf.npz', 'rb'))
 
   dataDf = df[['RID', 'Month_bl']]
@@ -421,7 +421,7 @@ def addMetadataDrc(dfAll):
   ############ load medatada - age, gender, ... ###########
 
   # load metadata in order to get the timepoint information for each subj id
-  metaData = sio.loadmat('../data/DRC/pcaData.mat')
+  metaData = sio.loadmat('pcaData.mat')
 
   print(metaData.keys())
   partCode = metaData['participantCode']
@@ -987,7 +987,7 @@ def main():
   else:
     expName = '%sPen%.1f' % (expName, args.penalty)
 
-  params['runPartStd'] = ['L', 'R']
+  params['runPartStd'] = ['R', 'R']
   params['runPartMain'] = ['R', 'I', 'I'] # [mainPart, plot, stage]
   params['masterProcess'] = args.runIndex == 0
 
