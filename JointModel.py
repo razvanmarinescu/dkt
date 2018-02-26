@@ -245,23 +245,15 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     # first predict the dysfunctionality scores in the disease specific model
     dysfuncPredXU = self.disModels[disNr].predictBiomk(newX)
-    dysfuncPredRescXU = np.zeros(dysfuncPredXU.shape)
 
 
     # then predict the inidividual biomarkers in the disease agnostic models
     biomkPredXB = np.zeros((newXs, self.nrBiomk))
     for u in range(self.nrFuncUnits):
 
-      # first re-scale the Xs to the space of the unitModel.
-      # biomk doens't matter, all have same scaling
-      dysfuncPredRescXU[:,u] = \
-        self.unitModels[u].applyScalingXForward(dysfuncPredXU[:,u], biomk=0)
-
-      biomkPredCurr = \
-        self.unitModels[u].predictBiomk(dysfuncPredRescXU[:, u])
-
       biomkPredXB[:, self.mapBiomkToFuncUnits == u] = \
-        self.unitModels[u].applyScalingYAllBiomk(biomkPredCurr)
+        self.unitModels[u].predictBiomkAndScale(dysfuncPredXU[:,u])
+
 
     biomkIndNotInFuncUnits = np.where(self.mapBiomkToFuncUnits == -1)[0]
 

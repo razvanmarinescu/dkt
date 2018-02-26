@@ -1072,6 +1072,16 @@ class GP_progression_model(object):
 
       return predictedBiomksXB
 
+    def predictBiomkAndScale(self, newX):
+      ''' performs scaling of Xs before prediction and Ys after prediction '''
+
+      xsScaled = self.applyScalingXForward(newX, biomk=0)
+      ys = self.predictBiomk(xsScaled)
+      ysScaled = self.applyScalingYAllBiomk(ys)
+
+      return ysScaled
+
+
     def sampleBiomkTrajPosterior(self, newX, biomarker, nrSamples):
       trajSamplesXS = np.zeros((newX.shape[0], nrSamples))
       s_omega, m_omega, s, m, sigma, l, eps = self.unpack_parameters(self.parameters[biomarker])

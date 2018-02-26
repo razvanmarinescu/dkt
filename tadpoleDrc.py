@@ -697,20 +697,27 @@ def regressCov(data, regressorVector, diag, diagsCTL = (CTL, CTL2), printFigs=Fa
 def prepareData(finalDataFile, tinyData):
 
   tadpoleFile = 'TADPOLE_D1_D2.csv'
-  dataDfTadpole = loadTadpole(tadpoleFile)
-  dataDfTadpole.to_csv('tadpoleCleanDf.csv', sep=',', quotechar='"')
+  # dataDfTadpole = loadTadpole(tadpoleFile)
+  # dataDfTadpole.to_csv('tadpoleCleanDf.csv', sep=',', quotechar='"')
   dataDfTadpole = pd.read_csv('tadpoleCleanDf.csv')
 
   # print(dsa)
 
   drcFile = 'drcVolsFSX.csv'
 
-  dataDfDrc = loadDRC(drcFile,columnsFormat=dataDfTadpole.columns)
-  dataDfDrc.to_csv('drcCleanDf.csv')
+  # dataDfDrc = loadDRC(drcFile,columnsFormat=dataDfTadpole.columns)
+  # dataDfDrc.to_csv('drcCleanDf.csv')
   dataDfDrc = pd.read_csv('drcCleanDf.csv')
 
   dataDfAll = pd.concat([dataDfTadpole, dataDfDrc], ignore_index=True)
   dataDfAll = dataDfAll[[x for x in dataDfAll.columns if x != 'Unnamed: 0']]
+
+  # exact same format as dataDfAll. make deep copy of the DRC data only
+  validDf = dataDfAll[dataDfAll.dataset == 2]
+  validDf = validDf.copy(deep=True)
+  # print('validDf', validDf)
+  validDf = addDRCValidDataMock(validDf) # change to the real one when ready
+  # validDf = addDRCValidData(validDf)
 
   print(dataDfTadpole.columns.tolist())
   print(dataDfDrc.columns.tolist())
@@ -723,10 +730,8 @@ def prepareData(finalDataFile, tinyData):
   # print((dataDfAll[['RID']]*10 + dataDfAll[['dataset']]).shape, dataDfAll[['RID']]*10 + dataDfAll[['dataset']])
 
   dataDfAll['RID'] = dataDfAll['RID']*10 + dataDfAll['dataset']
-  if tinyData:
-    dataDfAll.to_csv('tadpoleDrcAllTiny.csv')
-  else:
-    dataDfAll.to_csv('tadpoleDrcAll.csv')
+
+  dataDfAll.to_csv('tadpoleDrcAll.csv')
 
   # regress out covariates: age, gender, ICV and dataset
   colsList = dataDfAll.columns.tolist()
@@ -1013,9 +1018,19 @@ def main():
   modelNames, res = evaluationFramework.runModels(params, expName,
     args.modelToRun, runAllExpTadpoleDrc)
 
-  validateWithDtiDRC()
 
-def validateWithDtiDRC():
+def addDRCValidDataMock(validDf):
+
+
+  nrDRCentries = np.sum(validDf.dataset == 2)
+  colsList = validDf.loc[:,'DTI FA Cingulate' : 'DTI FA Temporal'].columns.tolist()
+  print('colsList', colsList)
+  validDf[colsList] = \
+    np.random.rand(nrDRCentries, len(colsList))
+
+  return validDf
+
+def addDRCValidData():
   '''perform validation on DTI data from the DRC '''
 
   dtiSS = pd.read_csv('../data/DRC/DTI/DTI_summary_forRaz.xlsx')
