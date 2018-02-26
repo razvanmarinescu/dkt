@@ -868,7 +868,7 @@ def main():
   random.seed(1)
   pd.set_option('display.max_columns', 50)
   tinyData = True
-  regenerateData = True
+  regenerateData = False
   if tinyData:
     finalDataFile = 'tadpoleDrcTiny.npz'
   else:
@@ -974,7 +974,7 @@ def main():
   # first disease has CTL+AD, second disease has CTL2+PCA
   params['diagsSetInDis'] = [np.array([CTL, MCI, AD]), np.array([CTL2, PCA])]
   params['disLabels'] = ['tAD', 'PCA']
-  params['otherBiomkPerDisease'] = {[nrBiomk-3,nrBiomk-2, nrBiomk-1], []}
+  params['otherBiomkPerDisease'] = [[nrBiomk-3,nrBiomk-2, nrBiomk-1], []]
 
   print('diag', params['diag'].shape[0])
   print('X[0]',len(params['X'][0]))
