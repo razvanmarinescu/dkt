@@ -187,7 +187,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       disLabels = self.params['disLabels']
       nrDis = len(disLabels)
       self.disModels = [_ for _ in range(nrDis)]
-      for disNr in [1]: #range(nrDis):
+      for disNr in range(nrDis):
 
         xDysfunSubjUCopy = copy.deepcopy(xDysfunSubjU)
         dysfuncScoresUCopy = copy.deepcopy(dysfuncScoresU)
