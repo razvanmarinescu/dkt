@@ -24,8 +24,6 @@ import IncompleteModel
 
 from importlib.machinery import SourceFileLoader
 from sklearn import linear_model
-plotFuncDiffEq = SourceFileLoader("*",
-  os.path.abspath("../diffEqModel/plotFunc.py")).load_module()
 
 def runModels(params, expName, modelToRun, runAllExpFunc):
   modelNames = []
@@ -75,17 +73,7 @@ def runStdDPM(params, expNameCurrModel, dpmBuilder, runPart):
   if runPart[1] == 'R':
     dpmObj.plotTrajectories(res)
 
-  if runPart[2] == 'R':
-    # dataIndicesNN = np.logical_and(dataIndices, np.sum(np.isnan(params['data']),1) == 0)
-    (maxLikStages, maxStagesIndex, stagingProb, stagingLik, tsStages, _) = dpmObj.stageSubjects(dataIndices)
-    print(params['diag'].shape, dataIndices.shape)
-    print('maxLikStages min max', np.min(maxLikStages), np.max(maxLikStages))
-    fig, lgd = plotFuncDiffEq.plotStagingHist(maxLikStages, diag=params['diag'][dataIndices],
-                    plotTrajParams=params['plotTrajParams'], expNameCurrModel=expNameCurrModel)
-    stagingHistFigName = '%s/stagingHist.png' % dpmObj.outFolder
-    fig.savefig(stagingHistFigName, bbox_extra_artists=(lgd,), bbox_inches='tight')
-
-
+  
   return dpmObj, res
 
 
