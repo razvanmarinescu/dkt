@@ -652,6 +652,7 @@ def addBiomks(biomkStruct, sourceDf, targetDf, collapseFunc):
 def regressCov(data, regressorVector, diag, diagsCTL = (CTL, CTL2), printFigs=False):
   oldData = copy.deepcopy(data)
   M = np.zeros((data.shape[1], 2))
+  desiredMean = np.zeros(data.shape[1])
   for i in range(data.shape[1]):
       currCol = data.columns[i]
       notNanIndices = np.logical_not(np.isnan(regressorVector))
@@ -674,8 +675,8 @@ def regressCov(data, regressorVector, diag, diagsCTL = (CTL, CTL2), printFigs=Fa
       np.ones((regressorVector.shape[0],1))),axis=1)
 
       Yhat = np.dot(Xfull, M[i,:]) # estimated Ys
-      data.loc[:, currCol] = data.loc[:,currCol] - (Yhat - np.nanmean(
-        dataNNcurrCol.loc[indicesCtl]))
+      desiredMean[i] = np.nanmean(dataNNcurrCol.loc[indicesCtl])
+      data.loc[:, currCol] = data.loc[:,currCol] - (Yhat - desiredMean[i])
 
       if printFigs:
         h = pl.figure(1, figsize=(15,10))
@@ -690,9 +691,58 @@ def regressCov(data, regressorVector, diag, diagsCTL = (CTL, CTL2), printFigs=Fa
 
         pl.show()
 
-  params = dict(M=M, labels=data.columns)
+  params = dict(M=M, labels=data.columns, desiredMean=desiredMean)
 
   return data, params
+
+
+def applyRegFromParams(data, regressorVector, diag, params, diagsCTL = (CTL, CTL2),
+  printFigs=False):
+
+  oldData = copy.deepcopy(data)
+  M = params['M']
+  desiredMean = params['desiredMean']
+  for i in range(data.shape[1]):
+      currCol = data.columns[i]
+      # notNanIndices = np.logical_not(np.isnan(regressorVector))
+      # notNanIndices = np.logical_and(notNanIndices,
+      #   np.logical_not(np.isnan(data.loc[:,currCol])))
+      # regressorVectorNN = regressorVector[notNanIndices]
+      # diagNN = diag[notNanIndices]
+      # dataNNcurrCol = data.loc[notNanIndices,currCol]
+      # indicesCtl = np.in1d(diagNN, diagsCTL)
+      # regressorCTL = regressorVectorNN[indicesCtl]
+      #
+      # # Solve the GLM: Y = [X 1] * M
+      # X = np.concatenate((regressorCTL.reshape(-1,1),
+      # np.ones((regressorCTL.shape[0],1))),axis=1)
+      # XXX = np.dot(np.linalg.pinv(np.dot(X.T,X)), X.T)
+
+      # M[i,:] = np.dot(XXX, dataNNcurrCol.loc[indicesCtl]) # params of linear fit
+      assert(~any(np.isnan(M[i,:])));
+
+      Xfull = np.concatenate((regressorVector.reshape(-1,1),
+      np.ones((regressorVector.shape[0],1))),axis=1)
+
+      Yhat = np.dot(Xfull, M[i,:]) # estimated Ys
+      data.loc[:, currCol] = data.loc[:,currCol] - (Yhat - desiredMean[i])
+
+      if printFigs:
+        h = pl.figure(1, figsize=(15,10))
+        pl.scatter(regressorVector, oldData.loc[:,currCol], c='r',label='before', s=5)
+        pl.scatter(regressorVector, data[currCol], c='b',label='after', s=5)
+        # pl.plot(regressorVectorNN, Yhat[notNanIndices], c='r')
+        # correctedPred = np.nanmean(dataNNcurrCol.loc[indicesCtl]) * \
+        #                 np.ones(dataNNcurrCol.loc[indicesCtl].shape[0])
+        # pl.plot(regressorVectorNN[indicesCtl],correctedPred  , c='b')
+        pl.title('%s' % data.columns[i])
+        pl.legend()
+
+        pl.show()
+
+  return data
+
+
 
 def prepareData(finalDataFile, tinyData):
 
@@ -712,58 +762,78 @@ def prepareData(finalDataFile, tinyData):
   dataDfAll = pd.concat([dataDfTadpole, dataDfDrc], ignore_index=True)
   dataDfAll = dataDfAll[[x for x in dataDfAll.columns if x != 'Unnamed: 0']]
 
+  # add extra number to RID to ensure no collisions occur with RIDs of other datasets
+  dataDfAll['RID'] = dataDfAll['RID']*10 + dataDfAll['dataset']
+
+  dataDfAll.to_csv('tadpoleDrcAll.csv')
+
   # exact same format as dataDfAll. make deep copy of the DRC data only
+
   validDf = dataDfAll[dataDfAll.dataset == 2]
+  # validDf.drop(validDf.index[idxToDrop], inplace = True)
   validDf = validDf.copy(deep=True)
+  validDf.reset_index(drop = True, inplace = True)
+  # validDf.sort_index(inplace=True)
   # print('validDf', validDf)
-  validDf = addDRCValidDataMock(validDf) # change to the real one when ready
-  # validDf = addDRCValidData(validDf)
+  validDf = addDRCValidDataMock(validDf) # generate random numbers for now
+  # validDf = addDRCValidData(validDf) # change to this real dataset one when ready
+
+  testValidDfConsist(validDf, dataDfAll)
 
   print(dataDfTadpole.columns.tolist())
   print(dataDfDrc.columns.tolist())
   assert all([x == y for x,y in zip(dataDfTadpole.columns.tolist(), dataDfDrc.columns.tolist())])
 
-  # dataDfAll = dataDfTadpole
-  # dataDfAll.set_index('key').join(dataDfDrc.set_index('key'))
 
-  # add extra number to RID to ensure no collisions occur with RIDs of other datasets
-  # print((dataDfAll[['RID']]*10 + dataDfAll[['dataset']]).shape, dataDfAll[['RID']]*10 + dataDfAll[['dataset']])
-
-  dataDfAll['RID'] = dataDfAll['RID']*10 + dataDfAll['dataset']
-
-  dataDfAll.to_csv('tadpoleDrcAll.csv')
 
   # regress out covariates: age, gender, ICV and dataset
   colsList = dataDfAll.columns.tolist()
   mriCols = [x for x in colsList if x.startswith('Volume')]
   allBiomkCols = dataDfAll.loc[:, 'CDRSB' : ].columns.tolist()
 
-  # also make the MRI volumes increasing
-
+  # do for both the data and the validation set
   dataDfAll[mriCols], regParamsICV = regressCov(dataDfAll[mriCols],
     dataDfAll['ICV'], dataDfAll['diag'])
+
+  validDf[mriCols] = applyRegFromParams(validDf[mriCols],
+    validDf['ICV'], validDf['diag'], regParamsICV)
+
+  testValidDfConsist(validDf, dataDfAll)
 
   dataDfAll[allBiomkCols], regParamsAge = regressCov(dataDfAll[allBiomkCols],
     dataDfAll['age'], dataDfAll['diag'])
 
+  validDf[allBiomkCols] = applyRegFromParams(validDf[allBiomkCols],
+    validDf['age'], validDf['diag'], regParamsAge)
+
   dataDfAll[allBiomkCols], regParamsGender = regressCov(dataDfAll[allBiomkCols],
     dataDfAll['gender-0f1m'], dataDfAll['diag'], printFigs=False)
+
+  validDf[allBiomkCols] = applyRegFromParams(validDf[allBiomkCols],
+    validDf['gender-0f1m'], validDf['diag'], regParamsGender)
 
   dataDfAll[allBiomkCols], regParamsDataset = regressCov(dataDfAll[allBiomkCols],
     dataDfAll['dataset'], dataDfAll['diag'], printFigs=False)
 
+  validDf[allBiomkCols] = applyRegFromParams(validDf[allBiomkCols],
+    validDf['dataset'], validDf['diag'], regParamsDataset)
+
   # change directionality of decreasing markers: volume, DTI-FA and FDG
   # This is because the model assumes all biomarkers are increasing
   dataDfAll[mriCols] *= -1
+  validDf[mriCols] *= -1
+
   dtiFaCols = [x for x in colsList if x.startswith('DTI FA')]
   # print(dataDfAll[dtiFaCols])
   dataDfAll[dtiFaCols] *= -1
+  validDf[dtiFaCols] *= -1
 
   fdgCols = [x for x in colsList if x.startswith('FDG')]
   dataDfAll[fdgCols] *= -1
+  validDf[fdgCols] *= -1
 
   dataDfAll[['MMSE', 'RAVLT_immediate']] *= -1
-
+  validDf[['MMSE', 'RAVLT_immediate']] *= -1
 
   # convert biomarkers to Z-scores
   # meanCtl = np.nanmean(dataDfAll[allBiomkCols][np.in1d(dataDfAll['diag'], [CTL, CTL2])],axis=0)
@@ -774,6 +844,9 @@ def prepareData(finalDataFile, tinyData):
   minB = np.nanmin(dataDfAll[allBiomkCols], axis=0)
   maxB = np.nanmax(dataDfAll[allBiomkCols], axis=0)
   dataDfAll[allBiomkCols] = (np.array(dataDfAll[allBiomkCols]) - minB[None, :]) / (maxB - minB)[None, :]
+  validDf[allBiomkCols] = (np.array(validDf[allBiomkCols]) - minB[None, :]) / (maxB - minB)[None, :]
+
+
 
   print(dataDfAll.shape)
   if tinyData:
@@ -827,6 +900,8 @@ def prepareData(finalDataFile, tinyData):
   else:
     dataDfAll.to_csv('tadpoleDrcRegData.csv')
 
+  validDf.to_csv('validDf.csv')
+
   # print(dataDfAll.shape)
   # print(ads)
 
@@ -847,23 +922,46 @@ def prepareData(finalDataFile, tinyData):
   # print(dataDfAll.dtypes)
   for c in selectedBiomk:
     dataDfAll[c] = dataDfAll[c].astype(np.float128) # increase precision of floats to 128
+    validDf[c] = validDf[c].astype(np.float128)
 
   # print(dataDfAll.dtypes)
   # print(adsa)
 
+  testValidDfConsist(validDf, dataDfAll)
+
   X, Y, RID, list_biomarkers, diag = \
     auxFunc.convert_table_marco(dataDfAll, list_biomarkers=selectedBiomk)
+
+  Xvalid, Yvalid, RIDvalid, _, _ = \
+    auxFunc.convert_table_marco(validDf, list_biomarkers = selectedBiomk)
 
   ds = dict(X=X, Y=Y, RID=RID, list_biomarkers=list_biomarkers,
     dataDfAll=dataDfAll, regParamsICV=regParamsICV,
     regParamsAge=regParamsAge, regParamsGender=regParamsGender,
-    regParamsDataset=regParamsDataset, diag=diag)
+    regParamsDataset=regParamsDataset, diag=diag, Xvalid=Xvalid, Yvalid=Xvalid,
+    RIDvalid=RIDvalid)
   pickle.dump(ds, open(finalDataFile, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
   # print('RID', RID)
   # print('X', len(X), len(X[0]))
   # print('Y', len(Y), len(Y[0]))
   # print(adsa)
+
+def testValidDfConsist(validDf, dataDfAll):
+  sID = np.unique(dataDfAll.scanID)[3]
+  assert not np.isnan(sID)
+  idxValid = np.where(validDf.scanID == sID)[0][0]
+  idxData = np.where(dataDfAll.scanID == sID)[0][0]
+  print('validDf.loc[3, Volume Parietal]', validDf.loc[idxValid, 'Volume Parietal'])
+  print('dataDfAll.loc[3, Volume Parietal]', dataDfAll.loc[idxData, 'Volume Parietal'])
+  print('validDf.loc[3, DTI FA Parietal]', validDf.loc[idxValid, 'DTI FA Parietal'])
+  print('dataDfAll.loc[3, DTI FA Parietal]', dataDfAll.loc[idxData, 'DTI FA Parietal'])
+  print('idxValid', idxValid)
+  print('idxData', idxData)
+  assert validDf.at[idxValid, 'Volume Parietal'] == \
+    dataDfAll.loc[idxData, 'Volume Parietal']
+  assert validDf.at[idxValid, 'DTI FA Parietal'] != \
+    dataDfAll.at[idxData, 'DTI FA Parietal']
 
 def visDataHist(dataDfAll):
 
@@ -1020,13 +1118,18 @@ def main():
 
 
 def addDRCValidDataMock(validDf):
-
+  state = np.random.get_state()
+  # print(np.random.rand())
 
   nrDRCentries = np.sum(validDf.dataset == 2)
   colsList = validDf.loc[:,'DTI FA Cingulate' : 'DTI FA Temporal'].columns.tolist()
-  print('colsList', colsList)
+  # print('colsList', colsList)
   validDf[colsList] = \
     np.random.rand(nrDRCentries, len(colsList))
+
+  np.random.set_state(state)
+  # print(np.random.rand())
+  # print(asda)
 
   return validDf
 
