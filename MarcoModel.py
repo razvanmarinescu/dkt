@@ -940,6 +940,43 @@ class GP_progression_model(object):
         scaleX = self.max_X[0] * self.mean_std_X[0][1]
         return np.array(individual_time) *  scaleX + self.mean_std_X[0][0]
 
+    def ReturnTimeShiftLong(self):
+      for sub in range(self.unitModels[u].N_samples):
+        for b in range(self.unitModels[u].N_biom):
+          xDysfunSubjUCurrSubj = self.unitModels[u].X[b][sub]  # Xs in the unit model
+          xDysfunSubjU[u][sub] += list(xDysfunSubjUCurrSubj)
+
+          # dysfuncScoresCurrSubExtr = [XarraysScaledB[b][k][0] for k in range(int(np.sum(self.gpModels[
+          # u].N_obs_per_sub[b][:sub])), np.sum(self.gpModels[u].N_obs_per_sub[b][:sub + 1]))]
+          dysfuncScoresCurrSubExtr = [self.unitModels[u].X_array[b][k][0] for k in range(int(np.sum(
+            self.unitModels[u].N_obs_per_sub[b][:sub])), np.sum(self.unitModels[u].N_obs_per_sub[b][:sub + 1]))]
+
+          dysfuncScoresU[u][sub] += dysfuncScoresCurrSubExtr  # (Xs + timeShift) in the unit model
+
+          # xsNewGpTestCurrSub = [newGPTest.X_array[b][k][0] for k in range(int(np.sum(
+          #   newGPTest.N_obs_per_sub[b][:sub])), np.sum(newGPTest.N_obs_per_sub[b][:sub + 1]))]
+
+
+
+          #
+          # print('dysfuncScoresUCurrSubCalc', dysfuncScoresCurrSubCalc)
+          # print('xsNewGpTestCurrSub', xsNewGpTestCurrSub, np.array(xsNewGpTestCurrSub) + self.unitModels[u].params_time_shift[0][sub])
+          # print('dysfuncScoresCurrSubExtr', dysfuncScoresCurrSubExtr)
+          # print('params_time_shift[0][sub]',
+          #       self.unitModels[u].params_time_shift[0][sub])
+          # print('xDysfunSubjU[u][sub]', xDysfunSubjU[u][sub])
+          # print(adsa) they are indeed equal if you standardize them.
+
+        # apply the forward scaling transform
+
+
+        print('xDysfunSubjU[u][sub]', xDysfunSubjU[u][sub])
+        print('dysfuncScoresU[u][sub]', dysfuncScoresU[u][sub])
+
+        xDysfunSubjU[u][sub] = np.sort(np.unique(xDysfunSubjU[u][sub]))
+        dysfuncScoresU[u][sub] = np.sort(np.unique(dysfuncScoresU[u][sub]))
+
+
     def StageSubjects(self,X_test, Y_test, Xrange):
       """predicts the posterior distribution of the subject time shifts. Doesn't predict biomarker values"""
 
