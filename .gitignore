@@ -1,0 +1,9 @@
+*.csv
+*.npz
+*.csv#
+.idea/
+*~
+*.aux
+*.out
+*.log
+*.backup
