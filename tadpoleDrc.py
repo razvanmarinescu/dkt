@@ -884,7 +884,7 @@ def main():
   np.random.seed(1)
   random.seed(1)
   pd.set_option('display.max_columns', 50)
-  tinyData = True
+  tinyData = False #True
   regenerateData = args.regData
   if tinyData:
     finalDataFile = 'tadpoleDrcTiny.npz'
@@ -1018,71 +1018,104 @@ def main():
 def validateWithDtiDRC():
   '''perform validation on DTI data from the DRC '''
 
-  dtiSS = pd.read_csv('../data/DRC/DTI/DTI_summary_forRaz.xlsx')
-
+  #dtiSS = pd.read_csv('../data/DRC/DTI/DTI_summary_forRaz.xlsx')
+  dtiSS = pd.read_csv('/home/planell/dkt/DTI_summary_forRaz.csv')
+  tadTiny = pd.read_csv('/home/planell/dkt/tadpoleDrcRegDataTiny.csv')
   mappingIDtoRegion = {0 : "Unclassified" ,
-    1: "Middle cerebellar peduncle",
-    2: "Pontine Crossing tract",
-    3: "Genu of corpus callosum",
-    4: "Body of corpus callosum",
-    5: "Splenium of corpus callosum",
-    6: "Fornix (column and body of fornix)",
-    7: "Corticospinal tract R",
-    8: "Corticospinal tract L",
-    9: "Medial lemniscus R",
-    10: "Medial lemniscus L",
-    11: "Inferior cerebellar peduncle R",
-    12: "Inferior cerebellar peduncle L",
-    13: "Superior cerebellar peduncle R",
-    14: "Superior cerebellar peduncle L",
-    15: "Cerebral peduncle R",
-    16: "Cerebral peduncle L",
-    17: "Anterior limb of internal capsule R",
-    18: "Anterior limb of internal capsule L",
-    19: "Posterior limb of internal capsule R",
-    20: "Posterior limb of internal capsule L",
-    21: "Retrolenticular part of internal capsule R",
-    22: "Retrolenticular part of internal capsule L",
-    23: "Anterior corona radiata R",
-    24: "Anterior corona radiata L",
-    25: "Superior corona radiata R",
-    26: "Superior corona radiata L",
-    27: "Posterior corona radiata R",
-    28: "Posterior corona radiata L",
-    29: "Posterior thalamic radiation R",
-    30: "Posterior thalamic radiation L",
-    31: "Sagittal stratum R",
-    32: "Sagittal stratum L",
-    33: "External capsule R",
-    34: "External capsule L",
-    35: "Cingulum (cingulate gyrus) R",
-    36: "Cingulum (cingulate gyrus) L",
-    37: "Cingulum (hippocampus) R",
-    38: "Cingulum (hippocampus) L",
-    39: "Fornix (cres) / Stria terminalis R",
-    40: "Fornix (cres) / Stria terminalis L",
-    41: "Superior longitudinal fasciculus R",
-    42: "Superior longitudinal fasciculus L",
-    43: "Superior fronto-occipital fasciculus R",
-    44: "Superior fronto-occipital fasciculus L",
-    45: "Uncinate fasciculus R",
-    46: "Uncinate fasciculus L",
-    47: "Tapetum R",
-    48: "Tapetum L"}
+    1: ["Middle cerebellar peduncle", "ICP"], #
+    2: ["Pontine Crossing tract","PCT"], #
+    3: ["Genu of corpus callosum", "GCC"],
+    4: ["Body of corpus callosum", "BCC"],
+    5: ["Splenium of corpus callosum", "SCC"],
+    6: ["Fornix (column and body of fornix)","FX"],
+    7: ["Corticospinal tract R", "CST"],
+    8: ["Corticospinal tract L", "CST"],
+    9: ["Medial lemniscus R", "ML"],#
+    10: ["Medial lemniscus L","ML"], #
+    11: ["Inferior cerebellar peduncle R", "ICP"],  #
+    12: ["Inferior cerebellar peduncle L", "ICP"],  #
+    13: ["Superior cerebellar peduncle R", "SCP"],  #
+    14: ["Superior cerebellar peduncle L", "SCP"],  #
+    15: ["Cerebral peduncle R", "CP"],  #
+    16: ["Cerebral peduncle L", "CP"],  #
+    17: ["Anterior limb of internal capsule R", "ALIC"],  #
+    18: ["Anterior limb of internal capsule L", "ALIC"],  #
+    19: ["Posterior limb of internal capsule R", "PLIC"], #
+    20: ["Posterior limb of internal capsule L", "PLIC"], #
+    21: ["Retrolenticular part of internal capsule R", "RLIC"], #
+    22: ["Retrolenticular part of internal capsule L", "RLIC"], #
+    23: ["Anterior corona radiata R", "ACR"], 
+    24: ["Anterior corona radiata L", "ACR"], 
+    25: ["Superior corona radiata R", "SCR"], 
+    26: ["Superior corona radiata L", "SCR"], 
+    27: ["Posterior corona radiata R", "PCR"], 
+    28: ["Posterior corona radiata L", "PCR"],  
+    29: ["Posterior thalamic radiation R", "PTR"],
+    30: ["Posterior thalamic radiation L", "PTR"],
+    31: ["Sagittal stratum R", "SS"],
+    32: ["Sagittal stratum L", "SS"],
+    33: ["External capsule R", "EC"], #
+    34: ["External capsule L", "EC"], #
+    35: ["Cingulum (cingulate gyrus) R", "CGC"],
+    36: ["Cingulum (cingulate gyrus) L", "CGC"],
+    37: ["Cingulum (hippocampus) R", "CGH"],
+    38: ["Cingulum (hippocampus) L", "CGH"],
+    39: ["Fornix (cres) / Stria terminalis R", "FX"],
+    40: ["Fornix (cres) / Stria terminalis L", "FX"],
+    41: ["Superior longitudinal fasciculus R", "SLF"],
+    42: ["Superior longitudinal fasciculus L", "SLF"],
+    43: ["Superior fronto-occipital fasciculus R", "SFO"],
+    44: ["Superior fronto-occipital fasciculus L", "SFO"],
+    45: ["Uncinate fasciculus R", "UNC"],
+    46: ["Uncinate fasciculus L", "UNC"],
+    47: ["Tapetum R", "TP"],
+    48: ["Tapetum L", "TP"]}
 
-
-  dtiSS['region'] = dtiSS['region'].map(mappingIDtoRegion)
-
-  unqScans = np.unique(dtiSS.Scan1Study)
+  dtiBiomkStructTemplate_updated = {
+          'CST':'Frontal', 
+          'ACR':'Frontal', 
+          'SCR':'Frontal',
+          'TP':'Frontal',
+          'PCR':'Parietal', 
+          'PTR':'Parietal',
+          'SS':'Temporal', 
+          'UNC':'Temporal',
+          'SLF':'Occipital', 
+          'SFO':'Occipital',
+          'CGC':'Cingulate', 
+          'GCC':'Cingulate', 
+          'BCC':'Cingulate', 
+          'SCC':'Cingulate',
+          'CGH':'Hippocampus', 
+          'FX':'Hippocampus',
+          'ALIC':'TBC',
+          'PLIC':'TBC',
+          'RLIC':'TBC',
+          'ICP':'TBC',
+          'SCP':'TBC',
+          'CP':'TBC',
+          'EC':'TBC',
+          'PCT':'TBC',
+          'EC':'TBC',
+          'ML':'TBC',
+          'n':'NA'
+  }
+  dtiSS['region'] = dtiSS['region']\
+      .map(lambda x: dtiBiomkStructTemplate_updated[mappingIDtoRegion[x][1]])
+      
+  dtiSS_means = dtiSS.groupby(['Scan1Study','region'])['mean']\
+                  .mean().reset_index()
+  unqScans_dti = np.unique(dtiSS_means.Scan1Study)
+  unqScans_tad = np.unique(tadTiny.scanID)
   nrUnqScans = unqScans.shape[0]
-
+  
   dfNew = pd.DataFrame(np.nan * np.ones((nrUnqScans, len(columnsFormat))),
     columns=columns)
 
   metrics = ['rd','fa','ad', 'md']
   regions = [mappingIDtoRegion[k] for k in range(len(mappingIDtoRegion.keys()))]
   columns = []
-
+  
   for m in metrics:
     for r in regions:
       columns += ['%s_%s' % (r, m)]
