@@ -777,8 +777,8 @@ def prepareData(finalDataFile, tinyData):
   validDf.reset_index(drop = True, inplace = True)
   # validDf.sort_index(inplace=True)
   # print('validDf', validDf)
-  validDf = addDRCValidDataMock(validDf) # generate random numbers for now
-  # validDf = addDRCValidData(validDf) # change to this real dataset one when ready
+  #validDf = addDRCValidDataMock(validDf) # generate random numbers for now
+  validDf = addDRCValidData(validDf) # change to this real dataset one when ready
 
   testValidDfConsist(validDf, dataDfAll)
 
@@ -1122,8 +1122,8 @@ def main():
   params['masterProcess'] = args.runIndex == 0
 
   expNameDisOne = '%s' % expName
-  modelNames, res = evaluationFramework.runModels(params, expName,
-    args.modelToRun, runAllExpTadpoleDrc)
+  #modelNames, res = evaluationFramework.runModels(params, expName,
+  #  args.modelToRun, runAllExpTadpoleDrc)
 
 
 def addDRCValidDataMock(validDf):
@@ -1142,12 +1142,11 @@ def addDRCValidDataMock(validDf):
 
   return validDf
 
-def addDRCValidData():
+def addDRCValidData(validDf):
   '''perform validation on DTI data from the DRC '''
 
   #dtiSS = pd.read_csv('../data/DRC/DTI/DTI_summary_forRaz.xlsx')
-  dtiSS = pd.read_csv('/home/planell/dkt/DTI_summary_forRaz.csv')
-  tadTiny = pd.read_csv('/home/planell/dkt/tadpoleDrcRegDataTiny.csv')
+  dtiSS = pd.read_csv('DTI_summary_forRaz.csv')
   mappingIDtoRegion = {0 : "Unclassified" ,
     1: ["Middle cerebellar peduncle", "ICP"], #
     2: ["Pontine Crossing tract","PCT"], #
@@ -1227,33 +1226,25 @@ def addDRCValidData():
           'ML':'TBC',
           'n':'NA'
   }
-  dtiSS['region'] = dtiSS['region']\
-      .map(lambda x: dtiBiomkStructTemplate_updated[mappingIDtoRegion[x][1]])
+  dtiSS['region'] = dtiSS['region'].map(lambda x: \
+       'DTI FA '+dtiBiomkStructTemplate_updated[mappingIDtoRegion[x][1]])
       
   dtiSS_means = dtiSS.groupby(['Scan1Study','region'])['mean']\
                   .mean().reset_index()
-  unqScans_dti = np.unique(dtiSS_means.Scan1Study)
-  unqScans_tad = np.unique(tadTiny.scanID)
-  nrUnqScans = unqScans.shape[0]
+                  
+  dtiSS_pivoted = dtiSS_means.\
+          pivot(index = 'Scan1Study', columns = 'region', values = 'mean')
   
-  dfNew = pd.DataFrame(np.nan * np.ones((nrUnqScans, len(columnsFormat))),
-    columns=columns)
-
-  metrics = ['rd','fa','ad', 'md']
-  regions = [mappingIDtoRegion[k] for k in range(len(mappingIDtoRegion.keys()))]
-  columns = []
+  unqScans_dti = np.unique(dtiSS_pivoted.index)
+  unqScans_tad = np.unique(validDf.scanID)
   
-  for m in metrics:
-    for r in regions:
-      columns += ['%s_%s' % (r, m)]
-
-  columns += []
-
-  for s in range(nrUnqScans):
-    pass
-
-
-
+  Scan_inter = list(set(unqScans_dti) & set(unqScans_tad))
+  
+  validDf_u = validDf.set_index('scanID')
+  validDf_u.update(dtiSS_pivoted)
+  validDf_u = validDf_u.reset_index()
+  
+  return validDf_u
 
 def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = None):
   """ runs all experiments"""
