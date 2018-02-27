@@ -40,6 +40,13 @@ parser.add_argument('--nrCols', dest='nrCols', type=int,
 parser.add_argument('--penalty', dest='penalty', type=float,
   help='penalty value for non-monotonic trajectories. between 0 (no effect) and 10 (strong effect). ')
 
+parser.add_argument('--regData', action="store_true", default=False,
+  help=' add this flag to regenerate the data')
+
+parser.add_argument('--runPartStd', dest='runPartStd', default='RR',
+  help=' choose whether to (R) run or (L) load from the checkpoints: '
+  'either LL, RR, LR or RL. ')
+
 args = parser.parse_args()
 
 if args.agg:
@@ -117,7 +124,6 @@ def main():
   etaB = 1 * np.ones(nrBiomk)
   lB = 10 * np.ones(nrBiomk)
   epsB = 1 * np.ones(nrBiomk)
-  sigmaSB = 2 * np.ones((nrSubjLong, nrBiomk))
 
   sigmaGfunc = GPModel.genSigmaG
   sigmaEpsfunc = None
@@ -128,7 +134,7 @@ def main():
   expName = 'synth1'
   fileName = '%s.npz' % expName
 
-  forceRegenerate = False
+  regenerateData = args.regData
 
   params = {}
 
@@ -181,17 +187,18 @@ def main():
   dysfuncParamsDisOne[:, 2] = [-3, 7]  # ck
   dysfuncParamsDisOne[:, 3] = 0  # dk
 
-  synthModelDisOne = ParHierModel.ParHierModel(dysfuncParamsDisOne, thetas, mapBiomkToFuncUnits, sigmoidFunc, sigmaB)
+  synthModelDisOne = ParHierModel.ParHierModel(dysfuncParamsDisOne, thetas,
+    mapBiomkToFuncUnits, sigmoidFunc, sigmaB)
 
   paramsDisOne = copy.deepcopy(params)
 
   paramsDisOne = genSynthData.generateDataJMD(nrSubjLong, nrBiomk, nrTimepts,
   shiftsLowerLim, shiftsUpperLim, synthModelDisOne, outFolder, fileName,
-    forceRegenerate, paramsDisOne, ctlDiagNr=CTL, patDiagNr=AD)
+    regenerateData, paramsDisOne, ctlDiagNr=CTL, patDiagNr=AD)
 
   paramsDisOne['plotTrajParams']['trueParams'] = paramsDisOne['trueParams']
 
-  if forceRegenerate:
+  if regenerateData:
     synthPlotter = Plotter.PlotterJDM(paramsDisOne['plotTrajParams'])
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisOne['X'], paramsDisOne['Y'],
       paramsDisOne['diag'], paramsDisOne['trueParams']['subShiftsTrueMarcoFormatS'],
@@ -213,7 +220,7 @@ def main():
 
   paramsDisTwo = genSynthData.generateDataJMD(nrSubjLongDisTwo, nrBiomk,
     nrTimeptsDisTwo, shiftsLowerLim, shiftsUpperLim, synthModelDisTwo,
-    outFolder, fileName, forceRegenerate, paramsDisTwo, ctlDiagNr=CTL2,
+    outFolder, fileName, regenerateData, paramsDisTwo, ctlDiagNr=CTL2,
     patDiagNr=PCA)
 
   # for disease two, only keep the second biomarker in each functional unit
@@ -244,7 +251,7 @@ def main():
 
   paramsDisTwo['plotTrajParams']['trueParams'] = paramsDisTwo['trueParams']
 
-  if forceRegenerate:
+  if regenerateData:
     synthPlotter = Plotter.PlotterJDM(paramsDisTwo['plotTrajParams'])
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisTwo['Xtrue'],
       paramsDisTwo['Ytrue'], paramsDisTwo['diag'], paramsDisTwo['trueParams']['subShiftsTrueMarcoFormatS'],
@@ -309,7 +316,7 @@ def main():
   else:
     expName = '%sPen%.1f' % (expName, args.penalty)
 
-  params['runPartStd'] = ['L', 'L']
+  params['runPartStd'] = args.runPartStd
   params['runPartMain'] = ['R', 'I', 'I'] # [mainPart, plot, stage]
   params['masterProcess'] = args.runIndex == 0
 

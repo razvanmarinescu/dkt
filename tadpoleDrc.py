@@ -1029,10 +1029,7 @@ def main():
   print('idxOfDRCSubjWithLowVol', idxOfDRCSubjWithLowVol)
   print(diag[idxOfDRCSubjWithLowVol])
 
-
   outFolder = 'resfiles/'
-
-
 
   params = {}
 

@@ -95,7 +95,6 @@ class JointModel(DisProgBuilder.DPMInterface):
     if runPart[1] == 'R':
       nrGlobIter = 10
       iterParams = 80
-      iterShifts = 100
       dysfuncScoresU = [0 for x in range(self.nrFuncUnits)]
       xDysfunSubjU = [0 for x in range(self.nrFuncUnits)]
       for u in range(self.nrFuncUnits):
