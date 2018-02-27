@@ -236,10 +236,21 @@ class JointModel(DisProgBuilder.DPMInterface):
     return res
 
   def predictBiomkSubjGivenXs(self, newXs, disNr):
-    # newXs is an array as with np.linspace(minX, maxX)
-    # newXs are assumed to be already scaled and in the right space
-    # not a longitudinal list
+    """
+    predicts biomarkers for given xs (disease progression scores)
 
+    :param newXs: newXs is an array as with np.linspace(minX, maxX)
+    newXs are assumed to be already scaled and in the right space
+    not a longitudinal list. newXs are assumed to be already
+    time-shifted in the right place.
+
+    :param disNr: index of disease: 0 (tAD) or 1 (PCA)
+    :return: biomkPredXB = Ys
+    """
+
+
+
+    #
 
     # first predict the dysfunctionality scores in the disease specific model
     dysfuncPredXU = self.disModels[disNr].predictBiomkAndScale(newXs)
@@ -248,14 +259,16 @@ class JointModel(DisProgBuilder.DPMInterface):
     # then predict the inidividual biomarkers in the disease agnostic models
     biomkPredXB = np.zeros((newXs.shape[0], self.nrBiomk))
     for u in range(self.nrFuncUnits):
-
       biomkPredXB[:, self.mapBiomkToFuncUnits == u] = \
         self.unitModels[u].predictBiomkAndScale(dysfuncPredXU[:,u])
 
 
     biomkIndNotInFuncUnits = np.where(self.mapBiomkToFuncUnits == -1)[0]
+    # assumes these biomarkers are at the end
 
-    biomkPredXB[:, biomkIndNotInFuncUnits] = dysfuncPredXU[biomkIndNotInFuncUnits.shape[0]]
+    nrBiomkNotInUnit = biomkIndNotInFuncUnits.shape[0]
+    biomkPredXB[:, biomkIndNotInFuncUnits] = \
+      dysfuncPredXU[:,dysfuncPredXU.shape[1] - nrBiomkNotInUnit :]
 
     return biomkPredXB
 

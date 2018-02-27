@@ -1250,7 +1250,7 @@ def validateDRCBiomk(dpmObj, params):
   nrBiomk = len(X)
 
   xsPred1S = []
-  ysPredBS = []
+  ysPredBS = [[] for b in range(nrBiomk)]
 
   for s in range(nrSubCurrDis):
     currSub = indxSubjToKeep[s]
@@ -1265,16 +1265,35 @@ def validateDRCBiomk(dpmObj, params):
 
   print('ysPredBS', ysPredBS)
   print('xsPred1S', xsPred1S)
-  print(adsa)
 
   # TODO: now need to compare the predictions in ysPredBS with the actual DTI measurements
 
+  # now get the validation set. This is already only for the DRC subjects
+  Xvalid = params['Xvalid']
+  Yvalid = params['Yvalid']
 
+  labels = params['labels']
+  print('labels', labels)
+  dtiColsIdx = [i for i in range(len(labels))
+    if label[i].startswith('DTI')]
 
+  # compute mean squared error (MSE) in DTI
+  mseList = []
+  for b in dtiColsIdx:
+    for s in range(len(Y[b])):
+      mseList += [(Y[b][s] - Yvalid[b][s]) ** 2]
 
+  mse = np.mean(mseList)
+  print('mse', mse)
 
+  # part 2. plot the inferred dynamics for DRC data:
+  # every biomarker against original DPS
+  # also plot extra validation data on top
+  minX = dpmObj.disModels[disNr].minX
+  maxX = dpmObj.disModels[disNr].maxX
+  xsRange = np.linspace(minX,maxX, num=100)
 
-
+  ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(xsRange, disNr)
 
 
 if __name__ == '__main__':
