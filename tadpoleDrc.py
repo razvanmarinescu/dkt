@@ -780,6 +780,10 @@ def prepareData(finalDataFile, tinyData):
   #validDf = addDRCValidDataMock(validDf) # generate random numbers for now
   validDf = addDRCValidData(validDf) # change to this real dataset one when ready
 
+  validDf.to_csv('validDf.csv')
+
+  print('validDf', validDf)
+
   testValidDfConsist(validDf, dataDfAll)
 
   print(dataDfTadpole.columns.tolist())
@@ -905,7 +909,7 @@ def prepareData(finalDataFile, tinyData):
   else:
     dataDfAll.to_csv('tadpoleDrcRegData.csv')
 
-  validDf.to_csv('validDf.csv')
+  validDf.to_csv('validDfReg.csv')
 
   # print(dataDfAll.shape)
   # print(ads)
@@ -1128,8 +1132,8 @@ def main():
   params['masterProcess'] = args.runIndex == 0
 
   expNameDisOne = '%s' % expName
-  #modelNames, res = evaluationFramework.runModels(params, expName,
-  #  args.modelToRun, runAllExpTadpoleDrc)
+  modelNames, res = evaluationFramework.runModels(params, expName,
+   args.modelToRun, runAllExpTadpoleDrc)
 
 
 def addDRCValidDataMock(validDf):
@@ -1176,12 +1180,12 @@ def addDRCValidData(validDf):
     20: ["Posterior limb of internal capsule L", "PLIC"], #
     21: ["Retrolenticular part of internal capsule R", "RLIC"], #
     22: ["Retrolenticular part of internal capsule L", "RLIC"], #
-    23: ["Anterior corona radiata R", "ACR"], 
-    24: ["Anterior corona radiata L", "ACR"], 
-    25: ["Superior corona radiata R", "SCR"], 
-    26: ["Superior corona radiata L", "SCR"], 
-    27: ["Posterior corona radiata R", "PCR"], 
-    28: ["Posterior corona radiata L", "PCR"],  
+    23: ["Anterior corona radiata R", "ACR"],
+    24: ["Anterior corona radiata L", "ACR"],
+    25: ["Superior corona radiata R", "SCR"],
+    26: ["Superior corona radiata L", "SCR"],
+    27: ["Posterior corona radiata R", "PCR"],
+    28: ["Posterior corona radiata L", "PCR"],
     29: ["Posterior thalamic radiation R", "PTR"],
     30: ["Posterior thalamic radiation L", "PTR"],
     31: ["Sagittal stratum R", "SS"],
@@ -1204,21 +1208,21 @@ def addDRCValidData(validDf):
     48: ["Tapetum L", "TP"]}
 
   dtiBiomkStructTemplate_updated = {
-          'CST':'Frontal', 
-          'ACR':'Frontal', 
+          'CST':'Frontal',
+          'ACR':'Frontal',
           'SCR':'Frontal',
           'TP':'Frontal',
-          'PCR':'Parietal', 
+          'PCR':'Parietal',
           'PTR':'Parietal',
-          'SS':'Temporal', 
+          'SS':'Temporal',
           'UNC':'Temporal',
-          'SLF':'Occipital', 
+          'SLF':'Occipital',
           'SFO':'Occipital',
-          'CGC':'Cingulate', 
-          'GCC':'Cingulate', 
-          'BCC':'Cingulate', 
+          'CGC':'Cingulate',
+          'GCC':'Cingulate',
+          'BCC':'Cingulate',
           'SCC':'Cingulate',
-          'CGH':'Hippocampus', 
+          'CGH':'Hippocampus',
           'FX':'Hippocampus',
           'ALIC':'TBC',
           'PLIC':'TBC',
@@ -1234,22 +1238,36 @@ def addDRCValidData(validDf):
   }
   dtiSS['region'] = dtiSS['region'].map(lambda x: \
        'DTI FA '+dtiBiomkStructTemplate_updated[mappingIDtoRegion[x][1]])
-      
-  dtiSS_means = dtiSS.groupby(['Scan1Study','region'])['mean']\
+
+  print(dtiSS)
+  # print(asd)
+  dtiSS_means = dtiSS.groupby(['Scan1Study','region', 'metric'])['mean']\
                   .mean().reset_index()
-                  
+
+  idx = dtiSS_means.metric == 'fa'
+  print('idx', idx)
+  # dtiSS_means.drop(idx, inplace=True)
+  dtiSS_means = dtiSS_means[idx]
+  dtiSS_means.reset_index(drop=True, inplace=True)
+
+  print('dtiSS_means', dtiSS_means)
+
+
   dtiSS_pivoted = dtiSS_means.\
           pivot(index = 'Scan1Study', columns = 'region', values = 'mean')
-  
+
   unqScans_dti = np.unique(dtiSS_pivoted.index)
   unqScans_tad = np.unique(validDf.scanID)
-  
+
   Scan_inter = list(set(unqScans_dti) & set(unqScans_tad))
-  
+
   validDf_u = validDf.set_index('scanID')
   validDf_u.update(dtiSS_pivoted)
   validDf_u = validDf_u.reset_index()
-  
+
+  print('validDf_u', validDf_u)
+  print(asdsa)
+
   return validDf_u
 
 def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = None):
