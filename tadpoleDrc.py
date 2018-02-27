@@ -54,6 +54,8 @@ parser.add_argument('--runPartStd', dest='runPartStd', default='RR',
   help=' choose whether to (R) run or (L) load from the checkpoints: '
   'either LL, RR, LR or RL. ')
 
+parser.add_argument('--tinyData', action="store_true", default=False,
+  help=' only run on a tiny subset of the data: around 200/1980 subjects')
 
 
 args = parser.parse_args()
@@ -854,20 +856,23 @@ def prepareData(finalDataFile, tinyData):
 
     hasNonMriImgInd = ~np.isnan(dataDfAll['FDG Temporal']) | (~np.isnan(dataDfAll['DTI FA Temporal'])) \
       | (~np.isnan(dataDfAll['AV45 Temporal'])) | (~np.isnan(dataDfAll['AV1451 Temporal']))
-    print('hasNonMriImgInd', np.sum(hasNonMriImgInd))
+    # print('hasNonMriImgInd', np.sum(hasNonMriImgInd))
     drcDatasetInd = dataDfAll.dataset == 2
-    print('drcDatasetInd', np.sum(drcDatasetInd))
+    # print('drcDatasetInd', np.sum(drcDatasetInd))
     idxToDrop = np.logical_not(hasNonMriImgInd | drcDatasetInd)
-    print('idxToDrop', np.sum(idxToDrop))
+    # print('idxToDrop', np.sum(idxToDrop))
     dataDfAll.drop(dataDfAll.index[idxToDrop], inplace=True)
     dataDfAll.reset_index(drop=True, inplace=True)
 
     unqRID = np.unique(dataDfAll.RID)
-    # adniUnqRID = np.unique(dataDfAll.RID[dataDfAll.dataset == 1])
-    # pcaUnqRID = np.unique(dataDfAll.RID[dataDfAll.dataset == 2])
-    # print('unqRID', adniUnqRID.shape)
-    ridToKeep = np.random.choice(unqRID, 200, replace=False)
-    # ridToKeep = np.concatenate((ridToKeep, pcaUnqRID), axis=0)
+    adniUnqRID = np.unique(dataDfAll.RID[dataDfAll.dataset == 1])
+    pcaUnqRID = np.unique(dataDfAll.RID[dataDfAll.dataset == 2])
+    print('unqRID', unqRID.shape)
+    print('adniUnqRID', adniUnqRID.shape)
+    print('pcaUnqRID', pcaUnqRID.shape)
+    # print(adas)
+    ridToKeep = np.random.choice(adniUnqRID, 230, replace=False)
+    ridToKeep = np.concatenate((ridToKeep, pcaUnqRID), axis=0)
     idxToDrop = np.logical_not(np.in1d(dataDfAll.RID, ridToKeep))
     dataDfAll.drop(dataDfAll.index[idxToDrop], inplace=True)
     dataDfAll.reset_index(drop=True, inplace=True)
@@ -932,6 +937,13 @@ def prepareData(finalDataFile, tinyData):
   X, Y, RID, list_biomarkers, diag = \
     auxFunc.convert_table_marco(dataDfAll, list_biomarkers=selectedBiomk)
 
+  # now drop all the mri values, which were used for testing consistency
+  # and only keep the DTI.
+  print('validDf', validDf.loc[:, mriCols])
+  validDf.loc[:,mriCols] = np.nan
+  print('validDf', validDf.loc[:,mriCols])
+  # print(adsa)
+
   Xvalid, Yvalid, RIDvalid, _, _ = \
     auxFunc.convert_table_marco(validDf, list_biomarkers = selectedBiomk)
 
@@ -987,7 +999,7 @@ def main():
   np.random.seed(1)
   random.seed(1)
   pd.set_option('display.max_columns', 50)
-  tinyData = False #True
+  tinyData = args.tinyData
   regenerateData = args.regData
   if tinyData:
     finalDataFile = 'tadpoleDrcTiny.npz'
@@ -1014,8 +1026,6 @@ def main():
   idxOfDRCSubjWithLowVol = np.argmin(meanVols)
   print('idxOfDRCSubjWithLowVol', idxOfDRCSubjWithLowVol)
   print(diag[idxOfDRCSubjWithLowVol])
-  assert X[0][idxOfDRCSubjWithLowVol].shape[0] == 3
-  # print(asd)
 
 
   outFolder = 'resfiles/'
@@ -1270,15 +1280,13 @@ def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = Non
 
 
 def validateDRCBiomk(dpmObj, params):
-
-
   # first predict subject DTI measures
 
   X = params['X']
   diag = params['diag']
   disNr = 1 # predict for DRC subjects
-  indxSubjToKeepBin = np.in1d(params['diag'], params['diagsSetInDis'][disNr])
-  indxSubjToKeep = np.where(indxSubjToKeepBin)[0]
+  indxSubjToKeep = np.where(dpmObj.indxSubjForEachDisD[disNr])[0]
+  ridCurrDis = params['RID'][indxSubjToKeep]
   nrSubCurrDis = indxSubjToKeep.shape[0]
   nrBiomk = len(X)
 
@@ -1286,12 +1294,17 @@ def validateDRCBiomk(dpmObj, params):
   ysPredBS = [[] for b in range(nrBiomk)]
 
   for s in range(nrSubCurrDis):
-    currSub = indxSubjToKeep[s]
+    bTmp = 0 # some biomarker, doesn't matter which one
+    x_data = np.array([dpmObj.disModels[disNr].X_array[bTmp][k][0] for k in
+      range(int(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s])),
+      np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s + 1]))])
 
-    xsCurrSub = np.unique([x2 for b in range(nrBiomk) for x2 in X[b][currSub]])
 
-    xsPred1S += [xsCurrSub]
-    ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(xsCurrSub, disNr)
+    # need to apply the inverse transform of X
+    xsCurrSubScaled = dpmObj.disModels[disNr].applyScalingX(xsCurrSub, biomk=0)
+
+    xsPred1S += [xsCurrSubScaled]
+    ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(xsCurrSubScaled, disNr)
 
     for b in range(nrBiomk):
       ysPredBS[b] += [ysCurrSubXB[:,b]]
@@ -1299,11 +1312,11 @@ def validateDRCBiomk(dpmObj, params):
   print('ysPredBS', ysPredBS)
   print('xsPred1S', xsPred1S)
 
-  # TODO: now need to compare the predictions in ysPredBS with the actual DTI measurements
 
   # now get the validation set. This is already only for the DRC subjects
   Xvalid = params['Xvalid']
   Yvalid = params['Yvalid']
+  RIDvalid = params['RIDvalid']
 
   labels = params['labels']
   print('labels', labels)
@@ -1311,12 +1324,18 @@ def validateDRCBiomk(dpmObj, params):
     if label[i].startswith('DTI')]
 
   # compute mean squared error (MSE) in DTI
-  mseList = []
-  for b in dtiColsIdx:
-    for s in range(len(Y[b])):
-      mseList += [(Y[b][s] - Yvalid[b][s]) ** 2]
 
-  mse = np.mean(mseList)
+  # TODO find the subjects for which we have validation data
+  # subjWithValidData =
+
+  nrDtiCols = len(dtiColsIdx)
+  mse = [_ for b in dtiColsIdx]
+  for b in range(nrDtiCols):
+    mseList = []
+    for s in range(len(Y[dtiColsIdx[b]])):
+      mseList += [(ysPredBS[dtiColsIdx[b]][s] - Yvalid[dtiColsIdx[b]][s]) ** 2]
+
+    mse[b] = np.mean(mseList)
   print('mse', mse)
 
   # part 2. plot the inferred dynamics for DRC data:
@@ -1324,9 +1343,12 @@ def validateDRCBiomk(dpmObj, params):
   # also plot extra validation data on top
   minX = dpmObj.disModels[disNr].minX
   maxX = dpmObj.disModels[disNr].maxX
-  xsRange = np.linspace(minX,maxX, num=100)
+  xsTraj = np.linspace(minX,maxX, num=100)
 
-  ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(xsRange, disNr)
+  ysTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTraj, disNr)
+
+
+
 
 
 if __name__ == '__main__':

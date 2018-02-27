@@ -46,6 +46,12 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.unitModels = None # functional unit models
     self.disModels = None # disease specific models
 
+    disLabels = self.params['disLabels']
+    self.nrDis = len(disLabels)
+
+    self.indxSubjForEachDisD = [np.in1d(self.params['plotTrajParams']['diag'],
+      self.params['diagsSetInDis'][disNr]) for disNr in range(self.nrDis)]
+
 
   def runStd(self, runPart):
     self.run(runPart)
@@ -55,7 +61,6 @@ class JointModel(DisProgBuilder.DPMInterface):
     if runPart[0] == 'R':
       nrGlobIter = 10
       iterParams = 80
-      iterShifts = 100
       N = int(3)  # Number of random features for kernel approximation
       Xfilt, Yfilt = filterDataListFormat(self.params, self.dataIndices)
 
@@ -77,7 +82,7 @@ class JointModel(DisProgBuilder.DPMInterface):
         print('penalty', self.params['penalty'])
         # print(adsa)
         self.unitModels[u].Set_penalty(self.params['penalty'])
-        self.unitModels[u].Optimize(nrGlobIter, [iterParams, iterShifts], Plot=True)
+        self.unitModels[u].Optimize(nrGlobIter, iterParams, Plot=True)
 
       pickle.dump(self.unitModels, open(filePath, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
     else:
@@ -190,11 +195,10 @@ class JointModel(DisProgBuilder.DPMInterface):
           print('nrSubj', nrSubj)
           print(self.params['diagsSetInDis'][disNr])
           print(self.params['diag'].shape)
-          xDysfunSubjCurrDisU[b] = [xDysfunSubjUCopy[b][s] for s in range(nrSubj)
-            if self.params['diag'][s] in self.params['diagsSetInDis'][disNr]]
-          dysfuncScoresCurrDisU[b] = [dysfuncScoresUCopy[b][s] for s in range(nrSubj)
-            if self.params['diag'][s] in self.params['diagsSetInDis'][disNr]]
-
+          xDysfunSubjCurrDisU[b] = [xDysfunSubjUCopy[b][s] for s in
+            np.where(self.indxSubjForEachDisD[disNr])[0]]
+          dysfuncScoresCurrDisU[b] = [dysfuncScoresUCopy[b][s] for s in
+            np.where(self.indxSubjForEachDisD[disNr])[0]]
 
         # print('xDysfunSubjCurrDisU', xDysfunSubjCurrDisU)
         # print('dysfuncScoresCurrDisU', dysfuncScoresCurrDisU)
@@ -224,7 +228,7 @@ class JointModel(DisProgBuilder.DPMInterface):
         # print(asda)
 
         self.disModels[disNr].Set_penalty(self.params['penalty'])
-        self.disModels[disNr].Optimize(nrGlobIter, [iterParams, iterShifts], Plot=True)
+        self.disModels[disNr].Optimize(nrGlobIter, iterParams, Plot=True)
 
         pickle.dump(self.disModels, open(disModelsFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
 
@@ -239,18 +243,12 @@ class JointModel(DisProgBuilder.DPMInterface):
     """
     predicts biomarkers for given xs (disease progression scores)
 
-    :param newXs: newXs is an array as with np.linspace(minX, maxX)
-    newXs are assumed to be already scaled and in the right space
-    not a longitudinal list. newXs are assumed to be already
-    time-shifted in the right place.
+    :param newXs: newXs is an array as with np.linspace(minX-unscaled, maxX-unscaled)
+    newXs will be scaled to the space of the gpProcess
 
     :param disNr: index of disease: 0 (tAD) or 1 (PCA)
     :return: biomkPredXB = Ys
     """
-
-
-
-    #
 
     # first predict the dysfunctionality scores in the disease specific model
     dysfuncPredXU = self.disModels[disNr].predictBiomkAndScale(newXs)
@@ -311,8 +309,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     plotTrajParamsDis = copy.deepcopy(self.params['plotTrajParams'])
 
-    indxSubjToKeep = np.in1d(plotTrajParamsDis['diag'], self.params['diagsSetInDis'][disNr])
-    plotTrajParamsDis['diag'] = plotTrajParamsDis['diag'][indxSubjToKeep]
+    plotTrajParamsDis['diag'] = plotTrajParamsDis['diag'][self.indxSubjForEachDisD[disNr]]
 
     if 'trueParams' in plotTrajParamsDis.keys():
       # set the params for plotting true trajectories - the Xs and f(Xs), i.e. trueTraj
@@ -322,7 +319,7 @@ class JointModel(DisProgBuilder.DPMInterface):
         self.params['plotTrajParams']['trueParams']['trueDysTrajFromDpsXU'][disNr]
       # need to filter out the subjects with other diseases
       plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'] = \
-        plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'][indxSubjToKeep]
+        plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'][self.indxSubjForEachDisD[disNr]]
 
       # print(plotTrajParamsDis['trueParams']['trueTrajXB'].shape)
       # print(adsa)

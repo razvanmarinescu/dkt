@@ -54,7 +54,6 @@ class GPHierModel(DisProgBuilder.DPMInterface):
     if runPart[0] == 'R':
       N_global_iterations = 50
       iterParams = 50
-      iterShifts = 30
       N = int(10)  # Number of random features for kernel approximation
       Xfilt, Yfilt = filterDataListFormat(self.params, self.dataIndices)
 
@@ -74,7 +73,7 @@ class GPHierModel(DisProgBuilder.DPMInterface):
         self.gpModels[u] = MarcoModel.GP_progression_model(XfiltCurrUnit, YfiltCurrUnit, N, outFolderCurrUnit,
            plotterObjCurrFuncUnit, plotTrajParamsFuncUnit['labels'])
         self.gpModels[u].Set_penalty(self.params['penalty'])
-        self.gpModels[u].Optimize(N_global_iterations, [iterParams, iterShifts], Plot=True)
+        self.gpModels[u].Optimize(N_global_iterations, iterParams, Plot=True)
 
       pickle.dump(self.gpModels, open(filePath, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
     else:
@@ -164,11 +163,10 @@ class GPHierModel(DisProgBuilder.DPMInterface):
 
       N_global_iterations = 50
       iterParams = 50
-      iterShifts = 30
       self.grandModel = MarcoModel.GP_progression_model(xDysfunSubjU, dysfuncScoresU, N_global_iterations,
         self.outFolder, plotterGrand, self.params['labels'])
       self.grandModel.Set_penalty(self.params['penalty'])
-      self.grandModel.Optimize(N_global_iterations, [iterParams, iterShifts], Plot=True)
+      self.grandModel.Optimize(N_global_iterations, iterParams, Plot=True)
 
       pickle.dump(self.grandModel, open(grandModelFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
 

@@ -687,7 +687,7 @@ class GP_progression_model(object):
 
         return loglik, MC_grad
 
-    def Optimize_time_shift(self, Niterat):
+    def Optimize_time_shift(self):
 
       # self.Optimize_time_shift_Marco(Niterat)
       self.Optimize_time_shift_Raz_indiv()
@@ -899,7 +899,7 @@ class GP_progression_model(object):
         self.DX = np.linspace(minXforDXs, maxXforDXs, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
 
-    def Optimize(self, N_global_iterations, iterat, Plot = True):
+    def Optimize(self, N_global_iterations, iterGP, Plot = True):
 
         # Global optimizer (GP parameters + time shift)
         # fig = self.plotter.plotTraj(self)
@@ -912,11 +912,11 @@ class GP_progression_model(object):
             print("iteration ", i, "of ", N_global_iterations)
             print("Optimizing GP parameters")
             if i>float(N_global_iterations)-2:
-                self.Optimize_GP_parameters(Niterat = iterat[0])
+                self.Optimize_GP_parameters(Niterat = iterGP)
             else:
                 # self.N_Dpoints = 10
                 self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-                self.Optimize_GP_parameters(Niterat=iterat[0], optimize_penalty = False)
+                self.Optimize_GP_parameters(Niterat=iterGP, optimize_penalty = False)
                 print("Current penalty parameters: ")
                 print(self.penalty)
 
@@ -929,7 +929,7 @@ class GP_progression_model(object):
 
             if i<(N_global_iterations -1):
                 print("Optimizing time shift")
-                self.Optimize_time_shift(Niterat=iterat[1])
+                self.Optimize_time_shift()
 
             if Plot:
               fig = self.plotter.plotTraj(self)
