@@ -170,3 +170,13 @@ def filterDataListFormat(params, dataIndices):
 
   return Xfilt, Yfilt
 
+
+def applyScalingToBiomk(dataCrossSB, scalingBiomk2B):
+  scaledData = dataCrossSB * scalingBiomk2B[1,:][None, :] + scalingBiomk2B[0,:][None, :]
+  return scaledData
+
+def applyInverseScalingToBiomk(dataCrossSB, scalingBiomk2B):
+  scaledData = (dataCrossSB - scalingBiomk2B[0,:][None, :]) / scalingBiomk2B[1,:][None, :]
+  return scaledData
+
+

@@ -53,15 +53,18 @@ class JointModel(DisProgBuilder.DPMInterface):
       self.params['diagsSetInDis'][disNr]) for disNr in range(self.nrDis)]
 
 
+
+
   def runStd(self, runPart):
     self.run(runPart)
 
   def run(self, runPart):
     filePath = '%s/unitModels.npz' % self.outFolder
+    nrRandFeatures = int(3)  # Number of random features for kernel approximation
     if runPart[0] == 'R':
-      nrGlobIter = 10
-      iterParams = 80
-      N = int(3)  # Number of random features for kernel approximation
+      nrGlobIterUnit = self.params['nrGlobIterUnit']
+      iterParamsUnit = self.params['iterParamsUnit']
+
       Xfilt, Yfilt = filterDataListFormat(self.params, self.dataIndices)
 
       # print(adsa)
@@ -77,12 +80,11 @@ class JointModel(DisProgBuilder.DPMInterface):
         YfiltCurrUnit = [Yfilt[b] for b in range(self.nrBiomk) if self.mapBiomkToFuncUnits[b] == u]
         outFolderCurrUnit = '%s/unit%d' % (self.outFolder, u)
         os.system('mkdir -p %s' % outFolderCurrUnit)
-        self.unitModels[u] = MarcoModel.GP_progression_model(XfiltCurrUnit, YfiltCurrUnit, N, outFolderCurrUnit,
+        self.unitModels[u] = MarcoModel.GP_progression_model(XfiltCurrUnit, YfiltCurrUnit, nrRandFeatures, outFolderCurrUnit,
                                                              plotterObjCurrFuncUnit, plotTrajParamsFuncUnit['labels'])
-        print('penalty', self.params['penalty'])
-        # print(adsa)
-        self.unitModels[u].Set_penalty(self.params['penalty'])
-        self.unitModels[u].Optimize(nrGlobIter, iterParams, Plot=True)
+
+        self.unitModels[u].Set_penalty(self.params['penaltyUnits'])
+        self.unitModels[u].Optimize(nrGlobIterUnit, iterParamsUnit, Plot=True)
 
       pickle.dump(self.unitModels, open(filePath, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
     else:
@@ -93,8 +95,8 @@ class JointModel(DisProgBuilder.DPMInterface):
     nrSubj = self.unitModels[0].N_samples
 
     if runPart[1] == 'R':
-      nrGlobIter = 10
-      iterParams = 80
+      nrGlobIterDis = self.params['nrGlobIterDis']
+      iterParamsDis = self.params['iterParamsDis']
       dysfuncScoresU = [0 for x in range(self.nrFuncUnits)]
       xDysfunSubjU = [0 for x in range(self.nrFuncUnits)]
       for u in range(self.nrFuncUnits):
@@ -181,8 +183,9 @@ class JointModel(DisProgBuilder.DPMInterface):
         xDysfunSubjUCopy = copy.deepcopy(xDysfunSubjU)
         dysfuncScoresUCopy = copy.deepcopy(dysfuncScoresU)
 
-        xDysfunSubjUCopy += [self.params['X'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
-        dysfuncScoresUCopy += [self.params['Y'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
+        if 'otherBiomkPerDisease' in self.params.keys():
+          xDysfunSubjUCopy += [self.params['X'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
+          dysfuncScoresUCopy += [self.params['Y'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
 
         # first filter the data .. keep only subj in current disease
         xDysfunSubjCurrDisU = [_ for _ in range(nrBiomkDisModel)]
@@ -221,13 +224,13 @@ class JointModel(DisProgBuilder.DPMInterface):
         outFolderCurDis = '%s/%s' % (self.outFolder, self.params['disLabels'][disNr])
         os.system('mkdir -p %s' % outFolderCurDis)
         self.disModels[disNr] = MarcoModel.GP_progression_model(xDysfunSubjCurrDisU,
-          dysfuncScoresCurrDisU, nrGlobIter, outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'])
+          dysfuncScoresCurrDisU, nrRandFeatures, outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'])
 
         print('X', [x[0] for x in self.disModels[disNr].X[0]])
         # print(asda)
 
-        self.disModels[disNr].Set_penalty(self.params['penalty'])
-        self.disModels[disNr].Optimize(nrGlobIter, iterParams, Plot=True)
+        self.disModels[disNr].Set_penalty(self.params['penaltyDis'])
+        self.disModels[disNr].Optimize(nrGlobIterDis, iterParamsDis, Plot=True)
 
         pickle.dump(self.disModels, open(disModelsFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
 
@@ -329,6 +332,8 @@ class JointModel(DisProgBuilder.DPMInterface):
       np.linspace(0, 1, num = self.params['nrBiomkDisModel'], endpoint = False)]
     # if False, plot estimated traj. in separate plot from true traj. If True, use only one plot
     plotTrajParamsDis['allTrajOverlap'] = False
+
+    # plotTrajParamsDis['yNormMode'] = None
 
     # print('plotTrajParamsFuncUnit', plotTrajParamsFuncUnit)
     # print(adsa)

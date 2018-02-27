@@ -1068,17 +1068,23 @@ def main():
   params['nrProc'] = args.nrProc
   params['cluster'] = args.cluster
   params['plotTrajParams'] = plotTrajParams
-  params['penalty'] = args.penalty
+  params['penaltyUnits'] = args.penalty
+  params['penaltyDis'] = args.penalty
   params['nrFuncUnits'] = nrFuncUnits
   params['mapBiomkToFuncUnits'] = mapBiomkToFuncUnits
   params['labels'] = labels
-
 
   params['X'] = X
   params['Y'] = Y
   params['RID'] = RID
   params['diag'] = diag
   params['plotTrajParams']['diag'] = params['diag']
+
+  params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
+  params['iterParamsUnit'] = 80
+  params['nrGlobIterDis'] = 10
+  params['iterParamsDis'] = 80
+
 
   nrBiomkDisModel = nrFuncUnits + 3
   params['nrBiomkDisModel'] = nrBiomkDisModel

@@ -3,6 +3,8 @@ import numpy as np
 import sys
 import colorsys
 from env import *
+import copy
+import auxFunc
 
 class PlotterJDM:
 
@@ -143,14 +145,27 @@ class PlotterJDM:
     minX = np.min([np.min(dpsCurr) for dpsCurr in subShiftsMarcoFormat])
     maxX = np.max([np.max(dpsCurr) for dpsCurr in subShiftsMarcoFormat])
 
-    xs = np.linspace(minX, maxX, 100)
-    # diagNrs = self.plotTrajParams['diagNrs']
     diagNrs = np.unique(diag)
-
     nrSubjLong = len(X[0])
 
-    dysScoresSF = model.predPopDys(xs)
-    modelPredSB = model.predPop(xs)
+    # xs = np.linspace(minX, maxX, 100)
+    # dysScoresSF = model.predPopDys(xs)
+    # modelPredSB = model.predPop(xs)
+
+    xs = self.plotTrajParams['trueParams']['trueLineSpacedDPSsX']
+    dysScoresSF = self.plotTrajParams['trueParams']['trueDysTrajFromDpsXU']
+    modelPredSB = self.plotTrajParams['trueParams']['trueTrajPredXB']
+
+    scalingBiomk2B = self.plotTrajParams['trueParams']['scalingBiomk2B']
+    modelPredSB = auxFunc.applyInverseScalingToBiomk(modelPredSB, scalingBiomk2B)
+
+    YScaled = [[] for b in range(nrBiomk)]
+    for b in range(nrBiomk):
+      if len(Y[b][0]) > 0:
+        YScaled[b] = [auxFunc.applyInverseScalingToBiomk(ys.reshape(-1,1),
+        scalingBiomk2B[:,b].reshape(-1,1)) for ys in Y[b]]
+      else:
+        YScaled[b] = Y[b]
 
     # print('xs', xs)
     # print('dysScoresSF', dysScoresSF)
@@ -207,14 +222,14 @@ class PlotterJDM:
         # print('X[b][s]', X[b][s])
         # print('X[b][s] + subShiftsMarcoFormat[s]', X[b][s] + subShiftsMarcoFormat[s])
         # print('Y[b][s]', Y[b][s])
-        pl.plot(X[b][s] + subShiftsMarcoFormat[s], Y[b][s],
+        pl.plot(X[b][s] + subShiftsMarcoFormat[s], YScaled[b][s],
           c=self.plotTrajParams['diagColors'][diag[s]],
           label=labelCurr, alpha=0.5)
 
       pl.xlim(np.min(minX), np.max(maxX))
 
-      minY = np.min([np.min(modelPredSB[:, b])] + [np.min(dataCurr) for dataCurr in Y[b] if len(dataCurr) > 0])
-      maxY = np.max([np.max(modelPredSB[:, b])] + [np.max(dataCurr) for dataCurr in Y[b] if len(dataCurr) > 0])
+      minY = np.min([np.min(modelPredSB[:, b])] + [np.min(dataCurr) for dataCurr in YScaled[b] if len(dataCurr) > 0])
+      maxY = np.max([np.max(modelPredSB[:, b])] + [np.max(dataCurr) for dataCurr in YScaled[b] if len(dataCurr) > 0])
 
       delta = (maxY - minY) / 10
       pl.ylim(minY - delta, maxY + delta)
@@ -383,11 +398,6 @@ class PlotterGP:
     # max_y = np.max([np.float(item) for sublist in gpModel.Y_array for item in sublist])
     # min_y = np.min([np.float(item) for sublist in gpModel.Y_array for item in sublist])
 
-    scaledYarrayB = [gpModel.applyScalingY(gpModel.Y_array[b], b) for b in range(nrBiomk)]
-    min_yB = [np.min(scaledYarrayB[b].reshape(-1)) for b in range(nrBiomk)]
-    max_yB = [np.max(scaledYarrayB[b].reshape(-1)) for b in range(nrBiomk)]
-    deltaB = [(max_yB[b] - min_yB[b])/5 for b in range(nrBiomk)]
-
 
     nrRows = self.plotTrajParams['nrRows']
     nrCols = self.plotTrajParams['nrCols']
@@ -462,40 +472,78 @@ class PlotterGP:
     ax.legend(ncol=1)
 
     ######### compare all trajectories ##########
+
     trueTrajXB = self.plotTrajParams['trueParams']['trueTrajXB']
+    trueTrajScaledXB = copy.deepcopy(trueTrajXB)
     newXTraj = np.linspace(gpModel.minX, gpModel.maxX, 30).reshape([30, 1])
     newXTrajScaledZeroOne = (newXTraj - np.min(newXTraj)) / (np.max(newXTraj) - np.min(newXTraj))
 
     predictedBiomksXB = gpModel.predictBiomk(newXTraj)
     predTrajScaledXB = gpModel.applyScalingYAllBiomk(predictedBiomksXB)
 
-    for b in range(gpModel.N_biom):
-      if self.plotTrajParams['zScoreTraj']:
-        meanCtlB = np.zeros(gpModel.N_biom)
-        stdCtlB = np.zeros(gpModel.N_biom)
-        yValsOfCtl = [gpModel.Y[b][s] for s in range(len(gpModel.Y[b]))
-          if np.in1d(self.plotTrajParams['diag'][s], [CTL, CTL2])]
+    trueXsTrajX = self.plotTrajParams['trueParams']['trueXsTrajX']
+    trueXsScaled = (trueXsTrajX - np.min(trueXsTrajX)) / (np.max(trueXsTrajX) - np.min(trueXsTrajX))
+
+    if self.plotTrajParams['yNormMode'] == 'zScoreTraj':
+      idxZscore = np.where(np.in1d(self.plotTrajParams['diag'], [CTL, CTL2]))[0]
+    elif self.plotTrajParams['yNormMode'] == 'zScoreEarlyStageTraj':
+      shifts = gpModel.params_time_shift[0,:]
+      # take only the first 10 percentile at earliest stages and set that
+      # as the true control group
+      shifts10PercPoint = np.sort(shifts)[int(shifts.shape[0]/10)]
+
+      idxZscore = np.where(shifts < shifts10PercPoint)[0]
+
+      if len(idxZscore) == 0:
+        idxZscore = list(range(int(shifts.shape[0]/20)))
+
+      print('shifts', shifts)
+      print('shifts10PercPoint', shifts10PercPoint)
+      print('idxZscore', idxZscore)
+      # print(asdas)
+
+
+    if self.plotTrajParams['yNormMode'] in ['zScoreTraj', 'zScoreEarlyStageTraj']:
+      meanCtlB = np.zeros(gpModel.N_biom)
+      stdCtlB = np.zeros(gpModel.N_biom)
+
+      for b in range(gpModel.N_biom):
+        yValsOfCtl = [gpModel.Y[b][s] for s in idxZscore]
         yValsOfCtl = [l2 for l in yValsOfCtl for l2 in l]
         meanCtlB[b] = np.mean(yValsOfCtl)
         stdCtlB[b] = np.std(yValsOfCtl)
 
-        predTrajScaledXB[:,b] = gpModel.applyGivenScalingY(predTrajScaledXB[:,b],
-          meanCtlB[b], stdCtlB[b])
+        predTrajScaledXB[:, b] = gpModel.applyGivenScalingY(predTrajScaledXB[:, b], meanCtlB[b], stdCtlB[b])
 
+        trueTrajScaledXB[:, b] = gpModel.applyGivenScalingY(trueTrajXB[:, b], meanCtlB[b], stdCtlB[b])
 
-    trueXsTrajX = self.plotTrajParams['trueParams']['trueXsTrajX']
+      yMinPred = np.min(predTrajScaledXB, axis = (0, 1))
+      yMinTrue = np.min(trueTrajScaledXB, axis = (0, 1))
+      yMinAll = np.min([yMinPred, yMinTrue])
 
-    trueXsScaledZeroOne = (trueXsTrajX - np.min(trueXsTrajX)) / (np.max(trueXsTrajX) - np.min(trueXsTrajX))
+      yMaxPred = np.max(predTrajScaledXB, axis = (0, 1))
+      yMaxTrue = np.max(trueTrajScaledXB, axis = (0, 1))
+      yMaxAll = np.max([yMaxPred, yMaxTrue])
 
-    if self.plotTrajParams['zScoreTraj']:
-      yMinAll = np.min(predTrajScaledXB, axis = (0, 1))
-      yMaxAll = np.max(predTrajScaledXB, axis = (0, 1))
+      min_yB = yMinAll * np.ones(nrBiomk)
+      max_yB = yMaxAll * np.ones(nrBiomk)
+
+      # print('predTrajScaledXB', predTrajScaledXB)
+      # print('trueTrajScaledXB', trueTrajScaledXB)
+      # print('yMinAll', yMinAll)
+      # print('yMaxAll', yMaxAll)
+      # print(ads)
+
     else:
+      scaledYarrayB = [gpModel.applyScalingY(gpModel.Y_array[b], b) for b in range(nrBiomk)]
+      min_yB = [np.min(scaledYarrayB[b].reshape(-1)) for b in range(nrBiomk)]
+      max_yB = [np.max(scaledYarrayB[b].reshape(-1)) for b in range(nrBiomk)]
+
       yMinAll = np.min(min_yB)
       yMaxAll = np.max(max_yB)
 
-
     deltaAll = (yMaxAll - yMinAll) / 5
+    deltaB = [(max_yB[b] - min_yB[b]) / 5 for b in range(nrBiomk)]
 
 
 
@@ -507,8 +555,8 @@ class PlotterGP:
 
         ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-',lw=2
           ,c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
-        print('trueXsScaledZeroOne trueTrajXB', trueXsScaledZeroOne.shape, trueTrajXB.shape)
-        ax2.plot(trueXsScaledZeroOne, trueTrajXB[:,b], '--', lw=2
+        print('trueXsScaled trueTrajXB', trueXsScaled.shape, trueTrajXB.shape)
+        ax2.plot(trueXsScaled, trueTrajScaledXB[:,b], '--', lw=2
           ,c=self.plotTrajParams['colorsTraj'][b])
 
       # ax2.legend(loc='lower right',ncol=4)
@@ -531,7 +579,7 @@ class PlotterGP:
       ax3.set_ylim([yMinAll - deltaAll, yMaxAll + deltaAll])
       for b in range(gpModel.N_biom):
 
-        ax3.plot(trueXsScaledZeroOne, trueTrajXB[:,b], '--', lw=2
+        ax3.plot(trueXsScaled, trueTrajScaledXB[:,b], '--', lw=2
           ,c=self.plotTrajParams['colorsTraj'][b])
 
       # ax3.legend(loc='lower right',ncol=4)
@@ -544,11 +592,10 @@ class PlotterGP:
       ax4 = pl.subplot(nrRows, nrCols, b+nrPlotsSoFar+1)
       pl.title(self.plotTrajParams['labels'][b])
 
-      ax4.plot(newXTrajScaledZeroOne,
-               gpModel.applyScalingY(predictedBiomksXB[:,b], b), '-',lw=2,
+      ax4.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-',lw=2,
         c=self.plotTrajParams['colorsTraj'][b], label='estimated')
 
-      ax4.plot(trueXsScaledZeroOne, trueTrajXB[:,b], '--', lw=2,
+      ax4.plot(trueXsScaled, trueTrajScaledXB[:,b], '--', lw=2,
         c=self.plotTrajParams['colorsTraj'][b], label='true')
 
       ax4.set_ylim([min_yB[b] - deltaB[b], max_yB[b] + deltaB[b]])

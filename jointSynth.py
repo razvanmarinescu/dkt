@@ -9,9 +9,6 @@ import os
 import colorsys
 import copy
 
-# sys.path.append(os.path.abspath("../diffEqModel/"))
-
-
 parser = argparse.ArgumentParser(description='Launches voxel-wise/point-wise DPM on ADNI'
                                              'using cortical thickness maps derived from MRI')
 
@@ -65,15 +62,12 @@ from matplotlib import pyplot as pl
 
 hostName = gethostname()
 if hostName == 'razvan-Inspiron-5547':
-  freesurfPath = '/usr/local/freesurfer-5.3.0'
   homeDir = '/home/razvan'
   blenderPath = 'blender'
 elif hostName == 'razvan-Precision-T1700':
-  freesurfPath = '/usr/local/freesurfer-5.3.0'
   homeDir = '/home/razvan'
   blenderPath = 'blender'
 elif args.cluster:
-  freesurfPath = '/share/apps/freesurfer-5.3.0'
   homeDir = '/home/rmarines'
   blenderPath = '/share/apps/blender-2.75/blender'
 else:
@@ -91,7 +85,6 @@ plotTrajParams['diagScatterMarkers'] = {CTL:'o', MCI:'o', AD:'o',
   CTL2:'x', PCA:'x', AD2:'x'}
 plotTrajParams['legendCols'] = 4
 plotTrajParams['diagLabels'] = {CTL:'CTL', AD:'AD', PCA:'PCA', CTL2:'CTL2'}
-plotTrajParams['freesurfPath'] = freesurfPath
 # plotTrajParams['ylimitsRandPoints'] = (-3,2)
 plotTrajParams['blenderPath'] = blenderPath
 plotTrajParams['isSynth'] = True
@@ -109,6 +102,8 @@ if hostName == 'razvan-Inspiron-5547':
 else: #if hostName == 'razvan-Precision-T1700':
   height = 450
 
+
+
 def main():
 
   nrSubjLong = 100
@@ -121,14 +116,6 @@ def main():
   shiftsLowerLim = -13
   shiftsUpperLim = 10
 
-  etaB = 1 * np.ones(nrBiomk)
-  lB = 10 * np.ones(nrBiomk)
-  epsB = 1 * np.ones(nrBiomk)
-
-  sigmaGfunc = GPModel.genSigmaG
-  sigmaEpsfunc = None
-  sigmaSfunc  = None
-
   outFolder = 'resfiles/synth/'
 
   expName = 'synth1'
@@ -138,7 +125,7 @@ def main():
 
   params = {}
 
-  nrFuncUnits = 2
+  nrFuncUnits = 3
   nrBiomkInFuncUnits = 3
 
   nrBiomk = nrBiomkInFuncUnits * nrFuncUnits
@@ -152,16 +139,32 @@ def main():
   plotTrajParams['nrColsFuncUnit'] = 3
   plotTrajParams['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in np.linspace(0, 1, num=nrBiomk, endpoint=False)]
 
+  # plotTrajParams['yNormMode'] = 'zScoreCtl'
+  plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
+
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
+
+  plotTrajParams['unitNames'] = ['unit%d' % f for f in range(nrFuncUnits)]
+
 
   params['runIndex'] = args.runIndex
   params['nrProc'] = args.nrProc
   params['cluster'] = args.cluster
   params['plotTrajParams'] = plotTrajParams
   params['penalty'] = args.penalty
+  params['penaltyUnits'] = args.penalty
+  params['penaltyDis'] = 1
   params['nrFuncUnits'] = nrFuncUnits
   params['mapBiomkToFuncUnits'] = mapBiomkToFuncUnits
+  params['nrBiomkDisModel'] = nrFuncUnits
+
+
+  params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
+  params['iterParamsUnit'] = 60
+  params['nrGlobIterDis'] = 10
+  params['iterParamsDis'] = 50
+
 
   ##### disease agnostic parameters ###########
   # params of individual biomarkers
@@ -175,16 +178,31 @@ def main():
   # set first funtional unit to have traj with lower slopes
   thetas[mapBiomkToFuncUnits == 0, 1] = 5
   thetas[mapBiomkToFuncUnits == 1, 1] = 10
+  thetas[mapBiomkToFuncUnits == 2, 1] = 7
+
 
   sigmaB = 0.05 * np.ones(nrBiomk)
+
+  scalingBiomk2B = np.zeros((2, nrBiomk))
+  scalingBiomk2B[:, 0] = [200, 100] # mean +/- std
+  scalingBiomk2B[:, 0] = [200, 100]  # mean +/- std
+
+  scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
+  scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
+
+  scalingBiomk2B[:, 2] = [20, 10]  # mean +/- std
+  scalingBiomk2B[:, 2] = [20, 10]  # mean +/- std
+
+  scalingBiomk2B[:, 3:6] = scalingBiomk2B[:, 0:3]
+  scalingBiomk2B[:, 6:9] = scalingBiomk2B[:, 0:3]
 
   ##### disease 1 - disease specific parameters ###########
 
   # params of the dysfunctional trajectories
   dysfuncParamsDisOne = np.zeros((nrFuncUnits, 4), float)
   dysfuncParamsDisOne[:, 0] = 1  # ak
-  dysfuncParamsDisOne[:, 1] = 0.3  # bk
-  dysfuncParamsDisOne[:, 2] = [-3, 7]  # ck
+  dysfuncParamsDisOne[:, 1] = [0.3, 0.2, 0.3] # bk
+  dysfuncParamsDisOne[:, 2] = [-4, 2, 6]  # ck
   dysfuncParamsDisOne[:, 3] = 0  # dk
 
   synthModelDisOne = ParHierModel.ParHierModel(dysfuncParamsDisOne, thetas,
@@ -194,23 +212,25 @@ def main():
 
   paramsDisOne = genSynthData.generateDataJMD(nrSubjLong, nrBiomk, nrTimepts,
   shiftsLowerLim, shiftsUpperLim, synthModelDisOne, outFolder, fileName,
-    regenerateData, paramsDisOne, ctlDiagNr=CTL, patDiagNr=AD)
+    regenerateData, paramsDisOne, scalingBiomk2B, ctlDiagNr=CTL, patDiagNr=AD)
 
   paramsDisOne['plotTrajParams']['trueParams'] = paramsDisOne['trueParams']
+
+  replaceFigMode = True
 
   if regenerateData:
     synthPlotter = Plotter.PlotterJDM(paramsDisOne['plotTrajParams'])
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisOne['X'], paramsDisOne['Y'],
       paramsDisOne['diag'], paramsDisOne['trueParams']['subShiftsTrueMarcoFormatS'],
-      synthModelDisOne, replaceFigMode=True)
+      synthModelDisOne, replaceFigMode=replaceFigMode)
     fig.savefig('%s/synth1Dis1GenData.png' % outFolder)
 
   ##### disease 2 - disease specific parameters ###########
 
   # params of the dysfunctional trajectories
   dysfuncParamsDisTwo = copy.deepcopy(dysfuncParamsDisOne)
-  dysfuncParamsDisTwo[:, 1] = 1
-  dysfuncParamsDisTwo[:, 2] = [8, -4]
+  dysfuncParamsDisTwo[:, 1] = [0.3, 0.2, 0.3] # bk
+  dysfuncParamsDisTwo[:, 2] = [6, 2, -4]
 
   synthModelDisTwo = ParHierModel.ParHierModel(dysfuncParamsDisTwo, thetas, mapBiomkToFuncUnits, sigmoidFunc, sigmaB)
 
@@ -220,8 +240,8 @@ def main():
 
   paramsDisTwo = genSynthData.generateDataJMD(nrSubjLongDisTwo, nrBiomk,
     nrTimeptsDisTwo, shiftsLowerLim, shiftsUpperLim, synthModelDisTwo,
-    outFolder, fileName, regenerateData, paramsDisTwo, ctlDiagNr=CTL2,
-    patDiagNr=PCA)
+    outFolder, fileName, regenerateData, paramsDisTwo, scalingBiomk2B,
+    ctlDiagNr=CTL2, patDiagNr=PCA)
 
   # for disease two, only keep the second biomarker in each functional unit
   indBiomkInDiseaseTwo = np.array(range(nrFuncUnits,(2*nrFuncUnits)))
@@ -255,13 +275,13 @@ def main():
     synthPlotter = Plotter.PlotterJDM(paramsDisTwo['plotTrajParams'])
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisTwo['Xtrue'],
       paramsDisTwo['Ytrue'], paramsDisTwo['diag'], paramsDisTwo['trueParams']['subShiftsTrueMarcoFormatS'],
-      synthModelDisTwo, replaceFigMode=True)
+      synthModelDisTwo, replaceFigMode=replaceFigMode)
     fig.savefig('%s/synth1Dis2GenDataFull.png' % outFolder)
 
     synthPlotter = Plotter.PlotterJDM(paramsDisTwo['plotTrajParams'])
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisTwo['XemptyListsAllBiomk'],
       paramsDisTwo['YemptyListsAllBiomk'], paramsDisTwo['diag'], paramsDisTwo['trueParams']['subShiftsTrueMarcoFormatS'],
-      synthModelDisTwo, replaceFigMode=True)
+      synthModelDisTwo, replaceFigMode=replaceFigMode)
     fig.savefig('%s/synth1Dis2GenDataMissing.png' % outFolder)
 
     # pl.pause(100)

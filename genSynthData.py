@@ -14,7 +14,7 @@ import auxFunc
 
 
 def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperLim, model,
-  outFolder, fileName, forceRegenerate, localParams, ctlDiagNr, patDiagNr):
+  outFolder, fileName, forceRegenerate, localParams, scalingBiomk2B, ctlDiagNr, patDiagNr):
   ''' generates data from a hierarchical model of disease '''
 
 
@@ -94,6 +94,7 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
 
     #### now generate the actual biomarker data #######
     dataCrossSB = model.genDataIID(dpsCross)
+    dataCrossSB = auxFunc.applyScalingToBiomk(dataCrossSB, scalingBiomk2B)
 
     assert (not np.any(np.isnan(dataCrossSB)))
 
@@ -152,10 +153,13 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
     # disease agnostic
     trueDysfuncXsX = np.linspace(0, 1, num=50)
     trueTrajFromDysXB = model.predPopFromDysfunc(trueDysfuncXsX)
+    trueTrajFromDysXB = auxFunc.applyScalingToBiomk(trueTrajFromDysXB, scalingBiomk2B)
     trueLineSpacedDPSsX = np.linspace(np.min(dpsCross), np.max(dpsCross), num=50)
+
 
     # disease specific
     trueTrajPredXB = model.predPop(trueLineSpacedDPSsX)
+    trueTrajPredXB = auxFunc.applyScalingToBiomk(trueTrajPredXB, scalingBiomk2B)
     trueDysTrajFromDpsXU = model.predPopDys(trueLineSpacedDPSsX)
     trueSubjDysfuncScoresSU = model.predPopDys(subShiftsTrueMarcoFormatS)
 
@@ -163,7 +167,8 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
     trueParamsMarcoFormat = dict(subShiftsTrueMarcoFormatS=subShiftsTrueMarcoFormatS,
     trueSubjDysfuncScoresSU=trueSubjDysfuncScoresSU, trueLineSpacedDPSsX=trueLineSpacedDPSsX,
       trueTrajPredXB=trueTrajPredXB, trueDysTrajFromDpsXU=trueDysTrajFromDpsXU,
-      trueDysfuncXsX=trueDysfuncXsX,trueTrajFromDysXB=trueTrajFromDysXB)
+      trueDysfuncXsX=trueDysfuncXsX,trueTrajFromDysXB=trueTrajFromDysXB,
+      scalingBiomk2B=scalingBiomk2B)
     localParams['trueParams'] = trueParamsMarcoFormat
 
     os.system('mkdir -p %s' % outFolder)
