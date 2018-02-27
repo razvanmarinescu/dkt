@@ -1003,8 +1003,10 @@ def main():
   regenerateData = args.regData
   if tinyData:
     finalDataFile = 'tadpoleDrcTiny.npz'
+    expName = 'tad-drcTiny'
   else:
     finalDataFile = 'tadpoleDrcFinalDataWithRegParams.npz'
+    expName = 'tad-drc'
 
   if regenerateData:
     prepareData(finalDataFile, tinyData)
@@ -1030,7 +1032,7 @@ def main():
 
   outFolder = 'resfiles/'
 
-  expName = 'tad-drc'
+
 
   params = {}
 
