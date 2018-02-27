@@ -56,7 +56,7 @@ class MarcoModelWrapper(DisProgBuilder.DPMInterface):
       N_global_iterations = 10
       iterParams = 80
       iterShifts = 50
-      self.gpModel.Optimize(N_global_iterations, [iterParams,iterShifts], Plot=True)
+      self.gpModel.Optimize(N_global_iterations, iterParams, Plot=True)
       pickle.dump(self.gpModel, open(filePath, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
     else:
       self.gpModel = pickle.load(open(filePath, 'rb'))

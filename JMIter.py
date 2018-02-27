@@ -58,7 +58,6 @@ class JMIter(DisProgBuilder.DPMInterface):
     if runPart[0] == 'R':
       nrGlobIterUnits = 10
       iterParamsUnits = 80
-      iterShifts = -1 # doesn't matter anymore
       nrGlobIterDIs = 20
       iterParamsDis = 80
 
@@ -83,7 +82,7 @@ class JMIter(DisProgBuilder.DPMInterface):
         print('penalty', self.params['penalty'])
         # print(adsa)
         self.unitModels[u].Set_penalty(self.params['penalty'])
-        self.unitModels[u].Optimize(nrGlobIterUnits, [iterParamsUnits, iterShifts], Plot=True)
+        self.unitModels[u].Optimize(nrGlobIterUnits, iterParamsUnits, Plot=True)
 
 
 
@@ -208,7 +207,7 @@ class JMIter(DisProgBuilder.DPMInterface):
         # print(asda)
 
         self.disModels[disNr].Set_penalty(self.params['penalty'])
-        self.disModels[disNr].Optimize(nrGlobIterDis, [iterParamsDis, iterShifts], Plot=True)
+        self.disModels[disNr].Optimize(nrGlobIterDis, iterParamsDis, Plot=True)
 
         pickle.dump(self.disModels, open(disModelsFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
 

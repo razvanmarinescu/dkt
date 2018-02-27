@@ -155,7 +155,7 @@ class IncompleteModel(JointModel.JointModel):
       self.grandModel = MarcoModel.GP_progression_model(xDysfunSubjU, dysfuncScoresU, N_global_iterations,
         self.outFolder, plotterGrand, self.params['labels'])
       self.grandModel.Set_penalty(self.params['penalty'])
-      self.grandModel.Optimize(N_global_iterations, [iterParams, iterShifts], Plot=True)
+      self.grandModel.Optimize(N_global_iterations, iterParams, Plot=True)
 
       pickle.dump(self.grandModel, open(grandModelFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
 

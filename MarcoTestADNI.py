@@ -34,7 +34,7 @@ iterShifts = 30
 runPart = ['R', 'R']
 gpFile = '%s/fittedGPModel.npz' % outFolder
 if runPart[0] == 'R':
-  gp.Optimize(N_global_iterations, [iterParams,iterShifts], Plot = True)
+  gp.Optimize(N_global_iterations, iterParams, Plot = True)
 
   pickle.dump(gp, open(gpFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
 else:
