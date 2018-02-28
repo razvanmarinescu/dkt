@@ -537,6 +537,8 @@ def loadDRC(drcFile, columnsFormat):
   ######## MRI biomk selection ################
 
 
+
+
   '''
   Frontal
 
@@ -780,6 +782,8 @@ def prepareData(finalDataFile, tinyData):
   #validDf = addDRCValidDataMock(validDf) # generate random numbers for now
   validDf = addDRCValidData(validDf) # change to this real dataset one when ready
 
+  # visValidDf(validDf)
+
   validDf.to_csv('validDf.csv')
 
   print('validDf', validDf)
@@ -852,6 +856,19 @@ def prepareData(finalDataFile, tinyData):
   dataDfAll[allBiomkCols] = (np.array(dataDfAll[allBiomkCols]) - minB[None, :]) / (maxB - minB)[None, :]
   validDf[allBiomkCols] = (np.array(validDf[allBiomkCols]) - minB[None, :]) / (maxB - minB)[None, :]
 
+  dtiCols = [c for c in validDf.columns if c.startswith('DTI')]
+
+  # also normalise the validation set to be in the same space as ADNI.
+  # Note that the previous dataset normalisation doesn't work, because in the training
+  # set there were no DTI biomarkers in dataset 2.
+  for c in range(len(dtiCols)):
+    meanADNI = np.nanmean(dataDfAll.loc[:, dtiCols[c]])
+    stdADNI =np.nanstd(dataDfAll.loc[:, dtiCols[c]])
+    meanDRC = np.nanmean(validDf.loc[:, dtiCols[c]])
+    stdDRC = np.nanstd(validDf.loc[:, dtiCols[c]])
+    meanDiff = (meanDRC - meanADNI)
+    stdRatio = stdDRC / stdADNI
+    validDf.loc[:, dtiCols[c]] = (validDf.loc[:, dtiCols[c]] - meanDiff)/stdRatio
 
 
   print(dataDfAll.shape)
@@ -933,6 +950,7 @@ def prepareData(finalDataFile, tinyData):
     dataDfAll[c] = dataDfAll[c].astype(np.float128) # increase precision of floats to 128
     validDf[c] = validDf[c].astype(np.float128)
 
+
   # print(dataDfAll.dtypes)
   # print(adsa)
 
@@ -941,20 +959,30 @@ def prepareData(finalDataFile, tinyData):
   X, Y, RID, list_biomarkers, diag = \
     auxFunc.convert_table_marco(dataDfAll, list_biomarkers=selectedBiomk)
 
+
+
   # now drop all the mri values, which were used for testing consistency
-  # and only keep the DTI.
+  # and only keep the DTI. Don't remove the MRI cols though, needs to be in
+  # same format as dataDfAll
   print('validDf', validDf.loc[:, mriCols])
   validDf.loc[:,mriCols] = np.nan
   print('validDf', validDf.loc[:,mriCols])
-  # print(adsa)
+
+
+  # visValidDf(validDf)
+
 
   Xvalid, Yvalid, RIDvalid, _, _ = \
     auxFunc.convert_table_marco(validDf, list_biomarkers = selectedBiomk)
 
+  print('validDf.RID', validDf.RID)
+  print('RIDvalid', len(RIDvalid))
+  # print(ads)
+
   ds = dict(X=X, Y=Y, RID=RID, list_biomarkers=list_biomarkers,
     dataDfAll=dataDfAll, regParamsICV=regParamsICV,
     regParamsAge=regParamsAge, regParamsGender=regParamsGender,
-    regParamsDataset=regParamsDataset, diag=diag, Xvalid=Xvalid, Yvalid=Xvalid,
+    regParamsDataset=regParamsDataset, diag=diag, Xvalid=Xvalid, Yvalid=Yvalid,
     RIDvalid=RIDvalid)
   pickle.dump(ds, open(finalDataFile, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -1083,6 +1111,9 @@ def main():
   params['RID'] = RID
   params['diag'] = diag
   params['plotTrajParams']['diag'] = params['diag']
+  params['Xvalid'] = ds['Xvalid']
+  params['Yvalid'] = ds['Yvalid']
+  params['RIDvalid'] = ds['RIDvalid']
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
   params['iterParamsUnit'] = 80
@@ -1136,21 +1167,21 @@ def main():
    args.modelToRun, runAllExpTadpoleDrc)
 
 
-def addDRCValidDataMock(validDf):
-  state = np.random.get_state()
-  # print(np.random.rand())
-
-  nrDRCentries = np.sum(validDf.dataset == 2)
-  colsList = validDf.loc[:,'DTI FA Cingulate' : 'DTI FA Temporal'].columns.tolist()
-  # print('colsList', colsList)
-  validDf[colsList] = \
-    np.random.rand(nrDRCentries, len(colsList))
-
-  np.random.set_state(state)
-  # print(np.random.rand())
-  # print(asda)
-
-  return validDf
+# def addDRCValidDataMock(validDf):
+#   state = np.random.get_state()
+#   # print(np.random.rand())
+#
+#   nrDRCentries = np.sum(validDf.dataset == 2)
+#   colsList = validDf.loc[:,'DTI FA Cingulate' : 'DTI FA Temporal'].columns.tolist()
+#   # print('colsList', colsList)
+#   validDf[colsList] = \
+#     np.random.rand(nrDRCentries, len(colsList))
+#
+#   np.random.set_state(state)
+#   # print(np.random.rand())
+#   # print(asda)
+#
+#   return validDf
 
 def addDRCValidData(validDf):
   '''perform validation on DTI data from the DRC '''
@@ -1251,7 +1282,7 @@ def addDRCValidData(validDf):
   dtiSS_means.reset_index(drop=True, inplace=True)
 
   print('dtiSS_means', dtiSS_means)
-
+  # print(asd)
 
   dtiSS_pivoted = dtiSS_means.\
           pivot(index = 'Scan1Study', columns = 'region', values = 'mean')
@@ -1265,10 +1296,22 @@ def addDRCValidData(validDf):
   validDf_u.update(dtiSS_pivoted)
   validDf_u = validDf_u.reset_index()
 
-  print('validDf_u', validDf_u)
-  print(asdsa)
-
   return validDf_u
+
+def visValidDf(validDf):
+  fig = pl.figure(1)
+  dtiCols = validDf.loc[:, 'DTI FA Cingulate' : 'DTI FA Temporal'].columns.tolist()
+  for b in range(len(dtiCols)):
+    pl.clf()
+    print(validDf.loc[validDf.diag == 4, dtiCols[b]].dropna())
+    print(validDf.loc[validDf.diag == 5, dtiCols[b]].dropna())
+    pl.hist(validDf.loc[validDf.diag == 4, dtiCols[b]].dropna(), color='g', label='ctl')
+    pl.hist(validDf.loc[validDf.diag == 5, dtiCols[b]].dropna(), color='r', label='pca')
+    pl.title(dtiCols[b])
+    fig.show()
+    fig.savefig('resfiles/tad-drc/valid_%d_%s.png' % (b, dtiCols[b]))
+
+
 
 def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = None):
   """ runs all experiments"""
@@ -1304,27 +1347,29 @@ def validateDRCBiomk(dpmObj, params):
   nrSubCurrDis = indxSubjToKeep.shape[0]
   nrBiomk = len(X)
 
-  xsPred1S = []
+  xsOrigPred1S = dpmObj.disModels[disNr].X[0] # all biomarkers should contain all timepoints in the disease model
+  xsShiftedPred1S = []
   ysPredBS = [[] for b in range(nrBiomk)]
 
   for s in range(nrSubCurrDis):
     bTmp = 0 # some biomarker, doesn't matter which one
-    x_data = np.array([dpmObj.disModels[disNr].X_array[bTmp][k][0] for k in
-      range(int(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s])),
-      np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s + 1]))])
+    xsShifted = np.array([dpmObj.disModels[disNr].X_array[bTmp][k][0] for k in
+      range(int(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[bTmp][:s])),
+      np.sum(dpmObj.disModels[disNr].N_obs_per_sub[bTmp][:s + 1]))])
+
 
 
     # need to apply the inverse transform of X
-    xsCurrSubScaled = dpmObj.disModels[disNr].applyScalingX(xsCurrSub, biomk=0)
+    xsCurrSubScaled = dpmObj.disModels[disNr].applyScalingX(xsShifted, biomk=0)
 
-    xsPred1S += [xsCurrSubScaled]
+    xsShiftedPred1S += [xsCurrSubScaled]
     ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(xsCurrSubScaled, disNr)
 
     for b in range(nrBiomk):
       ysPredBS[b] += [ysCurrSubXB[:,b]]
 
   print('ysPredBS', ysPredBS)
-  print('xsPred1S', xsPred1S)
+  print('xsShiftedPred1S', xsShiftedPred1S)
 
 
   # now get the validation set. This is already only for the DRC subjects
@@ -1334,23 +1379,64 @@ def validateDRCBiomk(dpmObj, params):
 
   labels = params['labels']
   print('labels', labels)
-  dtiColsIdx = [i for i in range(len(labels))
-    if label[i].startswith('DTI')]
+  dtiColsIdx = [i for i in range(len(labels)) if labels[i].startswith('DTI')]
 
   # compute mean squared error (MSE) in DTI
 
   # TODO find the subjects for which we have validation data
   # subjWithValidData =
 
+  assert len(ysPredBS) == len(Yvalid)
+  print('ysPredBS.shape', len(ysPredBS[0]))
+  print('Yvalid.shape', len(Yvalid[0]))
+  print('RIDvalid', RIDvalid)
+  print('ridCurrDis',ridCurrDis)
+  print(Yvalid[dtiColsIdx[0]])
+  print(Xvalid[dtiColsIdx[0]])
+  # print(asd)
+
   nrDtiCols = len(dtiColsIdx)
-  mse = [_ for b in dtiColsIdx]
+  mse = [0 for b in dtiColsIdx]
+
+  subjWithValidIndx = np.where([ys.shape[0] > 0 for ys in Yvalid[dtiColsIdx[0]]])[0]
+  YvalidFilt = [0 for b in range(nrBiomk)]
+  XvalidFilt = [0 for b in range(nrBiomk)]
+  for b in range(nrBiomk):
+    XvalidFilt[b] = [Xvalid[b][s] for s in subjWithValidIndx]
+    YvalidFilt[b] = [Yvalid[b][s] for s in subjWithValidIndx]
+
+  print('subjWithValidIndx', subjWithValidIndx)
+  print(type(RIDvalid))
+  RIDvalidFilt = RIDvalid[subjWithValidIndx]
+
+  print('YvalidFilt', YvalidFilt)
+  print('XvalidFilt', XvalidFilt)
+  print('RIDvalidFilt', RIDvalidFilt)
+  # print(asdd)
+
   for b in range(nrDtiCols):
     mseList = []
-    for s in range(len(Y[dtiColsIdx[b]])):
-      mseList += [(ysPredBS[dtiColsIdx[b]][s] - Yvalid[dtiColsIdx[b]][s]) ** 2]
+    for s in range(RIDvalidFilt.shape[0]):
+      # for each validation subject
+      idxCurrDis = np.where(RIDvalidFilt[s] == ridCurrDis)[0][0]
+      xsOrigFromModel = xsOrigPred1S[idxCurrDis]
+      print('xsOrigFromModel', xsOrigFromModel)
+      print('XvalidFilt[dtiColsIdx[b]][s]', XvalidFilt[dtiColsIdx[b]][s])
+      print(np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0])
+      assert np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0].shape[0] == 1
+      idxXsWithValid = np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0][0]
+      ysPredCurrSubj = ysPredBS[dtiColsIdx[b]][idxCurrDis][idxXsWithValid]
+
+      assert YvalidFilt[dtiColsIdx[b]][s].shape[0] > 0
+
+      print('ysPredCurrSubj', ysPredCurrSubj)
+      print('Yvalid[dtiColsIdx[b]][s]', YvalidFilt[dtiColsIdx[b]][s])
+      mseList += [(ysPredCurrSubj - YvalidFilt[dtiColsIdx[b]][s][0]) ** 2]
+
 
     mse[b] = np.mean(mseList)
   print('mse', mse)
+
 
   # part 2. plot the inferred dynamics for DRC data:
   # every biomarker against original DPS
@@ -1359,7 +1445,12 @@ def validateDRCBiomk(dpmObj, params):
   maxX = dpmObj.disModels[disNr].maxX
   xsTraj = np.linspace(minX,maxX, num=100)
 
-  ysTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTraj, disNr)
+  # need to apply the inverse transform of X
+  xsTrajScaled = dpmObj.disModels[disNr].applyScalingX(xsTraj, biomk=0)
+  ysTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajScaled, disNr)
+
+  dpmObj.disModels[disNr].plotterObj.plotTrajInDisSpace(xsTraj, predTrajXB, trajSamplesBXS,
+    x_data, y_data, replaceFig=True)
 
 
 

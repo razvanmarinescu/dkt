@@ -75,8 +75,9 @@ def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
             for id_biom, biomarker in enumerate(list_biomarkers):
                 Xtrain[id_biom].append(X[id_biom][id_sub])
                 Ytrain[id_biom].append(Y[id_biom][id_sub])
-    print(len(RID))
-    return Xtrain, Ytrain, RID, list_biomarkers, np.array(diagLong)
+    # print(len(RID), RID)
+    # print(asdasd)
+    return Xtrain, Ytrain, np.array(RID), list_biomarkers, np.array(diagLong)
 
 def makeShiftsIdentif(subShiftsCross, ageAtVisitCross, crossDiag, ctlDiagNr, patDiagNr):
   # make the subject shifts identifiable so that the dps_score(controls) ~ N(0,1) (as in Jedynak, 2012)

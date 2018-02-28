@@ -90,6 +90,17 @@ class JointModel(DisProgBuilder.DPMInterface):
     else:
       self.unitModels = pickle.load(open(filePath, 'rb'))
 
+      # make sure the data you used has not been changed since fitting this model
+      for b in range(len(self.unitModels[0].X)):
+        # print('--------------- b', b)
+        idxInAllBiomk = np.where(self.mapBiomkToFuncUnits == 0)[0][b]
+        for s in range(len(self.unitModels[0].X[b])):
+          # print(self.unitModels[0].X[b][s])
+          # print(self.params['X'][idxInAllBiomk][s])
+          assert np.all(self.unitModels[0].X[b][s] == self.params['X'][idxInAllBiomk][s])
+          assert np.all(self.unitModels[0].Y[b][s] == self.params['Y'][idxInAllBiomk][s])
+
+      # print(asda)
 
     disModelsFile = '%s/disModels.npz' % self.outFolder
     nrSubj = self.unitModels[0].N_samples

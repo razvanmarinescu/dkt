@@ -610,6 +610,82 @@ class PlotterGP:
     # print(ads)
     return fig
 
+  def plotTrajInDisSpace(self, xsTrajX, predTrajXB, trajSamplesBXS,
+      x_data_subjBSX, y_data_subjBSX, replaceFig=True):
+
+    # Plot method
+    figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
+    fig = pl.figure(1, figsize = figSizeInch)
+    pl.clf()
+    fig.show()
+
+    diagNrs = np.unique(self.plotTrajParams['diag'])
+    nrDiags = diagNrs.shape[0]
+
+    nrRows = self.plotTrajParams['nrRows']
+    nrCols = self.plotTrajParams['nrCols']
+
+    nrSub = len(x_data_subjBSX[0])
+    nrBiomk = len(x_data_subjBSX)
+    nrSamples = trajSamplesBXS.shape[2]
+
+    min_yB = [0 for b in range(nrBiomk)]
+    max_yB = [0 for b in range(nrBiomk)]
+    for b in range(nrBiomk):
+      min_yB[b] = np.min([np.min(yS) for yS in y_data_subjBSX[b]] + + [np.min(predTrajXB[:,b])])
+      max_yB[b] = np.max([np.max(yS) for yS in y_data_subjBSX[b]] + + [np.max(predTrajXB[:,b])])
+
+    deltaB = (max_yB - min_yB)/5
+
+    for b in range(nrBiomk):
+      ax = pl.subplot(nrRows, nrCols, b + 1)
+      pl.title(self.plotTrajParams['labels'][b])
+
+      # plot traj samples
+      for i in range(nrSamples):
+        ax.plot(xsTrajX, trajSamplesXS[:,i], lw = 0.05,
+          color = 'red', alpha=1)
+
+      # plot subject data
+      diagCounters = dict([(k,0) for k in self.plotTrajParams['diagLabels'].keys()])
+      for sub in range(nrSub):
+
+        diagCurrSubj = self.plotTrajParams['diag'][sub]
+        currLabel = None
+        if diagCounters[diagCurrSubj] == 0:
+          currLabel = self.plotTrajParams['diagLabels'][diagCurrSubj]
+          pass
+
+
+        ax.plot(x_data_subjBSX[b][sub], y_data_subjBSX[b][sub],
+          color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=0.5)
+
+        ax.scatter(x_data_subjBSX[b][sub], y_data_subjBSX[b][sub],
+          marker=self.plotTrajParams['diagScatterMarkers'][diagCurrSubj],
+          color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=2.5,
+          label=currLabel)
+
+        diagCounters[diagCurrSubj] += 1
+
+      ax.plot(xsTrajX,predTrajXB[:,b],
+        lw=2, color='black', label='estim traj')
+
+      ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
+        color=(0.5,0.5,0.5), lw=2)
+
+      ax.set_ylim([min_yB[b]-deltaB[b], max_yB[b]+deltaB[b]])
+
+
+    if replaceFig:
+      fig.show()
+    else:
+      pl.show()
+    pl.pause(0.05)
+
+    return fig
+
+
+
   def scatterPlotShifts(self, gpModel, subjStagesEstim):
 
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
