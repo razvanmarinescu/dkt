@@ -1360,7 +1360,7 @@ def validateDRCBiomk(dpmObj, params):
 
   xsOrigPred1S = dpmObj.disModels[disNr].X[0] # all biomarkers should contain all timepoints in the disease model
   xsShiftedPred1S = []
-  xsShiftedNotScaledBS = [[] for b in range(nrBiomk) ]
+  xsShiftedNotScaledBS = [[] for b in range(nrBiomk)]
   ysPredBS = [[] for b in range(nrBiomk)]
 
   for s in range(nrSubCurrDis):
@@ -1389,6 +1389,17 @@ def validateDRCBiomk(dpmObj, params):
         #   range(int(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s])),
         #     np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s + 1]))])
 
+        # fix problem when a subject has the same xs twice (bad input dataset with same visit twice)
+        while np.unique(Xfilt[b][s]).shape[0] < Xfilt[b][s].shape[0]:
+          for x in Xfilt[b][s]:
+            if np.sum(Xfilt[b][s] == x) > 1:
+              idxToRemove = np.where(Xfilt[b][s] == x)[0][0]
+              Yfilt[b][s] = np.concatenate((Yfilt[b][s][:idxToRemove], Yfilt[b][s][idxToRemove+1:]))
+              Xfilt[b][s] = np.concatenate((Xfilt[b][s][:idxToRemove], Xfilt[b][s][idxToRemove + 1:]))
+
+              break
+
+        assert Yfilt[b][s].shape[0] == xsShifted.shape[0]
 
         xsShiftedNotScaledBS[b] += [xsShifted]
       else:
@@ -1398,16 +1409,31 @@ def validateDRCBiomk(dpmObj, params):
   # print('Xfilt', Xfilt)
   # print(ads)
 
+  # print('ysPredBS', ysPredBS)
+  # print(ads)
+
+  # print(len(Xfilt[6]))
+  # print()
+
   for b in range(nrBiomk):
-    print('b', b)
-    print(len(xsShiftedNotScaledBS[b]))
-    print(len(Yfilt[b]))
+    # print('b', b)
+    # print(len(xsShiftedNotScaledBS[b]))
+    # print(len(Yfilt[b]))
     assert len(params['X'][b]) == len(params['Y'][b])
     assert len(xsShiftedNotScaledBS[b]) == len(Yfilt[b])
+    # for s in range(len(xsShiftedNotScaledBS[b])):
+      # print(xsShiftedNotScaledBS[b][s])
+      # print(Xfilt[b][s])
+      # print(dpmObj.disModels[disNr].X[b][s])
+      # if dpmObj.disModels[disNr].X[b][s].shape[0] != Yfilt[b][s].shape[0]:
+      #   print('warning!!! X[%d][%d] and Yfilt[%d][%d] doesn not match' % (b,s,b,s))
+
+      # assert dpmObj.disModels[disNr].X[b][s].shape[0] == Yfilt[b][s].shape[0]
+      # assert xsShiftedNotScaledBS[b][s].shape[0] == Yfilt[b][s].shape[0]
 
 
-  print('ysPredBS', ysPredBS)
-  print('xsShiftedPred1S', xsShiftedPred1S)
+  # print('ysPredBS', ysPredBS)
+  # print('xsShiftedPred1S', xsShiftedPred1S)
 
 
   # now get the validation set. This is already only for the DRC subjects
@@ -1458,8 +1484,8 @@ def validateDRCBiomk(dpmObj, params):
       # for each validation subject
       idxCurrDis = np.where(RIDvalidFilt[s] == ridCurrDis)[0][0]
       xsOrigFromModel = xsOrigPred1S[idxCurrDis]
-      print('xsOrigFromModel', xsOrigFromModel)
-      print('XvalidFilt[dtiColsIdx[b]][s]', XvalidFilt[dtiColsIdx[b]][s])
+      # print('xsOrigFromModel', xsOrigFromModel)
+      # print('XvalidFilt[dtiColsIdx[b]][s]', XvalidFilt[dtiColsIdx[b]][s])
       print(np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0])
       assert np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0].shape[0] == 1
       idxXsWithValid = np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0][0]
@@ -1472,19 +1498,21 @@ def validateDRCBiomk(dpmObj, params):
       mseList += [(ysPredCurrSubj - YvalidFilt[dtiColsIdx[b]][s][0]) ** 2]
 
       # also compose the shifted Xs for the validation subjects
-      xsShiftedFromModel = xsShiftedPred1S[idxCurrDis]
+      xsShiftedFromModel = xsShiftedNotScaledBS[0][idxCurrDis]
       XvalidShifFilt[dtiColsIdx[b]][s] = np.array([xsShiftedFromModel[idxXsWithValid]])
 
-      print(np.array([xsShiftedFromModel[idxXsWithValid]]))
-      print(XvalidShifFilt[dtiColsIdx[b]][s])
-      print(YvalidFilt[dtiColsIdx[b]][s].shape)
-      print(XvalidShifFilt[dtiColsIdx[b]][s].shape)
+      # print(np.array([xsShiftedFromModel[idxXsWithValid]]))
+      # print(XvalidShifFilt[dtiColsIdx[b]][s])
+      # print(YvalidFilt[dtiColsIdx[b]][s].shape)
+      # print(XvalidShifFilt[dtiColsIdx[b]][s].shape)
 
       assert XvalidShifFilt[dtiColsIdx[b]][s].shape[0] == YvalidFilt[dtiColsIdx[b]][s].shape[0]
 
 
     mse[b] = np.mean(mseList)
+
   print('mse', mse)
+  print(ads)
 
 
   # part 2. plot the inferred dynamics for DRC data:
@@ -1493,6 +1521,9 @@ def validateDRCBiomk(dpmObj, params):
   minX = dpmObj.disModels[disNr].minX
   maxX = dpmObj.disModels[disNr].maxX
   xsTrajX = np.linspace(minX,maxX, num=100)
+
+  print('minX', minX)
+  print('maxX', maxX)
 
   # need to apply the inverse transform of X
   xsTrajScaled = dpmObj.disModels[disNr].applyScalingX(xsTrajX, biomk=0)
@@ -1507,13 +1538,19 @@ def validateDRCBiomk(dpmObj, params):
       # x_data_subjBSX =
       pass
 
+  print('xsShiftedNotScaledBS', xsShiftedNotScaledBS)
+  print('XvalidShifFilt', XvalidShifFilt)
+  print('predTrajXB', predTrajXB[:,0])
+  print('xsTrajScaled', xsTrajScaled)
+  print('xsShiftedPred1S', xsShiftedPred1S)
+  print('ysPredBS', ysPredBS)
+  print(ads)
 
 
-
-  dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
+  fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
     xsShiftedNotScaledBS, Yfilt, diagSubjCurrDis,
     XvalidShifFilt, YvalidFilt, diagValidFilt, replaceFig=True)
-
+  fig.savefig('%s/validPCA.png' % params['outFolder'])
 
 
 

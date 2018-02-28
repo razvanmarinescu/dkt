@@ -147,7 +147,6 @@ def main():
 
   plotTrajParams['unitNames'] = ['unit%d' % f for f in range(nrFuncUnits)]
 
-
   params['runIndex'] = args.runIndex
   params['nrProc'] = args.nrProc
   params['cluster'] = args.cluster
@@ -159,12 +158,10 @@ def main():
   params['mapBiomkToFuncUnits'] = mapBiomkToFuncUnits
   params['nrBiomkDisModel'] = nrFuncUnits
 
-
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
   params['iterParamsUnit'] = 60
   params['nrGlobIterDis'] = 10
   params['iterParamsDis'] = 50
-
 
   ##### disease agnostic parameters ###########
   # params of individual biomarkers
