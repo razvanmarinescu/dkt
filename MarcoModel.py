@@ -1073,7 +1073,7 @@ class GP_progression_model(object):
       return predictedBiomksXB
 
     def predictBiomkAndScale(self, newX):
-      ''' performs scaling of Xs before prediction and Ys after prediction '''
+      ''' predict biomarker values (MLE solution). also performs scaling before and after '''
 
       xsScaled = self.applyScalingXForward(newX.reshape(-1,1), biomk=0)
 
@@ -1085,6 +1085,23 @@ class GP_progression_model(object):
 
       return ysScaled
 
+    def samplePostAndScale(self, newX, biomarker, nrSamples):
+      '''
+      sample trajectory posterior. also performs scaling before and after.
+      Can be used also for predicting subject specific values
+      :param newX:
+      :return:
+      '''
+
+      xsScaled = self.applyScalingXForward(newX.reshape(-1, 1), biomk=0)
+
+      assert self.minX <= np.min(xsScaled)
+      assert self.maxX >= np.max(xsScaled)
+
+      ysXS = self.sampleBiomkTrajPosterior(xsScaled, biomarker, nrSamples)[1]
+      ysScaled = self.applyScalingYAllBiomk(ysXS)
+
+      return ysScaled
 
     def sampleBiomkTrajPosterior(self, newX, biomarker, nrSamples):
       trajSamplesXS = np.zeros((newX.shape[0], nrSamples))

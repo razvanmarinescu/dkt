@@ -972,7 +972,7 @@ def prepareData(finalDataFile, tinyData):
   # visValidDf(validDf)
 
 
-  Xvalid, Yvalid, RIDvalid, _, _ = \
+  Xvalid, Yvalid, RIDvalid, _, diagValid = \
     auxFunc.convert_table_marco(validDf, list_biomarkers = selectedBiomk)
 
   print('validDf.RID', validDf.RID)
@@ -983,7 +983,7 @@ def prepareData(finalDataFile, tinyData):
     dataDfAll=dataDfAll, regParamsICV=regParamsICV,
     regParamsAge=regParamsAge, regParamsGender=regParamsGender,
     regParamsDataset=regParamsDataset, diag=diag, Xvalid=Xvalid, Yvalid=Yvalid,
-    RIDvalid=RIDvalid)
+    RIDvalid=RIDvalid, diagValid=diagValid)
   pickle.dump(ds, open(finalDataFile, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
   # print('RID', RID)
@@ -1114,6 +1114,7 @@ def main():
   params['Xvalid'] = ds['Xvalid']
   params['Yvalid'] = ds['Yvalid']
   params['RIDvalid'] = ds['RIDvalid']
+  params['diagValid'] = ds['diagValid']
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
   params['iterParamsUnit'] = 80
@@ -1339,16 +1340,27 @@ def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = Non
 def validateDRCBiomk(dpmObj, params):
   # first predict subject DTI measures
 
-  X = params['X']
   diag = params['diag']
   disNr = 1 # predict for DRC subjects
   indxSubjToKeep = np.where(dpmObj.indxSubjForEachDisD[disNr])[0]
+
+  nrBiomk = len(params['X'])
+  print('nrBiomk', nrBiomk)
+  Xfilt = [[] for b in range(nrBiomk)]
+  Yfilt = [[] for b in range(nrBiomk)]
+  for b in range(nrBiomk):
+    Xfilt[b] = [params['X'][b][i] for i in indxSubjToKeep]
+    Yfilt[b] = [params['Y'][b][i] for i in indxSubjToKeep]
+
+
+  diagSubjCurrDis = diag[indxSubjToKeep]
   ridCurrDis = params['RID'][indxSubjToKeep]
   nrSubCurrDis = indxSubjToKeep.shape[0]
-  nrBiomk = len(X)
+
 
   xsOrigPred1S = dpmObj.disModels[disNr].X[0] # all biomarkers should contain all timepoints in the disease model
   xsShiftedPred1S = []
+  xsShiftedNotScaledBS = [[] for b in range(nrBiomk) ]
   ysPredBS = [[] for b in range(nrBiomk)]
 
   for s in range(nrSubCurrDis):
@@ -1357,16 +1369,42 @@ def validateDRCBiomk(dpmObj, params):
       range(int(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[bTmp][:s])),
       np.sum(dpmObj.disModels[disNr].N_obs_per_sub[bTmp][:s + 1]))])
 
-
-
     # need to apply the inverse transform of X
     xsCurrSubScaled = dpmObj.disModels[disNr].applyScalingX(xsShifted, biomk=0)
 
     xsShiftedPred1S += [xsCurrSubScaled]
+
     ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(xsCurrSubScaled, disNr)
 
     for b in range(nrBiomk):
       ysPredBS[b] += [ysCurrSubXB[:,b]]
+
+      if Xfilt[b][s].shape[0] > 0:
+        # print(s,b)
+        # print(len(dpmObj.disModels[disNr].N_obs_per_sub[b]))
+        #
+        # print(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s]))
+        # print(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s + 1]))
+        # xsShifted = np.array([dpmObj.disModels[disNr].X_array[0][k][0] for k in
+        #   range(int(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s])),
+        #     np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s + 1]))])
+
+
+        xsShiftedNotScaledBS[b] += [xsShifted]
+      else:
+        xsShiftedNotScaledBS[b] += [[]]
+
+  # print('xsShiftedNotScaledBS', xsShiftedNotScaledBS[6:])
+  # print('Xfilt', Xfilt)
+  # print(ads)
+
+  for b in range(nrBiomk):
+    print('b', b)
+    print(len(xsShiftedNotScaledBS[b]))
+    print(len(Yfilt[b]))
+    assert len(params['X'][b]) == len(params['Y'][b])
+    assert len(xsShiftedNotScaledBS[b]) == len(Yfilt[b])
+
 
   print('ysPredBS', ysPredBS)
   print('xsShiftedPred1S', xsShiftedPred1S)
@@ -1376,15 +1414,11 @@ def validateDRCBiomk(dpmObj, params):
   Xvalid = params['Xvalid']
   Yvalid = params['Yvalid']
   RIDvalid = params['RIDvalid']
+  diagValid = params['diagValid']
 
   labels = params['labels']
   print('labels', labels)
   dtiColsIdx = [i for i in range(len(labels)) if labels[i].startswith('DTI')]
-
-  # compute mean squared error (MSE) in DTI
-
-  # TODO find the subjects for which we have validation data
-  # subjWithValidData =
 
   assert len(ysPredBS) == len(Yvalid)
   print('ysPredBS.shape', len(ysPredBS[0]))
@@ -1399,8 +1433,10 @@ def validateDRCBiomk(dpmObj, params):
   mse = [0 for b in dtiColsIdx]
 
   subjWithValidIndx = np.where([ys.shape[0] > 0 for ys in Yvalid[dtiColsIdx[0]]])[0]
+  nrSubjWithValid = subjWithValidIndx.shape[0]
   YvalidFilt = [0 for b in range(nrBiomk)]
   XvalidFilt = [0 for b in range(nrBiomk)]
+  diagValidFilt = diagValid[subjWithValidIndx]
   for b in range(nrBiomk):
     XvalidFilt[b] = [Xvalid[b][s] for s in subjWithValidIndx]
     YvalidFilt[b] = [Yvalid[b][s] for s in subjWithValidIndx]
@@ -1413,6 +1449,8 @@ def validateDRCBiomk(dpmObj, params):
   print('XvalidFilt', XvalidFilt)
   print('RIDvalidFilt', RIDvalidFilt)
   # print(asdd)
+
+  XvalidShifFilt = [[[] for s in range(nrSubjWithValid)] for b in range(nrBiomk)]
 
   for b in range(nrDtiCols):
     mseList = []
@@ -1433,6 +1471,17 @@ def validateDRCBiomk(dpmObj, params):
       print('Yvalid[dtiColsIdx[b]][s]', YvalidFilt[dtiColsIdx[b]][s])
       mseList += [(ysPredCurrSubj - YvalidFilt[dtiColsIdx[b]][s][0]) ** 2]
 
+      # also compose the shifted Xs for the validation subjects
+      xsShiftedFromModel = xsShiftedPred1S[idxCurrDis]
+      XvalidShifFilt[dtiColsIdx[b]][s] = np.array([xsShiftedFromModel[idxXsWithValid]])
+
+      print(np.array([xsShiftedFromModel[idxXsWithValid]]))
+      print(XvalidShifFilt[dtiColsIdx[b]][s])
+      print(YvalidFilt[dtiColsIdx[b]][s].shape)
+      print(XvalidShifFilt[dtiColsIdx[b]][s].shape)
+
+      assert XvalidShifFilt[dtiColsIdx[b]][s].shape[0] == YvalidFilt[dtiColsIdx[b]][s].shape[0]
+
 
     mse[b] = np.mean(mseList)
   print('mse', mse)
@@ -1443,14 +1492,27 @@ def validateDRCBiomk(dpmObj, params):
   # also plot extra validation data on top
   minX = dpmObj.disModels[disNr].minX
   maxX = dpmObj.disModels[disNr].maxX
-  xsTraj = np.linspace(minX,maxX, num=100)
+  xsTrajX = np.linspace(minX,maxX, num=100)
 
   # need to apply the inverse transform of X
-  xsTrajScaled = dpmObj.disModels[disNr].applyScalingX(xsTraj, biomk=0)
-  ysTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajScaled, disNr)
+  xsTrajScaled = dpmObj.disModels[disNr].applyScalingX(xsTrajX, biomk=0)
+  predTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajScaled, disNr)
+  trajSamplesBXS = dpmObj.sampleBiomkTrajGivenXs(xsTrajScaled, disNr, nrSamples=100)
 
-  dpmObj.disModels[disNr].plotterObj.plotTrajInDisSpace(xsTraj, predTrajXB, trajSamplesBXS,
-    x_data, y_data, replaceFig=True)
+  x_data_subjBSX = [0 for b in range(nrBiomk)]
+  y_data_subjBSX = [0 for b in range(nrBiomk)]
+  for b in range(nrBiomk):
+    x_data_subjBSX[b] = [[] for s in range(nrSubCurrDis)]
+    for s in range(nrSubCurrDis):
+      # x_data_subjBSX =
+      pass
+
+
+
+
+  dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
+    xsShiftedNotScaledBS, Yfilt, diagSubjCurrDis,
+    XvalidShifFilt, YvalidFilt, diagValidFilt, replaceFig=True)
 
 
 

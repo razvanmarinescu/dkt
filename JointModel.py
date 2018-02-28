@@ -20,7 +20,7 @@ class JMDBuilder(DisProgBuilder.DPMBuilder):
   # builds a Joint Disease model
 
   def __init__(self, plotTrajParams):
-    self.plotterObj = Plotter.PlotterJDM(plotTrajParams)
+    self.plotterObj = Plotter.PlotterGP(plotTrajParams)
 
   def setPlotter(self, plotterObj):
     self.plotterObj = plotterObj
@@ -258,14 +258,12 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     :param newXs: newXs is an array as with np.linspace(minX-unscaled, maxX-unscaled)
     newXs will be scaled to the space of the gpProcess
-
     :param disNr: index of disease: 0 (tAD) or 1 (PCA)
     :return: biomkPredXB = Ys
     """
 
     # first predict the dysfunctionality scores in the disease specific model
     dysfuncPredXU = self.disModels[disNr].predictBiomkAndScale(newXs)
-
 
     # then predict the inidividual biomarkers in the disease agnostic models
     biomkPredXB = np.zeros((newXs.shape[0], self.nrBiomk))
@@ -282,6 +280,46 @@ class JointModel(DisProgBuilder.DPMInterface):
       dysfuncPredXU[:,dysfuncPredXU.shape[1] - nrBiomkNotInUnit :]
 
     return biomkPredXB
+
+  def sampleBiomkTrajGivenXs(self, newXs, disNr, nrSamples):
+    """
+    predicts biomarkers for given xs (disease progression scores)
+
+    :param newXs: newXs is an array as with np.linspace(minX-unscaled, maxX-unscaled)
+    newXs will be scaled to the space of the gpProcess
+    :param disNr: index of disease: 0 (tAD) or 1 (PCA)
+    :param nrSamples:
+
+    :return: biomkPredXB = Ys
+    """
+
+    # first predict the dysfunctionality scores in the disease specific model
+    dysfuncPredXU = self.disModels[disNr].predictBiomkAndScale(newXs)
+
+    # then predict the inidividual biomarkers in the disease agnostic models
+    trajSamplesBXS = np.nan * np.ones((self.nrBiomk, newXs.shape[0], nrSamples))
+    biomkIndInFuncUnits = np.where(self.mapBiomkToFuncUnits >= 0)[0]
+
+    for u in range(self.nrFuncUnits):
+      biomkIndInCurrUnit = np.where(self.mapBiomkToFuncUnits == u)[0]
+      for b in range(biomkIndInCurrUnit.shape[0]):
+        currUnit = self.mapBiomkToFuncUnits[biomkIndInCurrUnit[b]]
+        trajSamplesBXS[biomkIndInCurrUnit[b],:,:] = \
+            self.unitModels[currUnit].samplePostAndScale(dysfuncPredXU[:,currUnit], b, nrSamples)
+
+
+    biomkIndNotInFuncUnits = np.where(self.mapBiomkToFuncUnits == -1)[0]
+    nrBiomkNotInUnit = biomkIndNotInFuncUnits.shape[0]
+
+    # assumes these biomarkers are at the end
+    indOfRealBiomk =  list(range(dysfuncPredXU.shape[1] - nrBiomkNotInUnit, dysfuncPredXU.shape[1]))
+    for b in range(len(biomkIndNotInFuncUnits)):
+      trajSamplesBXS[biomkIndNotInFuncUnits[b],:,:] = \
+        self.disModels[disNr].samplePostAndScale(newXs, indOfRealBiomk[b], nrSamples)
+
+    assert not np.isnan(trajSamplesBXS).any()
+
+    return trajSamplesBXS
 
   def createPlotTrajParamsFuncUnit(self, nrCurrFuncUnit):
 

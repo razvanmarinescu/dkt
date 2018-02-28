@@ -326,8 +326,6 @@ class PlotterGP:
         y_data = np.array([gpModel.Y_array[b][k][0] for k in range(int(np.sum(gpModel.N_obs_per_sub[b][:sub])),
           np.sum(gpModel.N_obs_per_sub[b][:sub + 1]))])
 
-        # print('x_data', x_data)
-
 
         diagCurrSubj = self.plotTrajParams['diag'][sub]
         currLabel = None
@@ -611,7 +609,22 @@ class PlotterGP:
     return fig
 
   def plotTrajInDisSpace(self, xsTrajX, predTrajXB, trajSamplesBXS,
-      x_data_subjBSX, y_data_subjBSX, replaceFig=True):
+      XsubjBSX, YsubjBSX, diagS, XsubjValidBSX, YsubjValidBSX, diagValidS, replaceFig=True):
+    """
+    plot biomarker traj and subject data in disease space. function doesn't do any scaling of xs or ys
+
+    :param xsTrajX:
+    :param predTrajXB:
+    :param trajSamplesBXS:
+    :param XsubjBSX:
+    :param YsubjBSX:
+    :param diagS:
+    :param XsubjValidBSX:
+    :param YsubjValidBSX:
+    :param diagValidS:
+    :param replaceFig:
+    :return:
+    """
 
     # Plot method
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
@@ -625,15 +638,19 @@ class PlotterGP:
     nrRows = self.plotTrajParams['nrRows']
     nrCols = self.plotTrajParams['nrCols']
 
-    nrSub = len(x_data_subjBSX[0])
-    nrBiomk = len(x_data_subjBSX)
-    nrSamples = trajSamplesBXS.shape[2]
 
-    min_yB = [0 for b in range(nrBiomk)]
-    max_yB = [0 for b in range(nrBiomk)]
+    nrBiomk = len(XsubjBSX)
+    nrSamples = trajSamplesBXS.shape[2]
+    nrSubValid = len(XsubjValidBSX[0])
+
+    min_yB = np.zeros(nrBiomk)
+    max_yB = np.zeros(nrBiomk)
     for b in range(nrBiomk):
-      min_yB[b] = np.min([np.min(yS) for yS in y_data_subjBSX[b]] + + [np.min(predTrajXB[:,b])])
-      max_yB[b] = np.max([np.max(yS) for yS in y_data_subjBSX[b]] + + [np.max(predTrajXB[:,b])])
+      print([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0])
+      print([np.min(predTrajXB[:,b])])
+      print([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.min(predTrajXB[:,b])])
+      min_yB[b] = np.min([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.min(predTrajXB[:,b])])
+      max_yB[b] = np.max([np.max(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.max(predTrajXB[:,b])])
 
     deltaB = (max_yB - min_yB)/5
 
@@ -643,29 +660,12 @@ class PlotterGP:
 
       # plot traj samples
       for i in range(nrSamples):
-        ax.plot(xsTrajX, trajSamplesXS[:,i], lw = 0.05,
+        ax.plot(xsTrajX, trajSamplesBXS[b,:,i], lw = 0.05,
           color = 'red', alpha=1)
 
-      # plot subject data
-      diagCounters = dict([(k,0) for k in self.plotTrajParams['diagLabels'].keys()])
-      for sub in range(nrSub):
+      self.plotSubjData(ax, XsubjBSX, YsubjBSX, diagS, labelExtra = '')
 
-        diagCurrSubj = self.plotTrajParams['diag'][sub]
-        currLabel = None
-        if diagCounters[diagCurrSubj] == 0:
-          currLabel = self.plotTrajParams['diagLabels'][diagCurrSubj]
-          pass
-
-
-        ax.plot(x_data_subjBSX[b][sub], y_data_subjBSX[b][sub],
-          color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=0.5)
-
-        ax.scatter(x_data_subjBSX[b][sub], y_data_subjBSX[b][sub],
-          marker=self.plotTrajParams['diagScatterMarkers'][diagCurrSubj],
-          color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=2.5,
-          label=currLabel)
-
-        diagCounters[diagCurrSubj] += 1
+      self.plotSubjData(ax, XsubjValidBSXBSX, YsubjValidBSXBSX, diagValidS, labelExtra = '')
 
       ax.plot(xsTrajX,predTrajXB[:,b],
         lw=2, color='black', label='estim traj')
@@ -684,6 +684,27 @@ class PlotterGP:
 
     return fig
 
+
+  def plotSubjData(self, ax, XsubjBSX, YsubjBSX, diag, labelExtra):
+    # plot subject data
+    nrSubData = len(XsubjBSX[0])
+    diagCounters = dict([(k, 0) for k in self.plotTrajParams['diagLabels'].keys()])
+    for sub in range(nrSub):
+
+      diagCurrSubj = diag[sub]
+      currLabel = None
+      if diagCounters[diagCurrSubj] == 0:
+        currLabel = labelExtra + self.plotTrajParams['diagLabels'][diagCurrSubj]
+
+      ax.plot(XsubjBSX[b][sub], YsubjBSX[b][sub],
+        color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=0.5)
+
+      ax.scatter(XsubjBSX[b][sub], YsubjBSX[b][sub],
+        marker=self.plotTrajParams['diagScatterMarkers'][diagCurrSubj],
+        color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=2.5,
+        label=currLabel)
+
+      diagCounters[diagCurrSubj] += 1
 
 
   def scatterPlotShifts(self, gpModel, subjStagesEstim):
