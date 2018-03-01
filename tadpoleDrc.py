@@ -1115,11 +1115,11 @@ def main():
 
   biomkInFuncUnit = [0 for u in range(nrFuncUnits+1)]
   for u in range(nrFuncUnits):
-    biomkInFuncUnit[u] = list(np.where(mapBiomkToFuncUnits == u)[0])
+    biomkInFuncUnit[u] = np.where(mapBiomkToFuncUnits == u)[0]
     # biomkInFuncUnit[u] += [nrBiomk-3, nrBiomk-2] # also add CDRSOB and ADAS in order hlp disentangle the trajectories and get better staging
 
   # add extra entry with other biomks to be added in the disease models
-  biomkInFuncUnit[nrFuncUnits] = [nrBiomk-3, nrBiomk-2, nrBiomk-1]
+  biomkInFuncUnit[nrFuncUnits] = np.array([nrBiomk-3, nrBiomk-2, nrBiomk-1])
 
 
   plotTrajParams['biomkInFuncUnit'] = biomkInFuncUnit

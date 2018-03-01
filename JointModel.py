@@ -116,73 +116,36 @@ class JointModel(DisProgBuilder.DPMInterface):
       dysfuncScoresU = [0 for x in range(self.nrFuncUnits)]
       xDysfunSubjU = [0 for x in range(self.nrFuncUnits)]
       for u in range(self.nrFuncUnits):
-        xs = np.linspace(self.unitModels[u].minX, self.unitModels[u].maxX, num=100).reshape([100, 1])
-
         dysfuncScoresU[u] = [[] for _ in range(nrSubj)]
         xDysfunSubjU[u] = [[] for _ in range(nrSubj)]
-        xsNewGpTest = [[] for _ in range(nrSubj)]
+
+        XshiftedUnitModel, XunitModel, YunitModel = self.unitModels[u].getData()
 
         for sub in range(self.unitModels[u].N_samples):
           for b in range(self.unitModels[u].N_biom):
-            xDysfunSubjUCurrSubj = self.unitModels[u].X[b][sub]  # Xs in the unit model
+            xDysfunSubjUCurrSubj = XunitModel[b][sub]  # Xs in the unit model
             xDysfunSubjU[u][sub] += list(xDysfunSubjUCurrSubj)
 
-            dysfuncScoresCurrSubExtr = [self.unitModels[u].X_array[b][k][0] for k in range(int(np.sum(
-              self.unitModels[u].N_obs_per_sub[b][:sub])), np.sum(self.unitModels[u].N_obs_per_sub[b][:sub + 1]))]
+            # dysfuncScoresCurrSubExtr = [self.unitModels[u].X_array[b][k][0] for k in range(int(np.sum(
+            #   self.unitModels[u].N_obs_per_sub[b][:sub])), np.sum(self.unitModels[u].N_obs_per_sub[b][:sub + 1]))]
 
-            dysfuncScoresU[u][sub] += dysfuncScoresCurrSubExtr # (Xs + timeShift) in the unit model
-
-            # xsNewGpTestCurrSub = [newGPTest.X_array[b][k][0] for k in range(int(np.sum(
-            #   newGPTest.N_obs_per_sub[b][:sub])), np.sum(newGPTest.N_obs_per_sub[b][:sub + 1]))]
-
-
-
-            #
-            # print('dysfuncScoresUCurrSubCalc', dysfuncScoresCurrSubCalc)
-            # print('xsNewGpTestCurrSub', xsNewGpTestCurrSub, np.array(xsNewGpTestCurrSub) + self.unitModels[u].params_time_shift[0][sub])
-            # print('dysfuncScoresCurrSubExtr', dysfuncScoresCurrSubExtr)
-            # print('params_time_shift[0][sub]',
-            #       self.unitModels[u].params_time_shift[0][sub])
-            # print('xDysfunSubjU[u][sub]', xDysfunSubjU[u][sub])
-            # print(adsa) they are indeed equal if you standardize them.
-
-          # apply the forward scaling transform
-
-
-          print('xDysfunSubjU[u][sub]', xDysfunSubjU[u][sub])
-          print('dysfuncScoresU[u][sub]', dysfuncScoresU[u][sub])
+            dysfuncScoresU[u][sub] += XshiftedUnitModel[b][sub] # (Xs + timeShift) in the unit model
 
           xDysfunSubjU[u][sub] = np.sort(np.unique(xDysfunSubjU[u][sub]))
           dysfuncScoresU[u][sub] = np.sort(np.unique(dysfuncScoresU[u][sub]))
-          # dysfuncScoresU[u][sub] = np.array(xDysfunSubjU[u][sub]) + self.unitModels[u].params_time_shift[0][sub]
 
 
-          # print('diag Sub', self.params['diag'][sub])
-          print('xDysfunSubjU[u][sub]', xDysfunSubjU[u][sub])
-          print('dysfuncScoresU[u][sub]', dysfuncScoresU[u][sub])
-          print('X[b][sub]', [self.unitModels[u].X[b][sub] for b in range(self.unitModels[u].N_biom)])
-          print('-------------------------------------')
           assert len(dysfuncScoresU[u][sub]) == len(xDysfunSubjU[u][sub])
-          # print('dysfuncScoresU[u][sub]', dysfuncScoresU[u][sub])
 
-        # print(adsa)
 
         dysfuncScoresSerial = [x2 for x in dysfuncScoresU[u] for x2 in x]
         minDys = np.min(dysfuncScoresSerial)
         maxDys = np.max(dysfuncScoresSerial)
-        # print('dysfuncScoresSerial', dysfuncScoresSerial)
-        # print('minDys', minDys)
-        # print('maxDys', maxDys)
 
         # make the functional scores be between [0,1]
         # 26/02/18: actually this is not needed, re-scaling will be done in the plotting
         # dysfuncScoresU[u] = [ (x - minDys) / (maxDys - minDys) for x in  dysfuncScoresU[u]]
-        # print('dysfuncScoresU[u]', dysfuncScoresU[u])
-        # print(adsa)
 
-
-      # print(len(xDysfunSubjU))
-      # print(asda)
 
 
       # now build separate model for each disease
@@ -271,9 +234,12 @@ class JointModel(DisProgBuilder.DPMInterface):
     # first predict the dysfunctionality scores in the disease specific model
     dysfuncPredXU = self.disModels[disNr].predictBiomk(newXs)
 
+
+
     # then predict the inidividual biomarkers in the disease agnostic models
     biomkPredXB = np.zeros((newXs.shape[0], self.nrBiomk))
     for u in range(self.nrFuncUnits):
+      # dysfScaled = self.unitModels[u].applyScalingX(dysfuncPredXU[:,u])
       biomkPredXB[:, self.biomkInFuncUnit[u]] = \
         self.unitModels[u].predictBiomk(dysfuncPredXU[:,u])
 
@@ -281,9 +247,13 @@ class JointModel(DisProgBuilder.DPMInterface):
     biomkIndNotInFuncUnits = self.biomkInFuncUnit[-1]
     # assumes these biomarkers are at the end
 
-    nrBiomkNotInUnit = biomkIndNotInFuncUnits.shape[0]
+    nrBiomkNotInUnit = len(biomkIndNotInFuncUnits)
     biomkPredXB[:, biomkIndNotInFuncUnits] = \
       dysfuncPredXU[:,dysfuncPredXU.shape[1] - nrBiomkNotInUnit :]
+
+    print('dysfuncPredXU[:,0]', dysfuncPredXU[:,0])
+    print('biomkPredXB[:,0]', biomkPredXB[:,0])
+    # print(asds)
 
     return biomkPredXB
 
