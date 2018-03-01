@@ -129,7 +129,7 @@ class JointModel(DisProgBuilder.DPMInterface):
             # dysfuncScoresCurrSubExtr = [self.unitModels[u].X_array[b][k][0] for k in range(int(np.sum(
             #   self.unitModels[u].N_obs_per_sub[b][:sub])), np.sum(self.unitModels[u].N_obs_per_sub[b][:sub + 1]))]
 
-            dysfuncScoresU[u][sub] += XshiftedUnitModel[b][sub] # (Xs + timeShift) in the unit model
+            dysfuncScoresU[u][sub] += list(XshiftedUnitModel[b][sub]) # (Xs + timeShift) in the unit model
 
           xDysfunSubjU[u][sub] = np.sort(np.unique(xDysfunSubjU[u][sub]))
           dysfuncScoresU[u][sub] = np.sort(np.unique(dysfuncScoresU[u][sub]))
