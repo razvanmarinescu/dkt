@@ -111,7 +111,7 @@ plotTrajParams['diagLabels'] = {CTL:'CTL ADNI', MCI:'MCI ADNI', AD:'AD ADNI',
 plotTrajParams['freesurfPath'] = freesurfPath
 # plotTrajParams['ylimitsRandPoints'] = (-3,2)
 plotTrajParams['blenderPath'] = blenderPath
-plotTrajParams['isSynth'] = True
+# plotTrajParams['isSynth'] = False
 
 
 if args.agg:
@@ -168,26 +168,26 @@ def loadTadpole(tadpoleFile):
 
   cols = list(df.loc[:, ['RID', 'AGE', 'Month_bl', 'DXCHANGE']]) + cols
 
-  df[cols] = df[cols].apply(pd.to_numeric, errors='coerce', axis=1)
-  pickle.dump(df, open('tadpoleCleanDf.npz', 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+  # df[cols] = df[cols].apply(pd.to_numeric, errors='coerce', axis=1)
+  # pickle.dump(df, open('tadpoleCleanDf.npz', 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
   df = pickle.load(open('tadpoleCleanDf.npz', 'rb'))
 
   dataDf = df[['RID', 'Month_bl']]
-  dataDf['scanID'] = np.nan
+  dataDf.loc[:,'scanID'] = np.nan
   print('dataDf', dataDf.loc[:20,:])
 
   mapGender = {'Female' : 0, 'Male' : 1}
-  df['PTGENDER'] = df['PTGENDER'].map(mapGender)
+  df.loc[:, 'PTGENDER'] = df['PTGENDER'].map(mapGender)
 
   # print(ads)
 
-  dataDf['gender-0f1m'] = df['PTGENDER']
-  dataDf['age'] = df['AGE'] + (df['Month_bl'] / 12)
-  dataDf['dataset'] = 1
+  dataDf.loc[:, 'gender-0f1m'] = df['PTGENDER']
+  dataDf.loc[:, 'age'] = df['AGE'] + (df['Month_bl'] / 12)
+  dataDf.loc[:, 'dataset'] = 1
   ssTagMRI = 'UCSFFSX_11_02_15_UCSFFSX51_08_01_16'
   ICV = df['ST10CV_%s' % ssTagMRI]
-  dataDf['ICV'] = ICV
-  dataDf['diag'] = df['DXCHANGE']
+  dataDf.loc[:,'ICV'] = ICV
+  dataDf.loc[:,'diag'] = df['DXCHANGE']
   cogTestsLabels = list(df.loc[:, 'CDRSB':'FAQ'])
   dataDf[cogTestsLabels] = df.loc[:, cogTestsLabels]
 
@@ -287,7 +287,23 @@ def loadTadpole(tadpoleFile):
     df.loc[df[c] == -4, c] = np.nan
 
 
-  dataDf = addBiomks(fdgBiomkStruct, df, dataDf, collapseFunc=np.nanmean)
+  dataDf = addBiomks(fdgBiomkStruct, df, dataDf, collapseFunc=np.mean)
+
+  print('FDG Hippocampus sum', np.sum(np.isnan(dataDf.loc[:, 'FDG Hippocampus'])))
+
+  fdgColsInDataDf = fdgBiomkStruct.keys()
+  nanMaskSB = np.isnan(dataDf.loc[:, fdgColsInDataDf])
+  dataDf.loc[np.sum(nanMaskSB,axis=1) > 0, fdgColsInDataDf] = np.nan
+
+  # print(np.sum(nanMaskSB,axis=1))
+  # print(np.sum(np.sum(nanMaskSB,axis=1) == 3))
+  print('FDG Hippocampus sum', np.sum(np.isnan(dataDf.loc[:, 'FDG Hippocampus'])))
+  # print(adsa)
+
+  # if np.any(np.isnan(dataDf.loc[s,fdgColsInDataDf])):
+  #   # if any number is nan then make them all NaNs
+  #   dataDf.loc[s, fdgColsInDataDf] = np.nan
+
 
   ######## AV45 PET biomk selection ################
 
@@ -621,8 +637,6 @@ def loadDRC(drcFile, columnsFormat):
 
   return dataDf
 
-
-
 def addBiomks(biomkStruct, sourceDf, targetDf, collapseFunc):
 
   biomkLabels = np.sort(list(biomkStruct.keys()))
@@ -643,7 +657,7 @@ def addBiomks(biomkStruct, sourceDf, targetDf, collapseFunc):
     dataFrameCurrSubset.columns = [x[:6] for x in cols]
     # print('dataFrameCurrSubset', dataFrameCurrSubset.loc[:5,:])
     # print('np.sum', np.sum(dataFrameCurrSubset,axis=1))
-    targetDf[biomkLabels[b]] = pd.Series(np.sum(dataFrameCurrSubset,axis=1),
+    targetDf.loc[:, biomkLabels[b]] = pd.Series(np.sum(dataFrameCurrSubset,axis=1),
       index=targetDf.index)
     # targetDf = targetDf.assign(asd=np.sum(dataFrameCurrSubset,axis=1))
     # print(targetDf.loc[:5, biomkLabels[b]])
@@ -751,8 +765,8 @@ def applyRegFromParams(data, regressorVector, diag, params, diagsCTL = (CTL, CTL
 def prepareData(finalDataFile, tinyData):
 
   tadpoleFile = 'TADPOLE_D1_D2.csv'
-  # dataDfTadpole = loadTadpole(tadpoleFile)
-  # dataDfTadpole.to_csv('tadpoleCleanDf.csv', sep=',', quotechar='"')
+  dataDfTadpole = loadTadpole(tadpoleFile)
+  dataDfTadpole.to_csv('tadpoleCleanDf.csv', sep=',', quotechar='"')
   dataDfTadpole = pd.read_csv('tadpoleCleanDf.csv')
 
   # print(dsa)
@@ -1026,6 +1040,21 @@ def visDataHist(dataDfAll):
     os.system('mkdir -p resfiles/tad-drc')
     fig.savefig('resfiles/tad-drc/%d_%s.png' % (b, biomks[b]))
 
+# test why there are some subj with bad FDG in temporal
+#   smallFdgInd = dataDfAll['FDG Temporal'] < 0.8
+#   largeFdgInd = dataDfAll['FDG Temporal'] > 0.8
+#
+#   print('smallFdgInd', dataDfAll.loc[np.where(smallFdgInd)[0],:])
+#   print('largeFdgInd', dataDfAll.loc[np.where(largeFdgInd)[0], :])
+#
+#   dfSmallFdg = dataDfAll.loc[smallFdgInd,:].copy()
+#   dfLargeFdg = dataDfAll.loc[largeFdgInd,:].copy()
+#
+#   dfSmallFdg.to_csv('resfiles/tad-drc/smallFdg.csv')
+#   dfLargeFdg.to_csv('resfiles/tad-drc/largeFdg.csv')
+
+  # print(adsas)
+
 
 def main():
   np.random.seed(1)
@@ -1055,6 +1084,9 @@ def main():
   labels = ds['list_biomarkers']
   diag = ds['diag']
 
+  # visDataHist(dataDfAll)
+
+
   meanVols = np.array([np.mean(Y[0][s]) for s in range(RID.shape[0])])
   meanVols[diag != CTL2] = np.inf
   idxOfDRCSubjWithLowVol = np.argmin(meanVols)
@@ -1069,7 +1101,8 @@ def main():
   nrBiomkInFuncUnits = 5
 
   # nrBiomk = nrBiomkInFuncUnits * nrFuncUnits
-  print(labels)
+  # print(labels)
+  # print(adss)
   # mapBiomkToFuncUnits = np.array(list(range(nrFuncUnits)) * nrBiomkInFuncUnits)
   # should give smth like [0,1,2,3,0,1,2,3,0,1,2,3]
 
@@ -1078,20 +1111,26 @@ def main():
   mapBiomkToFuncUnits = np.array((unitPermutation * nrBiomkInFuncUnits) + [-1,-1,-1])
   unitNames = [l.split(' ')[-1] for l in labels]
   unitNames = [unitNames[i] for i in unitPermutation]
-
   nrBiomk = mapBiomkToFuncUnits.shape[0]
-  # print('mapBiomkToFuncUnits', mapBiomkToFuncUnits)
-  # print([unitNames[i] for i in mapBiomkToFuncUnits])
-  # print(unitNames[0])
-  # print([labels[i] for i in np.where(mapBiomkToFuncUnits == 0)[0]])
-  # print(asd)
 
-  plotTrajParams['mapBiomkToFuncUnits'] = mapBiomkToFuncUnits
+  biomkInFuncUnit = [0 for u in range(nrFuncUnits+1)]
+  for u in range(nrFuncUnits):
+    biomkInFuncUnit[u] = list(np.where(mapBiomkToFuncUnits == u)[0])
+    # biomkInFuncUnit[u] += [nrBiomk-3, nrBiomk-2] # also add CDRSOB and ADAS in order hlp disentangle the trajectories and get better staging
+
+  # add extra entry with other biomks to be added in the disease models
+  biomkInFuncUnit[nrFuncUnits] = [nrBiomk-3, nrBiomk-2, nrBiomk-1]
+
+
+  plotTrajParams['biomkInFuncUnit'] = biomkInFuncUnit
   plotTrajParams['labels'] = labels
   plotTrajParams['nrRowsFuncUnit'] = 3
-  plotTrajParams['nrColsFuncUnit'] = 3
+  plotTrajParams['nrColsFuncUnit'] = 4
   plotTrajParams['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in np.linspace(0, 1, num=nrBiomk, endpoint=False)]
-  plotTrajParams['zScoreTraj'] = True
+
+  plotTrajParams['yNormMode'] = 'zScoreTraj'
+  # plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
+  # plotTrajParams['yNormMode'] = 'unscaled'
 
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
@@ -1103,7 +1142,7 @@ def main():
   params['penaltyUnits'] = args.penalty
   params['penaltyDis'] = args.penalty
   params['nrFuncUnits'] = nrFuncUnits
-  params['mapBiomkToFuncUnits'] = mapBiomkToFuncUnits
+  params['biomkInFuncUnit'] = biomkInFuncUnit
   params['labels'] = labels
 
   params['X'] = X
@@ -1117,9 +1156,9 @@ def main():
   params['diagValid'] = ds['diagValid']
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
-  params['iterParamsUnit'] = 80
+  params['iterParamsUnit'] = 60
   params['nrGlobIterDis'] = 10
-  params['iterParamsDis'] = 80
+  params['iterParamsDis'] = 60
 
 
   nrBiomkDisModel = nrFuncUnits + 3
@@ -1357,11 +1396,11 @@ def validateDRCBiomk(dpmObj, params):
   ridCurrDis = params['RID'][indxSubjToKeep]
   nrSubCurrDis = indxSubjToKeep.shape[0]
 
-
-  xsOrigPred1S = dpmObj.disModels[disNr].X[0] # all biomarkers should contain all timepoints in the disease model
-  xsShiftedPred1S = []
-  xsShiftedNotScaledBS = [[] for b in range(nrBiomk)]
+  XshiftedDisModelBS = [[] for b in range(nrBiomk)]
   ysPredBS = [[] for b in range(nrBiomk)]
+  XshiftedDisModelUS, XdisModelUS, YdisModelUS = dpmObj.disModels[disNr].getData()
+  xsOrigPred1S = XdisModelUS[0] # all biomarkers should contain all timepoints in the disease model
+
 
   for s in range(nrSubCurrDis):
     bTmp = 0 # some biomarker, doesn't matter which one
@@ -1369,26 +1408,12 @@ def validateDRCBiomk(dpmObj, params):
       range(int(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[bTmp][:s])),
       np.sum(dpmObj.disModels[disNr].N_obs_per_sub[bTmp][:s + 1]))])
 
-    # need to apply the inverse transform of X
-    xsCurrSubScaled = dpmObj.disModels[disNr].applyScalingX(xsShifted, biomk=0)
-
-    xsShiftedPred1S += [xsCurrSubScaled]
-
-    ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(xsCurrSubScaled, disNr)
+    ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(XshiftedDisModelUS[bTmp][s], disNr)
 
     for b in range(nrBiomk):
       ysPredBS[b] += [ysCurrSubXB[:,b]]
 
       if Xfilt[b][s].shape[0] > 0:
-        # print(s,b)
-        # print(len(dpmObj.disModels[disNr].N_obs_per_sub[b]))
-        #
-        # print(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s]))
-        # print(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s + 1]))
-        # xsShifted = np.array([dpmObj.disModels[disNr].X_array[0][k][0] for k in
-        #   range(int(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s])),
-        #     np.sum(dpmObj.disModels[disNr].N_obs_per_sub[b][:s + 1]))])
-
         # fix problem when a subject has the same xs twice (bad input dataset with same visit twice)
         while np.unique(Xfilt[b][s]).shape[0] < Xfilt[b][s].shape[0]:
           for x in Xfilt[b][s]:
@@ -1401,39 +1426,14 @@ def validateDRCBiomk(dpmObj, params):
 
         assert Yfilt[b][s].shape[0] == xsShifted.shape[0]
 
-        xsShiftedNotScaledBS[b] += [xsShifted]
+        XshiftedDisModelBS[b] += [XshiftedDisModelUS[0][s]]
       else:
-        xsShiftedNotScaledBS[b] += [[]]
+        XshiftedDisModelBS[b] += [[]]
 
-  # print('xsShiftedNotScaledBS', xsShiftedNotScaledBS[6:])
-  # print('Xfilt', Xfilt)
-  # print(ads)
-
-  # print('ysPredBS', ysPredBS)
-  # print(ads)
-
-  # print(len(Xfilt[6]))
-  # print()
 
   for b in range(nrBiomk):
-    # print('b', b)
-    # print(len(xsShiftedNotScaledBS[b]))
-    # print(len(Yfilt[b]))
     assert len(params['X'][b]) == len(params['Y'][b])
-    assert len(xsShiftedNotScaledBS[b]) == len(Yfilt[b])
-    # for s in range(len(xsShiftedNotScaledBS[b])):
-      # print(xsShiftedNotScaledBS[b][s])
-      # print(Xfilt[b][s])
-      # print(dpmObj.disModels[disNr].X[b][s])
-      # if dpmObj.disModels[disNr].X[b][s].shape[0] != Yfilt[b][s].shape[0]:
-      #   print('warning!!! X[%d][%d] and Yfilt[%d][%d] doesn not match' % (b,s,b,s))
-
-      # assert dpmObj.disModels[disNr].X[b][s].shape[0] == Yfilt[b][s].shape[0]
-      # assert xsShiftedNotScaledBS[b][s].shape[0] == Yfilt[b][s].shape[0]
-
-
-  # print('ysPredBS', ysPredBS)
-  # print('xsShiftedPred1S', xsShiftedPred1S)
+    assert len(XshiftedDisModelBS[b]) == len(Yfilt[b])
 
 
   # now get the validation set. This is already only for the DRC subjects
@@ -1447,13 +1447,6 @@ def validateDRCBiomk(dpmObj, params):
   dtiColsIdx = [i for i in range(len(labels)) if labels[i].startswith('DTI')]
 
   assert len(ysPredBS) == len(Yvalid)
-  print('ysPredBS.shape', len(ysPredBS[0]))
-  print('Yvalid.shape', len(Yvalid[0]))
-  print('RIDvalid', RIDvalid)
-  print('ridCurrDis',ridCurrDis)
-  print(Yvalid[dtiColsIdx[0]])
-  print(Xvalid[dtiColsIdx[0]])
-  # print(asd)
 
   nrDtiCols = len(dtiColsIdx)
   mse = [0 for b in dtiColsIdx]
@@ -1467,14 +1460,7 @@ def validateDRCBiomk(dpmObj, params):
     XvalidFilt[b] = [Xvalid[b][s] for s in subjWithValidIndx]
     YvalidFilt[b] = [Yvalid[b][s] for s in subjWithValidIndx]
 
-  print('subjWithValidIndx', subjWithValidIndx)
-  print(type(RIDvalid))
   RIDvalidFilt = RIDvalid[subjWithValidIndx]
-
-  print('YvalidFilt', YvalidFilt)
-  print('XvalidFilt', XvalidFilt)
-  print('RIDvalidFilt', RIDvalidFilt)
-  # print(asdd)
 
   XvalidShifFilt = [[[] for s in range(nrSubjWithValid)] for b in range(nrBiomk)]
 
@@ -1484,51 +1470,36 @@ def validateDRCBiomk(dpmObj, params):
       # for each validation subject
       idxCurrDis = np.where(RIDvalidFilt[s] == ridCurrDis)[0][0]
       xsOrigFromModel = xsOrigPred1S[idxCurrDis]
-      # print('xsOrigFromModel', xsOrigFromModel)
-      # print('XvalidFilt[dtiColsIdx[b]][s]', XvalidFilt[dtiColsIdx[b]][s])
-      print(np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0])
+
       assert np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0].shape[0] == 1
       idxXsWithValid = np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0][0]
       ysPredCurrSubj = ysPredBS[dtiColsIdx[b]][idxCurrDis][idxXsWithValid]
 
       assert YvalidFilt[dtiColsIdx[b]][s].shape[0] > 0
 
-      print('ysPredCurrSubj', ysPredCurrSubj)
-      print('Yvalid[dtiColsIdx[b]][s]', YvalidFilt[dtiColsIdx[b]][s])
       mseList += [(ysPredCurrSubj - YvalidFilt[dtiColsIdx[b]][s][0]) ** 2]
 
       # also compose the shifted Xs for the validation subjects
-      xsShiftedFromModel = xsShiftedNotScaledBS[0][idxCurrDis]
+      xsShiftedFromModel = XshiftedDisModelBS[0][idxCurrDis]
       XvalidShifFilt[dtiColsIdx[b]][s] = np.array([xsShiftedFromModel[idxXsWithValid]])
-
-      # print(np.array([xsShiftedFromModel[idxXsWithValid]]))
-      # print(XvalidShifFilt[dtiColsIdx[b]][s])
-      # print(YvalidFilt[dtiColsIdx[b]][s].shape)
-      # print(XvalidShifFilt[dtiColsIdx[b]][s].shape)
 
       assert XvalidShifFilt[dtiColsIdx[b]][s].shape[0] == YvalidFilt[dtiColsIdx[b]][s].shape[0]
 
 
     mse[b] = np.mean(mseList)
 
-  print('mse', mse)
-  print(ads)
+  # print('mse', mse)
+  # print(ads)
 
 
   # part 2. plot the inferred dynamics for DRC data:
   # every biomarker against original DPS
   # also plot extra validation data on top
-  minX = dpmObj.disModels[disNr].minX
-  maxX = dpmObj.disModels[disNr].maxX
-  xsTrajX = np.linspace(minX,maxX, num=100)
+  xsTrajX = dpmObj.disModels[disNr].getXsMinMaxRange()
 
-  print('minX', minX)
-  print('maxX', maxX)
 
-  # need to apply the inverse transform of X
-  xsTrajScaled = dpmObj.disModels[disNr].applyScalingX(xsTrajX, biomk=0)
-  predTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajScaled, disNr)
-  trajSamplesBXS = dpmObj.sampleBiomkTrajGivenXs(xsTrajScaled, disNr, nrSamples=100)
+  predTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajX, disNr)
+  trajSamplesBXS = dpmObj.sampleBiomkTrajGivenXs(xsTrajX, disNr, nrSamples=100)
 
   x_data_subjBSX = [0 for b in range(nrBiomk)]
   y_data_subjBSX = [0 for b in range(nrBiomk)]
@@ -1538,17 +1509,16 @@ def validateDRCBiomk(dpmObj, params):
       # x_data_subjBSX =
       pass
 
-  print('xsShiftedNotScaledBS', xsShiftedNotScaledBS)
+  print('XshiftedDisModelBS', XshiftedDisModelBS)
   print('XvalidShifFilt', XvalidShifFilt)
   print('predTrajXB', predTrajXB[:,0])
-  print('xsTrajScaled', xsTrajScaled)
-  print('xsShiftedPred1S', xsShiftedPred1S)
+  print('xsTrajX', xsTrajX)
   print('ysPredBS', ysPredBS)
-  print(ads)
+  # print(ads)
 
 
   fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
-    xsShiftedNotScaledBS, Yfilt, diagSubjCurrDis,
+    XshiftedDisModelBS, Yfilt, diagSubjCurrDis,
     XvalidShifFilt, YvalidFilt, diagValidFilt, replaceFig=True)
   fig.savefig('%s/validPCA.png' % params['outFolder'])
 

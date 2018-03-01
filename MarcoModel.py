@@ -82,16 +82,21 @@ class GP_progression_model(object):
         # print('X_array', self.X_array[0])
         # print(np.where(np.isnan(self.X_array[0]))[0])
         self.rescale()
+
         self.minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
         self.maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
 
-        self.addMinXMaxXExtraRange()
+        self.minScX = self.applyScalingX(self.minX)
+        self.maxScX = self.applyScalingX(self.maxX)
+
+        nrBiomk = len(self.X)
+        scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(nrBiomk)]
+        self.min_yB = np.array([np.min(scaledYarrayB[b].reshape(-1)) for b in range(nrBiomk)])
+        self.max_yB = np.array([np.max(scaledYarrayB[b].reshape(-1)) for b in range(nrBiomk)])
 
         # Number of derivative points uniformely distributed on the X axis
         self.N_Dpoints = 10
-        minXforDXs, maxXforDXs = self.addMinXMaxXExtraRange(deltaRangeFactor=0.0)
-        self.DX = np.linspace(minXforDXs, maxXforDXs, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-        # self.DX = np.linspace(self.minX,self.maxX,self.N_Dpoints).reshape([self.N_Dpoints,1])
+        self.DX = np.linspace(self.minX,self.maxX,self.N_Dpoints).reshape([self.N_Dpoints,1])
 
         # Initializing random features for kernel approximation
         self.perturbation_Omega = np.random.randn(self.N_rnd_features)
@@ -141,14 +146,14 @@ class GP_progression_model(object):
 
 
 
-    def addMinXMaxXExtraRange(self, deltaRangeFactor = 0.0):
-        deltaXRange = deltaRangeFactor * (self.maxX - self.minX)
-        minX =self.minX - deltaXRange
-        maxX =self.maxX + deltaXRange
+    # def addMinXMaxXExtraRange(self, deltaRangeFactor = 0.0):
+    #     deltaXRange = deltaRangeFactor * (self.maxX - self.minX)
+    #     minX =self.minX - deltaXRange
+    #     maxX =self.maxX + deltaXRange
+    #
+    #     return minX,maxX
 
-        return minX,maxX
-
-    def applyScalingX(self, x_data, biomk):
+    def applyScalingX(self, x_data, biomk=0):
       scaleX = self.max_X[biomk] * self.mean_std_X[biomk][1]
       return scaleX * x_data + self.mean_std_X[biomk][0]
 
@@ -163,13 +168,49 @@ class GP_progression_model(object):
 
       return biomksNewXB
 
+    def getXsMinMaxRange(self, nrPoints=50):
+      return np.linspace(self.minScX, self.maxScX, nrPoints).reshape([-1, 1])
 
-    def applyScalingXForward(self, x_data, biomk):
+    def updateMinMax(self, minX, maxX):
+      self.minX = minX
+      self.maxX = maxX
+      self.minScX = self.applyScalingX(self.minX)
+      self.maxScX = self.applyScalingX(self.maxX)
+
+
+    def applyScalingXForward(self, x_data, biomk=0):
       scaleX = self.max_X[biomk] * self.mean_std_X[biomk][1]
       return (x_data - self.mean_std_X[biomk][0])/scaleX
 
     def applyGivenScalingY(self, y_data, meanY, stdY):
       return (y_data - meanY)/stdY
+
+    def getData(self):
+      nrBiomk = len(self.X)
+      nrSubj = len(self.X[0])
+      XshiftedScaled = [[] for b in range(nrBiomk)]
+
+      for b in range(nrBiomk):
+        for s in range(nrSubj):
+
+          XshiftedCurrSubj = np.array([self.X_array[b][k][0] for k in range(int(np.sum(
+            self.N_obs_per_sub[b][:s])), np.sum(self.N_obs_per_sub[b][:s + 1]))])
+
+          XshiftedScaled[b] += [self.applyScalingX(XshiftedCurrSubj)]
+
+          assert XshiftedScaled[b][s].shape[0] == self.X[b][s].shape[0]
+          assert XshiftedScaled[b][s].shape[0] == self.Y[b][s].shape[0]
+
+      return XshiftedScaled, self.X, self.Y
+
+    def getSubShiftsLong(self):
+      return self.applyScalingX(self.params_time_shift[0])
+
+    def getMinMaxY_B(self, extraDelta=0):
+      ''' get minimum and maximum of Ys per biomarker'''
+      deltaB = (self.max_yB - self.min_yB) * extraDelta
+
+      return self.min_yB - deltaB, self.max_yB + deltaB
 
     # def rescale(self):
     #     # Standardizes X and Y axes and saves the rescaling parameters for future output
@@ -750,11 +791,10 @@ class GP_progression_model(object):
             self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
 
 
-        self.minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-        self.maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-        # self.addMinXMaxXExtraRange()
-        minXforDXs, maxXforDXs = self.addMinXMaxXExtraRange(deltaRangeFactor=0.0)
-        self.DX = np.linspace(minXforDXs, maxXforDXs, self.N_Dpoints).reshape([self.N_Dpoints, 1])
+        minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+        maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+        self.updateMinMax(minX, maxX)
+        self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
 
     def Optimize_time_shift_Raz_indiv(self):
@@ -843,11 +883,10 @@ class GP_progression_model(object):
             self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
 
 
-        self.minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-        self.maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-        # self.addMinXMaxXExtraRange()
-        minXforDXs, maxXforDXs = self.addMinXMaxXExtraRange(deltaRangeFactor=0.0)
-        self.DX = np.linspace(minXforDXs, maxXforDXs, self.N_Dpoints).reshape([self.N_Dpoints, 1])
+        minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+        maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+        self.updateMinMax(minX, maxX)
+        self.DX = np.linspace(minX, maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
 
     def Optimize_time_shift_Marco(self, Niterat = 10, learning_rate = 0.1):
@@ -892,21 +931,19 @@ class GP_progression_model(object):
             self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
 
 
-        self.minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-        self.maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-        # self.addMinXMaxXExtraRange()
-        minXforDXs, maxXforDXs = self.addMinXMaxXExtraRange(deltaRangeFactor=0.0)
-        self.DX = np.linspace(minXforDXs, maxXforDXs, self.N_Dpoints).reshape([self.N_Dpoints, 1])
+        minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+        maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+        self.updateMinMax(minX, maxX)
+        self.DX = np.linspace(minX, maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
 
     def Optimize(self, N_global_iterations, iterGP, Plot = True):
 
         # Global optimizer (GP parameters + time shift)
-        # fig = self.plotter.plotTraj(self)
-        # fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, 0, self.expName))
-        if self.plotter.plotTrajParams['isSynth']:
-          fig2 = self.plotter.plotCompWithTrueParams(self)
-          fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
+        fig = self.plotter.plotTraj(self)
+        fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, 0, self.expName))
+        fig2 = self.plotter.plotCompWithTrueParams(self)
+        fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
 
         for i in range(N_global_iterations):
             print("iteration ", i, "of ", N_global_iterations)
@@ -923,9 +960,8 @@ class GP_progression_model(object):
             if Plot:
               fig = self.plotter.plotTraj(self)
               fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, i + 1, self.expName))
-              if self.plotter.plotTrajParams['isSynth']:
-                fig2 = self.plotter.plotCompWithTrueParams(self)
-                fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, i + 1, self.expName))
+              fig2 = self.plotter.plotCompWithTrueParams(self)
+              fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, i + 1, self.expName))
 
             if i<(N_global_iterations -1):
                 print("Optimizing time shift")
@@ -934,9 +970,8 @@ class GP_progression_model(object):
             if Plot:
               fig = self.plotter.plotTraj(self)
               fig.savefig('%s/allTraj%d1_%s.png' % (self.outFolder, i + 1, self.expName))
-              if self.plotter.plotTrajParams['isSynth']:
-                fig2 = self.plotter.plotCompWithTrueParams(self)
-                fig2.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i + 1, self.expName))
+              fig2 = self.plotter.plotCompWithTrueParams(self)
+              fig2.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i + 1, self.expName))
 
 
 
@@ -1054,8 +1089,12 @@ class GP_progression_model(object):
       return final_pred, expectation_sub
 
     def predictBiomk(self, newX):
-      # newXScaledXB = np.zeros((newX.shape[0], self.N_biom))
-      predictedBiomksXB = np.zeros((newX.shape[0], self.N_biom))
+
+      assert self.minScX <= np.min(newX) <= self.maxScX
+
+      xsScaled = self.applyScalingXForward(newX.reshape(-1, 1), biomk=0) # arbitrary space ->[0,1]
+
+      predictedBiomksXB = np.zeros((xsScaled.shape[0], self.N_biom))
       for bio_pos, biomarker in enumerate(range(self.N_biom)):
         s_omega, m_omega, s, m, sigma, l, eps = self.unpack_parameters(self.parameters[biomarker])
 
@@ -1065,62 +1104,53 @@ class GP_progression_model(object):
         Omega = 1 / np.sqrt(np.exp(l)) * self.perturbation_Omega
         sys.stdout.flush()
         W = np.multiply(perturbation_zero_W, np.sqrt(np.exp(s))) + m
-        output = self.basis(newX, np.exp(sigma), Omega)
+        output = self.basis(xsScaled, np.exp(sigma), Omega)
         sys.stdout.flush()
         predictedBiomksXB[:,biomarker] = np.dot(output, W).reshape(-1)
 
 
-      return predictedBiomksXB
+      return self.applyScalingYAllBiomk(predictedBiomksXB)
 
-    def predictBiomkAndScale(self, newX):
-      ''' predict biomarker values (MLE solution). also performs scaling before and after '''
 
-      xsScaled = self.applyScalingXForward(newX.reshape(-1,1), biomk=0)
 
-      assert self.minX <= np.min(xsScaled)
-      assert self.maxX >= np.max(xsScaled)
+    # def predictBiomkAndScale(self, newX):
+    #   ''' predict biomarker values (MLE solution). also performs scaling before and after '''
+    #
+    #   xsScaled = self.applyScalingXForward(newX.reshape(-1, 1), biomk=0)
+    #
+    #   assert self.minX <= np.min(xsScaled)
+    #   assert self.maxX >= np.max(xsScaled)
+    #
+    #   ys = self.predictBiomk(xsScaled)
+    #   ysScaled = self.applyScalingYAllBiomk(ys)
+    #
+    #   return ysScaled
 
-      ys = self.predictBiomk(xsScaled)
-      ysScaled = self.applyScalingYAllBiomk(ys)
-
-      return ysScaled
-
-    def samplePostAndScale(self, newX, biomarker, nrSamples):
+    def sampleTrajPost(self, newX, biomarker, nrSamples):
       '''
-      sample trajectory posterior. also performs scaling before and after.
-      Can be used also for predicting subject specific values
+      sample trajectory posterior
+
       :param newX:
+      :param biomarker:
+      :param nrSamples:
       :return:
       '''
 
-      xsScaled = self.applyScalingXForward(newX.reshape(-1, 1), biomk=0)
+      xsScaled = self.applyScalingXForward(newX.reshape(-1, 1), biomk=0)# arbitrary space ->[0,1]
 
-      assert self.minX <= np.min(xsScaled)
-      assert self.maxX >= np.max(xsScaled)
-
-      ysXS = self.sampleBiomkTrajPosterior(xsScaled, biomarker, nrSamples)[1]
-      ysScaled = self.applyScalingYAllBiomk(ysXS)
-
-      return ysScaled
-
-    def sampleBiomkTrajPosterior(self, newX, biomarker, nrSamples):
-      trajSamplesXS = np.zeros((newX.shape[0], nrSamples))
+      trajSamplesXS = np.zeros((xsScaled.shape[0], nrSamples))
       s_omega, m_omega, s, m, sigma, l, eps = self.unpack_parameters(self.parameters[biomarker])
-
-      scaleX = self.max_X[biomarker] * self.mean_std_X[biomarker][1]
-      scaleY = self.max_Y[biomarker] * self.mean_std_Y[biomarker][1]
-      newXScaledX = scaleX * newX + self.mean_std_X[biomarker][0]
 
       for i in range(nrSamples):
         perturbation_zero_W = np.random.randn(int(2 * self.N_rnd_features)).reshape([2 * self.N_rnd_features, 1])
         perturbation_zero_Omega = np.random.randn(int(self.N_rnd_features))
         Omega = 1 / np.sqrt(np.exp(l)) * self.perturbation_Omega
         W = np.multiply(perturbation_zero_W, np.sqrt(np.exp(s))) + m
-        output = self.basis(newX, np.exp(sigma), Omega)
+        output = self.basis(xsScaled, np.exp(sigma), Omega)
         trajSamplesXS[:,i] = np.dot(output, W).reshape(-1)
 
 
-      return newXScaledX, trajSamplesXS
+      return self.applyScalingY(trajSamplesXS, biomarker)
 
     def Save(self, path):
         np.save(path + "/names_biomarkers", self.names_biomarkers)

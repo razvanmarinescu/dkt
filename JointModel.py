@@ -41,7 +41,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.plotterObj = plotterObj
     self.nrBiomk = len(params['X'])
     self.nrFuncUnits = params['nrFuncUnits']
-    self.mapBiomkToFuncUnits = params['mapBiomkToFuncUnits']
+    self.biomkInFuncUnit = params['biomkInFuncUnit']
 
     self.unitModels = None # functional unit models
     self.disModels = None # disease specific models
@@ -76,8 +76,8 @@ class JointModel(DisProgBuilder.DPMInterface):
         plotTrajParamsFuncUnit = self.createPlotTrajParamsFuncUnit(nrCurrFuncUnit=u)
         plotterObjCurrFuncUnit = Plotter.PlotterGP(plotTrajParamsFuncUnit)  # set separate plotter for the
 
-        XfiltCurrUnit = [Xfilt[b] for b in range(self.nrBiomk) if self.mapBiomkToFuncUnits[b] == u]
-        YfiltCurrUnit = [Yfilt[b] for b in range(self.nrBiomk) if self.mapBiomkToFuncUnits[b] == u]
+        XfiltCurrUnit = [Xfilt[b] for b in self.biomkInFuncUnit[u]]
+        YfiltCurrUnit = [Yfilt[b] for b in self.biomkInFuncUnit[u]]
         outFolderCurrUnit = '%s/unit%d' % (self.outFolder, u)
         os.system('mkdir -p %s' % outFolderCurrUnit)
         self.unitModels[u] = MarcoModel.GP_progression_model(XfiltCurrUnit, YfiltCurrUnit, nrRandFeatures, outFolderCurrUnit,
@@ -93,12 +93,17 @@ class JointModel(DisProgBuilder.DPMInterface):
       # make sure the data you used has not been changed since fitting this model
       for b in range(len(self.unitModels[0].X)):
         # print('--------------- b', b)
-        idxInAllBiomk = np.where(self.mapBiomkToFuncUnits == 0)[0][b]
+        idxInAllBiomk = self.biomkInFuncUnit[0][b]
         for s in range(len(self.unitModels[0].X[b])):
           # print(self.unitModels[0].X[b][s])
           # print(self.params['X'][idxInAllBiomk][s])
           assert np.all(self.unitModels[0].X[b][s] == self.params['X'][idxInAllBiomk][s])
           assert np.all(self.unitModels[0].Y[b][s] == self.params['Y'][idxInAllBiomk][s])
+
+      for u in range(self.nrFuncUnits):
+        self.unitModels[u].minScX = self.unitModels[u].applyScalingX(self.unitModels[u].minX)
+        self.unitModels[u].maxScX = self.unitModels[u].applyScalingX(self.unitModels[u].maxX)
+
 
       # print(asda)
 
@@ -176,13 +181,9 @@ class JointModel(DisProgBuilder.DPMInterface):
         # print(adsa)
 
 
-      # add any other biomarkers that were not part of any functiona units, e.g. cog tests
-      # print(len([self.params['X'][i] for i in np.where(self.mapBiomkToFuncUnits == -1)[0]]))
-      # print(len(xDysfunSubjU))
-
       # print(len(xDysfunSubjU))
       # print(asda)
-      nrBiomkDisModel = len(xDysfunSubjU)
+
 
       # now build separate model for each disease
       disLabels = self.params['disLabels']
@@ -190,6 +191,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       self.disModels = [_ for _ in range(nrDis)]
 
       for disNr in range(nrDis):
+        nrBiomkDisModel = len(xDysfunSubjU) + len(self.params['otherBiomkPerDisease'][disNr])
 
         xDysfunSubjUCopy = copy.deepcopy(xDysfunSubjU)
         dysfuncScoresUCopy = copy.deepcopy(dysfuncScoresU)
@@ -197,22 +199,22 @@ class JointModel(DisProgBuilder.DPMInterface):
         if 'otherBiomkPerDisease' in self.params.keys():
           xDysfunSubjUCopy += [self.params['X'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
           dysfuncScoresUCopy += [self.params['Y'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
+          # print(self.params['otherBiomkPerDisease'][disNr])
+          # print(asd)
 
         # first filter the data .. keep only subj in current disease
         xDysfunSubjCurrDisU = [_ for _ in range(nrBiomkDisModel)]
         dysfuncScoresCurrDisU = [_ for _ in range(nrBiomkDisModel)]
 
         for b in range(nrBiomkDisModel):
-          print('b=', b)
-          print(len(xDysfunSubjU[b]), xDysfunSubjU[b][0])
-          print('nrSubj', nrSubj)
-          print(self.params['diagsSetInDis'][disNr])
-          print(self.params['diag'].shape)
           xDysfunSubjCurrDisU[b] = [xDysfunSubjUCopy[b][s] for s in
             np.where(self.indxSubjForEachDisD[disNr])[0]]
           dysfuncScoresCurrDisU[b] = [dysfuncScoresUCopy[b][s] for s in
             np.where(self.indxSubjForEachDisD[disNr])[0]]
 
+        # print(len(xDysfunSubjCurrDisU))
+        # print(len(dysfuncScoresCurrDisU))
+        # print(asd)
         # print('xDysfunSubjCurrDisU', xDysfunSubjCurrDisU)
         # print('dysfuncScoresCurrDisU', dysfuncScoresCurrDisU)
         # print(asds)
@@ -248,6 +250,10 @@ class JointModel(DisProgBuilder.DPMInterface):
     elif runPart[1] == 'L':
       self.disModels = pickle.load(open(disModelsFile, 'rb'))
 
+      for disNr in range(self.nrDis):
+        self.disModels[disNr].minScX = self.disModels[disNr].applyScalingX(self.disModels[disNr].minX)
+        self.disModels[disNr].maxScX = self.disModels[disNr].applyScalingX(self.disModels[disNr].maxX)
+
 
     res = None
     return res
@@ -263,16 +269,16 @@ class JointModel(DisProgBuilder.DPMInterface):
     """
 
     # first predict the dysfunctionality scores in the disease specific model
-    dysfuncPredXU = self.disModels[disNr].predictBiomkAndScale(newXs)
+    dysfuncPredXU = self.disModels[disNr].predictBiomk(newXs)
 
     # then predict the inidividual biomarkers in the disease agnostic models
     biomkPredXB = np.zeros((newXs.shape[0], self.nrBiomk))
     for u in range(self.nrFuncUnits):
-      biomkPredXB[:, self.mapBiomkToFuncUnits == u] = \
-        self.unitModels[u].predictBiomkAndScale(dysfuncPredXU[:,u])
+      biomkPredXB[:, self.biomkInFuncUnit[u]] = \
+        self.unitModels[u].predictBiomk(dysfuncPredXU[:,u])
 
 
-    biomkIndNotInFuncUnits = np.where(self.mapBiomkToFuncUnits == -1)[0]
+    biomkIndNotInFuncUnits = self.biomkInFuncUnit[-1]
     # assumes these biomarkers are at the end
 
     nrBiomkNotInUnit = biomkIndNotInFuncUnits.shape[0]
@@ -294,28 +300,26 @@ class JointModel(DisProgBuilder.DPMInterface):
     """
 
     # first predict the dysfunctionality scores in the disease specific model
-    dysfuncPredXU = self.disModels[disNr].predictBiomkAndScale(newXs)
+    dysfuncPredXU = self.disModels[disNr].predictBiomk(newXs)
 
     # then predict the inidividual biomarkers in the disease agnostic models
     trajSamplesBXS = np.nan * np.ones((self.nrBiomk, newXs.shape[0], nrSamples))
-    biomkIndInFuncUnits = np.where(self.mapBiomkToFuncUnits >= 0)[0]
 
     for u in range(self.nrFuncUnits):
-      biomkIndInCurrUnit = np.where(self.mapBiomkToFuncUnits == u)[0]
+      biomkIndInCurrUnit = self.biomkInFuncUnit[u]
       for b in range(biomkIndInCurrUnit.shape[0]):
-        currUnit = self.mapBiomkToFuncUnits[biomkIndInCurrUnit[b]]
         trajSamplesBXS[biomkIndInCurrUnit[b],:,:] = \
-            self.unitModels[currUnit].samplePostAndScale(dysfuncPredXU[:,currUnit], b, nrSamples)
+            self.unitModels[u].sampleTrajPost(dysfuncPredXU[:,u], b, nrSamples)
 
 
-    biomkIndNotInFuncUnits = np.where(self.mapBiomkToFuncUnits == -1)[0]
+    biomkIndNotInFuncUnits = self.biomkInFuncUnit[-1]
     nrBiomkNotInUnit = biomkIndNotInFuncUnits.shape[0]
 
     # assumes these biomarkers are at the end
     indOfRealBiomk =  list(range(dysfuncPredXU.shape[1] - nrBiomkNotInUnit, dysfuncPredXU.shape[1]))
     for b in range(len(biomkIndNotInFuncUnits)):
       trajSamplesBXS[biomkIndNotInFuncUnits[b],:,:] = \
-        self.disModels[disNr].samplePostAndScale(newXs, indOfRealBiomk[b], nrSamples)
+        self.disModels[disNr].sampleTrajPost(newXs, indOfRealBiomk[b], nrSamples)
 
     assert not np.isnan(trajSamplesBXS).any()
 
@@ -335,7 +339,7 @@ class JointModel(DisProgBuilder.DPMInterface):
         # set the params for plotting true trajectories - the Xs and f(Xs), i.e. trueTraj
       plotTrajParamsFuncUnit['trueParams']['trueXsTrajX'] = self.params['plotTrajParams']['trueParams']['trueDysfuncXsX']
       plotTrajParamsFuncUnit['trueParams']['trueTrajXB'] = \
-        self.params['plotTrajParams']['trueParams']['trueTrajFromDysXB'][:, self.mapBiomkToFuncUnits == nrCurrFuncUnit]
+        self.params['plotTrajParams']['trueParams']['trueTrajFromDysXB'][:, self.biomkInFuncUnit[nrCurrFuncUnit]]
       plotTrajParamsFuncUnit['trueParams']['subShiftsTrueMarcoFormatS'] = \
       plotTrajParamsFuncUnit['trueParams']['trueSubjDysfuncScoresSU'][:, nrCurrFuncUnit]
 
@@ -345,11 +349,10 @@ class JointModel(DisProgBuilder.DPMInterface):
 
 
 
-    labels = [self.params['labels'][b] for b in range(len(self.params['labels']))
-      if self.mapBiomkToFuncUnits[b] == nrCurrFuncUnit]
+    labels = [self.params['labels'][b] for b in self.biomkInFuncUnit[nrCurrFuncUnit]]
     plotTrajParamsFuncUnit['labels'] = labels
-    plotTrajParamsFuncUnit['colorsTraj'] =  [self.params['plotTrajParams']['colorsTraj'][b] for b in range(len(self.params['labels']))
-      if self.mapBiomkToFuncUnits[b] == nrCurrFuncUnit]
+    plotTrajParamsFuncUnit['colorsTraj'] =  [self.params['plotTrajParams']['colorsTraj'][b]
+      for b in self.biomkInFuncUnit[nrCurrFuncUnit]]
 
 
     # print('plotTrajParamsFuncUnit', plotTrajParamsFuncUnit)

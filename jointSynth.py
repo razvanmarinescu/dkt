@@ -133,14 +133,21 @@ def main():
   # should give smth like [0,1,2,3,0,1,2,3,0,1,2,3]
   print('mapBiomkToFuncUnits', mapBiomkToFuncUnits)
 
-  plotTrajParams['mapBiomkToFuncUnits'] = mapBiomkToFuncUnits
+  biomkInFuncUnit = [0 for u in range(nrFuncUnits+1)]
+  for u in range(nrFuncUnits):
+    biomkInFuncUnit[u] = list(np.where(mapBiomkToFuncUnits == u)[0])
+
+  biomkInFuncUnit[nrFuncUnits] = [] # need to leave this as empty list
+
+  plotTrajParams['biomkInFuncUnit'] = biomkInFuncUnit
   plotTrajParams['labels'] = ['b%d' % n for n in range(nrBiomk)]
-  plotTrajParams['nrRowsFuncUnit'] = 2
-  plotTrajParams['nrColsFuncUnit'] = 3
+  plotTrajParams['nrRowsFuncUnit'] = 3
+  plotTrajParams['nrColsFuncUnit'] = 4
   plotTrajParams['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in np.linspace(0, 1, num=nrBiomk, endpoint=False)]
 
-  # plotTrajParams['yNormMode'] = 'zScoreCtl'
+  # plotTrajParams['yNormMode'] = 'zScoreTraj'
   plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
+  # plotTrajParams['yNormMode'] = 'unscaled'
 
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
