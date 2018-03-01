@@ -765,8 +765,8 @@ def applyRegFromParams(data, regressorVector, diag, params, diagsCTL = (CTL, CTL
 def prepareData(finalDataFile, tinyData):
 
   tadpoleFile = 'TADPOLE_D1_D2.csv'
-  dataDfTadpole = loadTadpole(tadpoleFile)
-  dataDfTadpole.to_csv('tadpoleCleanDf.csv', sep=',', quotechar='"')
+  # dataDfTadpole = loadTadpole(tadpoleFile)
+  # dataDfTadpole.to_csv('tadpoleCleanDf.csv', sep=',', quotechar='"')
   dataDfTadpole = pd.read_csv('tadpoleCleanDf.csv')
 
   # print(dsa)
@@ -795,8 +795,6 @@ def prepareData(finalDataFile, tinyData):
   # print('validDf', validDf)
   #validDf = addDRCValidDataMock(validDf) # generate random numbers for now
   validDf = addDRCValidData(validDf) # change to this real dataset one when ready
-
-  # visValidDf(validDf)
 
   validDf.to_csv('validDf.csv')
 
@@ -876,14 +874,26 @@ def prepareData(finalDataFile, tinyData):
   # Note that the previous dataset normalisation doesn't work, because in the training
   # set there were no DTI biomarkers in dataset 2.
   for c in range(len(dtiCols)):
-    meanADNI = np.nanmean(dataDfAll.loc[:, dtiCols[c]])
+
     stdADNI =np.nanstd(dataDfAll.loc[:, dtiCols[c]])
+    stdDRC = np.nanstd(validDf.loc[:, dtiCols[c]])
+    stdRatio = stdDRC / stdADNI
+    validDf.loc[:, dtiCols[c]] = validDf.loc[:, dtiCols[c]] / stdRatio
+
+    meanADNI = np.nanmean(dataDfAll.loc[:, dtiCols[c]])
+    meanDRC = np.nanmean(validDf.loc[:, dtiCols[c]])
+    meanDiff = (meanDRC - meanADNI)
+    validDf.loc[:, dtiCols[c]] = validDf.loc[:, dtiCols[c]] - meanDiff
+
     meanDRC = np.nanmean(validDf.loc[:, dtiCols[c]])
     stdDRC = np.nanstd(validDf.loc[:, dtiCols[c]])
-    meanDiff = (meanDRC - meanADNI)
-    stdRatio = stdDRC / stdADNI
-    validDf.loc[:, dtiCols[c]] = (validDf.loc[:, dtiCols[c]] - meanDiff)/stdRatio
 
+    # print('ADNI mean', meanADNI)
+    # print('ADNI std', stdADNI)
+    # print('DRC mean', meanDRC)
+    # print('DRC std', stdDRC)
+    #
+    # print(asda)
 
   print(dataDfAll.shape)
   if tinyData:
@@ -1370,10 +1380,79 @@ def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = Non
   dpmObjStd, res['std'] = evaluationFramework.runStdDPM(params,
     expName, dpmBuilder, params['runPartMain'])
 
+
+  plotAllBiomkDisSpace(dpmObjStd, params, disNr=0)
+
   # perform the validation against DRC data
   validateDRCBiomk(dpmObjStd, params)
 
+
   return res
+
+
+def plotAllBiomkDisSpace(dpmObj, params, disNr):
+  # first predict subject DTI measures
+
+  diag = params['diag']
+  indxSubjToKeep = np.where(dpmObj.indxSubjForEachDisD[disNr])[0]
+
+  nrBiomk = len(params['X'])
+  print('nrBiomk', nrBiomk)
+  Xfilt = [[] for b in range(nrBiomk)]
+  Yfilt = [[] for b in range(nrBiomk)]
+  for b in range(nrBiomk):
+    Xfilt[b] = [params['X'][b][i] for i in indxSubjToKeep]
+    Yfilt[b] = [params['Y'][b][i] for i in indxSubjToKeep]
+
+  diagSubjCurrDis = diag[indxSubjToKeep]
+  ridCurrDis = params['RID'][indxSubjToKeep]
+  nrSubCurrDis = indxSubjToKeep.shape[0]
+
+  XshiftedDisModelBS = [[] for b in range(nrBiomk)]
+  ysPredBS = [[] for b in range(nrBiomk)]
+  XshiftedDisModelUS, XdisModelUS, YdisModelUS = dpmObj.disModels[disNr].getData()
+  xsOrigPred1S = XdisModelUS[0] # all biomarkers should contain all timepoints in the disease model
+
+
+  for s in range(nrSubCurrDis):
+    bTmp = 0 # some biomarker, doesn't matter which one
+    ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(XshiftedDisModelUS[bTmp][s], disNr)
+
+    for b in range(nrBiomk):
+      ysPredBS[b] += [ysCurrSubXB[:,b]]
+
+      if Xfilt[b][s].shape[0] > 0:
+        # fix problem when a subject has the same xs twice (bad input dataset with same visit twice)
+        while np.unique(Xfilt[b][s]).shape[0] < Xfilt[b][s].shape[0]:
+          for x in Xfilt[b][s]:
+            if np.sum(Xfilt[b][s] == x) > 1:
+              idxToRemove = np.where(Xfilt[b][s] == x)[0][0]
+              Yfilt[b][s] = np.concatenate((Yfilt[b][s][:idxToRemove], Yfilt[b][s][idxToRemove+1:]))
+              Xfilt[b][s] = np.concatenate((Xfilt[b][s][:idxToRemove], Xfilt[b][s][idxToRemove + 1:]))
+
+              break
+
+        XshiftedDisModelBS[b] += [XshiftedDisModelUS[0][s]]
+      else:
+        XshiftedDisModelBS[b] += [[]]
+
+
+  for b in range(nrBiomk):
+    assert len(params['X'][b]) == len(params['Y'][b])
+    assert len(XshiftedDisModelBS[b]) == len(Yfilt[b])
+
+  # part 2. plot the inferred dynamics for DRC data:
+  # every biomarker against original DPS
+  # also plot extra validation data on top
+  xsTrajX = dpmObj.disModels[disNr].getXsMinMaxRange()
+  predTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajX, disNr)
+  trajSamplesBXS = dpmObj.sampleBiomkTrajGivenXs(xsTrajX, disNr, nrSamples = 100)
+
+  fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
+    XshiftedDisModelBS, Yfilt, diagSubjCurrDis,
+    None, None, None, replaceFig=True)
+  fig.savefig('%s/allBiomkDisSpace%s.png' % (params['outFolder'], params['disLabels'][disNr]))
+
 
 
 def validateDRCBiomk(dpmObj, params):
@@ -1391,7 +1470,6 @@ def validateDRCBiomk(dpmObj, params):
     Xfilt[b] = [params['X'][b][i] for i in indxSubjToKeep]
     Yfilt[b] = [params['Y'][b][i] for i in indxSubjToKeep]
 
-
   diagSubjCurrDis = diag[indxSubjToKeep]
   ridCurrDis = params['RID'][indxSubjToKeep]
   nrSubCurrDis = indxSubjToKeep.shape[0]
@@ -1404,9 +1482,6 @@ def validateDRCBiomk(dpmObj, params):
 
   for s in range(nrSubCurrDis):
     bTmp = 0 # some biomarker, doesn't matter which one
-    xsShifted = np.array([dpmObj.disModels[disNr].X_array[bTmp][k][0] for k in
-      range(int(np.sum(dpmObj.disModels[disNr].N_obs_per_sub[bTmp][:s])),
-      np.sum(dpmObj.disModels[disNr].N_obs_per_sub[bTmp][:s + 1]))])
 
     ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(XshiftedDisModelUS[bTmp][s], disNr)
 
@@ -1423,8 +1498,6 @@ def validateDRCBiomk(dpmObj, params):
               Xfilt[b][s] = np.concatenate((Xfilt[b][s][:idxToRemove], Xfilt[b][s][idxToRemove + 1:]))
 
               break
-
-        assert Yfilt[b][s].shape[0] == xsShifted.shape[0]
 
         XshiftedDisModelBS[b] += [XshiftedDisModelUS[0][s]]
       else:
@@ -1496,18 +1569,8 @@ def validateDRCBiomk(dpmObj, params):
   # every biomarker against original DPS
   # also plot extra validation data on top
   xsTrajX = dpmObj.disModels[disNr].getXsMinMaxRange()
-
-
   predTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajX, disNr)
   trajSamplesBXS = dpmObj.sampleBiomkTrajGivenXs(xsTrajX, disNr, nrSamples=100)
-
-  x_data_subjBSX = [0 for b in range(nrBiomk)]
-  y_data_subjBSX = [0 for b in range(nrBiomk)]
-  for b in range(nrBiomk):
-    x_data_subjBSX[b] = [[] for s in range(nrSubCurrDis)]
-    for s in range(nrSubCurrDis):
-      # x_data_subjBSX =
-      pass
 
   print('XshiftedDisModelBS', XshiftedDisModelBS)
   print('XvalidShifFilt', XvalidShifFilt)

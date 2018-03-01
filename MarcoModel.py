@@ -1090,7 +1090,12 @@ class GP_progression_model(object):
 
     def predictBiomk(self, newX):
 
-      assert self.minScX <= np.min(newX) <= self.maxScX
+      deltaX = 0.2 * (self.maxScX - self.minScX)
+      if not (self.minScX - deltaX <= np.min(newX) <= self.maxScX + deltaX):
+        print('newX', newX)
+        print('self.minScX', self.minScX)
+        print('self.maxScX', self.maxScX)
+        raise ValueError('newX not in the correct renge. check the scaling')
 
       xsScaled = self.applyScalingXForward(newX.reshape(-1, 1), biomk=0) # arbitrary space ->[0,1]
 

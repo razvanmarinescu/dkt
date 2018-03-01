@@ -455,7 +455,6 @@ class PlotterGP:
     nrRows, nrCols = auxFunc.findOptimalRowsCols(nrBiomk)
 
     nrSamples = trajSamplesBXS.shape[2]
-    nrSubValid = len(XsubjValidBSX[0])
 
     min_yB = np.zeros(nrBiomk)
     max_yB = np.zeros(nrBiomk)
@@ -463,10 +462,14 @@ class PlotterGP:
       # print([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0])
       # print([np.min(predTrajXB[:,b])])
       # print([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.min(predTrajXB[:,b])])
-      min_yB[b] = np.min([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0] +
-        [np.min(predTrajXB[:,b])] + [np.min(yS) for yS in YsubjValidBSX[b] if len(yS) > 0])
-      max_yB[b] = np.max([np.max(yS) for yS in YsubjBSX[b] if len(yS) > 0] +
-        [np.max(predTrajXB[:,b])] + [np.max(yS) for yS in YsubjValidBSX[b] if len(yS) > 0])
+      listsMin = [np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.min(predTrajXB[:,b])]
+      listsMax = [np.max(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.max(predTrajXB[:,b])]
+      if YsubjValidBSX is not None:
+        listsMin += [np.min(yS) for yS in YsubjValidBSX[b] if len(yS) > 0]
+        listsMax += [np.max(yS) for yS in YsubjValidBSX[b] if len(yS) > 0]
+
+      min_yB[b] = np.min(listsMin)
+      max_yB[b] = np.max(listsMax)
 
     deltaB = (max_yB - min_yB)/5
 
@@ -481,7 +484,8 @@ class PlotterGP:
 
       self.plotSubjData(ax, XsubjBSX[b], YsubjBSX[b], diagS, labelExtra = '')
       # print('-------------- validation data')
-      self.plotSubjData(ax, XsubjValidBSX[b], YsubjValidBSX[b], diagValidS, labelExtra = '')
+      if XsubjValidBSX is not None:
+        self.plotSubjData(ax, XsubjValidBSX[b], YsubjValidBSX[b], diagValidS, labelExtra = '')
 
       ax.plot(xsTrajX,predTrajXB[:,b],
         lw=2, color='black', label='estim traj')
