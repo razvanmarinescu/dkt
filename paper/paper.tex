@@ -72,6 +72,8 @@ urlcolor=black
 
 \begin{abstract}
 
+% write background in abstract. motivation. take out 
+
 We present Disease Knowledge Transfer (DKT), a technique for transferring biomarker correlations between Alzheimer's disease (AD) variants. DKT allows, for the first time, to infer biomarker values and their progressions in rare variants of AD for which data on such biomarkers is not available, by learning them from a different disease. For doing this, we formulate a new dementias paradigm called "Affected Overlap", which proposes that dementias are diseases that affect overlapping brain regions, and thus present certain biomarker characteristics that are shared and can thus be transferred across diseases. We then formulate the DKT model implementing this paradigm as a joint-disease generative model of biomarker progression which disentangles the biomarker correlations that are disease-specific from those correlations that are disease-agnostic. We demonstrate DKT on three datasets: (1) the TADPOLE Challenge dataset containing typical AD subjects (tAD) from the Alzheimer's Disease Neuroimaging Initiative (ADNI) dataset who had MRI, FDG-PET, AV45, AV1451 or DTI scans, as well as two datasets from our local centre containing subjects with (2) typical AD and (3) Posterior Cortical Atrophy (PCA) that have only undergone MRI scans. We train the DKT model on all three datasets at once, and show that it is able to predict, in PCA subjects, plausible population-level biomarker for FDG, DTI, AV45 and AV1451 biomarkers, for which no data was available. We validate the predictions of DKT using a small set of DTI scans for the PCA cohort. We demonstrate that DKT may be a useful tool to analyse and understand rare forms of dementias for which multimodal data is not available or is limited (e.g. cross-sectional). Finally, by leveraging data from multiple diseases, DKT also has the potential to provide more accurate disease staging compared to traditional disease progression models, which is useful for patient stratification in clinical trials.
 % * <alexandra.young@ucl.ac.uk> 2018-03-02T17:28:57.289Z:
 % 
@@ -96,7 +98,7 @@ There currently exist several image-based biomarkers for Alzheimer's disease tha
 
 
 % hypothetical model has specific ordering of modality biomarkers -> ordering or spatial biomarkers (different dimension) -> spatial differences in different dementias -> network vulnerability hypothesis.
-A hypothetical model of disease progression has been previously published by \cite{jack2010hypothetical}, which proposes that the first biomarkers to become abnormal are measures of amyloid beta aggregation, followed by tau abnormalities, hypometabolism, structural MRI-based measures and finally cognitive decline. While this hypothetical model proposes a modality-specific ordering of biomarkers in typical AD, it has also been observed that within the same modality, biomarker measurements have a spatial sequence of abnormality that correlates with Braak stages: hippocampal volumes and entorhinal measures become abnormal first, followed by other structures within the temporal lobe, followed by parietal and frontal abnormalities. However, the spatial ordering of abnormality differs in other Alzheimer's variants. For example, in Posterior Cortical Atrophy, posterior regions such as the occipital lobe and superior parietal regions have been shown to become affected. The network vulnerability theory by Seeley et al. \cite{seeley2009neurodegenerative} suggests that damage to specific underlying connectivity networks leads to spatially distinct patterns of neurodegeneration. There is nevertheless a great degree of heterogeneity within these diseases, which led some to suggest that subjects with different Alzheimer's variants lie on a continuum of phenotypical variation \cite{crutch2012posterior}. 
+A hypothetical model of disease progression has been previously published by \cite{jack2010hypothetical}, which proposes that the first biomarkers to become abnormal are measures of amyloid beta aggregation, followed by tau abnormalities, hypometabolism, structural MRI-based measures and finally cognitive decline. While this hypothetical model proposes a inter-modality ordering of biomarkers in typical AD, it has also been observed that within the same modality, biomarker measurements have a spatial sequence of abnormality that correlates with Braak stages: hippocampal volumes and entorhinal measures become abnormal first, followed by other structures within the temporal lobe, followed by parietal and frontal abnormalities. However, the spatial ordering of abnormality differs in other Alzheimer's variants. For example, in Posterior Cortical Atrophy, posterior regions such as the occipital lobe and superior parietal regions have been shown to become affected. More generally, the network vulnerability theory by Seeley et al. \cite{seeley2009neurodegenerative} suggests that damage to specific underlying connectivity networks leads to spatially distinct patterns of neurodegeneration. Overall, there is a great degree of heterogeneity within these diseases, which led some to suggest that subjects with different Alzheimer's variants lie on a continuum of phenotypical variation \cite{crutch2012posterior}. 
 % * <alexandra.young@ucl.ac.uk> 2018-03-02T19:01:16.243Z:
 % 
 % > The network vulnerability theory by Seeley et al. \cite{seeley2009neurodegenerative} suggests that damage to specific underlying connectivity networks leads to spatially distinct patterns of neurodegeneration. There is nevertheless a great degree of heterogeneity within these diseases, which led some to suggest that subjects with different Alzheimer's variants lie on a continuum of phenotypical variation \cite{crutch2012posterior}. 
@@ -126,8 +128,8 @@ We propose Disease Knowledge Transfer, a generative model that estimates progres
 \end{figure}
 
 \subsection{Methods}
-
-For modelling disease-agnostic correlations, we assume biomarkers are grouped into \emph{functional units}, where correlations within each unit are disease-agnostic (e.g. biomarkers corresponding to the same ROI).  Each biomarker is assigned a-priori to a specific functional unit, which corresponds to a brain region, say temporal lobe (Fig 1., bottom).  For example, biomarkers assigned to the temporal unit could be: amyloid in temporal lobe, tau in temporal lobe, MRI atrophy in temporal lobe and certain memory tests. Using a disease progression model of our choice, for each region-specific functional unit we can model the correlation of biomarkers within that functional unit (Figure 1, bottom), which allows us to reconstruct a region- or unit-specific \emph{dysfunction} progression axis which can be used for staging subjects. Finally, we express the disease specific correlations (Figure 1, top) not directly with each biomarkers, but via the dysfunction scores estimated within each functional unit.  
+% TODO: this was copy-pasted from a draft 2 weeks ago. needs re-writing!
+For modelling disease-agnostic correlations, we assume biomarkers are grouped into \emph{functional units}, where correlations within each unit are disease-agnostic (e.g. biomarkers corresponding to the same ROI).  Each biomarker is assigned a-priori to a specific functional unit, which corresponds to a brain region, say temporal lobe (Fig 1., bottom).  For example, biomarkers assigned to the temporal unit could be: amyloid in temporal lobe, tau in temporal lobe, MRI atrophy in temporal lobe and certain memory tests. Using an arbitrary disease progression model (e.g. CITE), for each region-specific functional unit we can model the correlation of biomarkers within that functional unit (Figure 1, bottom), which allows us to reconstruct a region- or unit-specific \emph{dysfunction} progression axis which can be used for staging subjects. Finally, we express the disease specific correlations (Figure 1, top) not directly with each biomarkers, but via the dysfunction scores estimated within each functional unit.  
 
 The proposed model is parsimonious, easily interpretable by abstracting away biomarker information into the functional units, and can be used for \emph{disease knowledge transfer}, i.e. learning correlations in one disease from another. Our approach is inspired by transfer learning methods from machine learning, but the model is generative, easing interpretability.
 
@@ -140,7 +142,7 @@ Variable names:
 %  \item $s_{ij}$ = disease progression score in subject $i$, visit $j$
  \item $\theta_k$ = parameters of trajectory for biomarker $k$
  \item $\lambda^l$ = parameters of trajectory for functional unit $l$, where $l \in \Lambda$
- \item $\psi$ : \{1, ..., K\} $ \rightarrow Lambda$ is a function that maps beach biomarker to its corresponding functional unit
+ \item $\psi$ : \{1, ..., K\} $ \rightarrow \Lambda$ is a function that maps beach biomarker to its corresponding functional unit
  \item $\beta_i$: time shift parameter for subject $i$ (disease specific)
  \item $\beta_i^{l}$: time shift parameter for subject $i$ used in functional unit $l$, where $l \in \Lambda$
  \item $\Omega$: set ${(i,j,k)}$ of measurements available from every subject $i$, visit $j$ in biomarker $k$
@@ -173,22 +175,20 @@ Let's assume we have MRI and PET data in tAD (from ADNI), but only MRI data for 
 
 \section{Results}
 
-Fig. \ref{fig:occipUnit} shows the estimated biomarker trajectories within the \emph{occipital unit}, along with samples from the model posterior and aligned subject data. The model shows a good data fit, and we can observe most PCA subjects having abnormal occipital volumes, thus leading to high occipital dysfunctionality scores, in line with the current understanding of PCA as affecting posterior regions \cite{crutch2012posterior}. Fig. \ref{fig:occipUnit} shows the progression of dysfunctionality scores for (a) typical AD and (b) PCA. In typical AD, we see that temporal dysfunction becomes abnormal  
+% Fig1: biomarker traj. over dysfunction scores in one functional unit -> Fig2: dysfunction trajectories over disease stage in the two disease models -> Fig3: inferred biomarker trajectories "directly" over disease stage  in PCA
+Fig. \ref{fig:occipUnit} shows the estimated biomarker trajectories within the \emph{occipital unit} plotted over the dysfunction scores, along with samples from the model posterior and aligned subject data. The X-axis shows the dysfunctionality scores within the occipital unit, which represent estimated time-shifts, in months, from an arbitrary reference X=0, while the Y-axis shows biomarker values normalised to [0,1] range. The model shows a good data fit, and we can observe most PCA subjects having abnormal occipital volumes, thus leading to high occipital dysfunctionality scores, in line with the current understanding of PCA as affecting posterior regions \cite{crutch2012posterior}. Fig. \ref{fig:occipUnit} shows the progression of dysfunctionality scores over the disease stage for (a) typical AD and (b) PCA (disease ). In typical AD, we see that temporal dysfunction becomes abnormal earliest, while PCA shows early parietal dysfunction, again in line with previous findings in the literature \cite{crutch2012posterior} (J.C. Baron, Neuroimage, 2001). In Fig. \ref{fig:PCAtrajByModality} we plot the inferred biomarker trajectories for PCA across the five different modalities: MRI Volumes, DTI, FDG, AV45 and AV1451. The trajectories 
 
 \newcommand{\expFld}{figures}
 
 % data fitting within one unit
-\begin{figure}[H]
+\begin{figure}
 \includegraphics[width=\textwidth, trim=90 0 110 0, clip]{figures/unit1_allTraj_tad-drcTinyPen1_JMD.png} 
-\caption{Estimated biomarker trajectories in the Occipital Unit. Subject data from ADNI and our local cohort are also shown. The X-axis represents, defined as the occipital dysfunctionality score, represents the time-shifts (in months) of each subject. Red lines represent samples from the trajectory posterior. The Y-axis represents biomarker values which have been normalised to the [0,1] range.}
+\caption{Estimated biomarker trajectories in the Occipital Unit. Subject data from ADNI and our local cohort are also shown. The X-axis represents, defined as the occipital dysfunctionality score, represents the time-shifts (in months) of each subject. Red lines represent samples from the trajectory posterior. The Y-axis measures biomarker values (normalised).}
 \label{fig:occipUnit}
 \end{figure}
 
-
-
-
 % PCA vs tAD disease space
-\begin{figure}[H]
+\begin{figure}
 \begin{subfigure}{0.47\textwidth}
 \centering
 typical AD\\
@@ -204,6 +204,8 @@ PCA\\
 \caption{Progression of dysfunctionality scores for (a) typical AD and (b) PCA. In typical AD, we notice that the temporal scores are most affected after the disease }
 \label{fig:pcaTadDisSpace}
 \end{figure}
+
+
 
 % estimated (hypothetical) trajectories in PCA: DTI, FDG, AV45, AV1451.Volumetric trajectories were based on PCA MRI data.
 \begin{figure}[H]
