@@ -155,9 +155,15 @@ class PlotterGP:
   def __init__(self, plotTrajParams):
     self.plotTrajParams = plotTrajParams
 
-  def plotTraj(self, gpModel, replaceFig=True):
+  def plotTraj(self, gpModel, replaceFig=True, legendExtraPlot=False):
     nrBiomk = gpModel.N_biom
     # Plot method
+
+    font = {'family': 'normal',
+      'size': 13}
+
+    import matplotlib
+    matplotlib.rc('font', **font)
 
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
     fig = pl.figure(1, figsize = figSizeInch)
@@ -174,8 +180,11 @@ class PlotterGP:
     min_yB, max_yB = gpModel.getMinMaxY_B(extraDelta=0)
     deltaB = [(max_yB[b] - min_yB[b]) * 0.2 for b in range(nrBiomk)]
 
-    nrRows = self.plotTrajParams['nrRows']
-    nrCols = self.plotTrajParams['nrCols']
+    # nrRows = self.plotTrajParams['nrRows']
+    # nrCols = self.plotTrajParams['nrCols']
+
+    nrRows = 2
+    nrCols = 3
 
     newX = gpModel.getXsMinMaxRange()
     predBiomksYscaledXB = gpModel.predictBiomk(newX)
@@ -212,12 +221,49 @@ class PlotterGP:
 
         diagCounters[diagCurrSubj] += 1
 
-      ax.plot(newX,predBiomksYscaledXB[:,b], lw=2, color='black', label='estim traj')
+      ax.plot(newX,predBiomksYscaledXB[:,b], lw=2, color='black', label='estimated trajectory')
 
-      ax.plot(np.array([np.min(newX), np.max(newX)]), [min_yB[b], max_yB[b]],
-        color=(0.5,0.5,0.5), lw=2)
+      # ax.plot(np.array([np.min(newX), np.max(newX)]), [min_yB[b], max_yB[b]],
+      #   color=(0.5,0.5,0.5), lw=2)
 
       ax.set_ylim([min_yB[b]-deltaB[b], max_yB[b]+deltaB[b]])
+
+      # ax.legend(ncol=1)
+
+    if legendExtraPlot:
+      ax = pl.subplot(nrRows, nrCols, nrBiomk+1)
+      pl.axis('off')
+
+      # plot subject data
+      diagCounters = dict([(k,0) for k in self.plotTrajParams['diagLabels'].keys()])
+      for sub in range(gpModel.N_samples):
+        diagCurrSubj = self.plotTrajParams['diag'][sub]
+        currLabel = None
+        if diagCounters[diagCurrSubj] == 0:
+          currLabel = self.plotTrajParams['diagLabels'][diagCurrSubj]
+          pass
+
+        ax.plot(Xshifted[b][sub], Y[b][sub],
+          color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=0.5)
+
+        ax.scatter(Xshifted[b][sub], Y[b][sub],
+          marker=self.plotTrajParams['diagScatterMarkers'][diagCurrSubj],
+          color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=2.5,
+          label=currLabel)
+
+        diagCounters[diagCurrSubj] += 1
+
+      ax.plot(newX,predBiomksYscaledXB[:,b], lw=2, color='black', label='estimated trajectory')
+
+
+      ax.set_ylim([1000, 10000])
+
+      ax.legend(ncol=1, loc='upper left')
+
+
+    fig.text(0.5, 0.04, 'Dysfunctionality Score', ha='center')
+    fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
+
 
     if replaceFig:
       fig.show()
@@ -236,6 +282,7 @@ class PlotterGP:
 
     nrRows = self.plotTrajParams['nrRows']
     nrCols = self.plotTrajParams['nrCols']
+
 
     if (nrBiomk + 3) > nrRows * nrCols:
       print('nrRows', nrRows)
@@ -424,8 +471,128 @@ class PlotterGP:
     # print(ads)
     return fig
 
+  def plotTrajSameSpace(self, gpModel, replaceFig=True, subjStagesEstim=None):
+
+    # nrBiomk = gpModel.N_biom
+    nrBiomk = 6
+    figSizeInch = (6, 4)
+    fig = pl.figure(2, figsize = figSizeInch)
+    pl.clf()
+
+    font = {'family': 'normal',
+      'size': 11.8}
+
+    import matplotlib
+    matplotlib.rc('font', **font)
+
+    ######### compare subject shifts ##########
+
+    colorsTraj = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
+      np.linspace(0, 1, num=nrBiomk, endpoint=False)]
+
+    nrSubjLong = len(gpModel.X[0])
+
+
+    if subjStagesEstim is None:
+      subjStagesEstim = gpModel.getSubShiftsLong()
+
+    ######### compare all trajectories ##########
+
+    newXTraj = gpModel.getXsMinMaxRange()
+    # newXTrajScaledZeroOne = (newXTraj - np.min(newXTraj)) / (np.max(newXTraj) - np.min(newXTraj))
+
+    # Xshifted, X, Y = gpModel.getData()
+    # XshiftedCtl = Xshifted[0][s] if s in np.where()
+
+    predTrajScaledXB = gpModel.predictBiomk(newXTraj)
+
+    if self.plotTrajParams['yNormMode'] == 'zScoreTraj':
+      idxZscore = [np.where(np.in1d(self.plotTrajParams['diag'], [CTL, CTL2]))[0]
+        for b in range(nrBiomk)]
+    elif self.plotTrajParams['yNormMode'] == 'zScoreEarlyStageTraj':
+      # take only the first 10 percentile at earliest stages and set that
+      # as the true control group
+      idxZscore = [0 for b in range(nrBiomk)]
+      for b in range(nrBiomk):
+        sortedIndx = np.argsort(subjStagesEstim)
+        sortedIndx =np.array([i for i in sortedIndx if gpModel.Y[b][i].shape[0] > 0])
+        percPoint = 0.1
+        if sortedIndx.shape[0] < 50:
+          # increase percPoint due to not enough samples
+          # (with 10% of subj then at most 5 subj will be used to estimate the Z-scores)
+          percPoint = 0.2
+
+        idxZscore[b] = sortedIndx[:int(sortedIndx.shape[0] * percPoint)]
+
+        if len(idxZscore) == 0:
+          idxZscore[b] = list(range(int(subjStagesEstim.shape[0]/20)))
+    elif self.plotTrajParams['yNormMode'] == 'unscaled':
+      pass
+    else:
+      raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
+
+
+    if self.plotTrajParams['yNormMode'] in ['zScoreTraj', 'zScoreEarlyStageTraj']:
+      meanCtlB = np.zeros(nrBiomk)
+      stdCtlB = np.zeros(nrBiomk)
+
+      for b in range(nrBiomk):
+        print('idxZscore', idxZscore)
+        yValsOfCtl = [gpModel.Y[b][s] for s in idxZscore[b]]
+        yValsOfCtl = [l2 for l in yValsOfCtl for l2 in l]
+        meanCtlB[b] = np.mean(yValsOfCtl)
+        stdCtlB[b] = np.std(yValsOfCtl)
+
+        predTrajScaledXB[:, b] = gpModel.applyGivenScalingY(predTrajScaledXB[:, b], meanCtlB[b], stdCtlB[b])
+
+      yMinPred = np.min(predTrajScaledXB, axis = (0, 1))
+      yMinAll = np.min([yMinPred])
+
+      yMaxPred = np.max(predTrajScaledXB, axis = (0, 1))
+      yMaxAll = np.max([yMaxPred])
+
+      min_yB = yMinAll * np.ones(nrBiomk)
+      max_yB = yMaxAll * np.ones(nrBiomk)
+
+      deltaB = deltaB = [(max_yB[b] - min_yB[b]) * 0.2 for b in range(nrBiomk)]
+      min_yB = min_yB - deltaB
+      max_yB = max_yB + deltaB
+
+    elif self.plotTrajParams['yNormMode'] == 'unscaled':
+      scaledYarrayB = [gpModel.applyScalingY(gpModel.Y_array[b], b) for b in range(nrBiomk)]
+      min_yB, max_yB = gpModel.getMinMaxY_B(extraDelta=0.2)
+
+      yMinAll = np.min(min_yB)
+      yMaxAll = np.max(max_yB)
+    else:
+      raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
+
+
+
+
+    # pl.gca().set_ylim([yMinAll, yMaxAll])
+    for b in range(nrBiomk):
+      pl.plot(newXTraj, predTrajScaledXB[:, b], '-',lw=2
+        ,c=colorsTraj[b], label=self.plotTrajParams['labels'][b])
+
+    pl.gcf().subplots_adjust(bottom=0.14)
+
+    pl.xlabel('Disease Progression (months)')
+    pl.ylabel('Dysfunctionality Scores (normalised)')
+
+    pl.legend()
+
+    if replaceFig:
+      fig.show()
+    else:
+      pl.show()
+    pl.pause(2)
+
+    # print(ads)
+    return fig
+
   def plotTrajInDisSpace(self, xsTrajX, predTrajXB, trajSamplesBXS,
-      XsubjBSX, YsubjBSX, diagS, XsubjValidBSX, YsubjValidBSX, diagValidS, replaceFig=True):
+      XsubjBSX, YsubjBSX, diagS, XsubjValidBSX, YsubjValidBSX, diagValidS, labels, replaceFig=True):
     """
     plot biomarker traj and subject data in disease space. function doesn't do any scaling of xs or ys
 
@@ -442,6 +609,12 @@ class PlotterGP:
     :return:
     """
 
+    font = {'family': 'normal',
+      'size': 13}
+
+    import matplotlib
+    matplotlib.rc('font', **font)
+
     # Plot method
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
     fig = pl.figure(1, figsize = figSizeInch)
@@ -452,6 +625,7 @@ class PlotterGP:
     nrDiags = diagNrs.shape[0]
 
     nrBiomk = len(XsubjBSX)
+    # nrBiomk = 18
     nrRows, nrCols = auxFunc.findOptimalRowsCols(nrBiomk)
 
     nrSamples = trajSamplesBXS.shape[2]
@@ -475,7 +649,7 @@ class PlotterGP:
 
     for b in range(nrBiomk):
       ax = pl.subplot(nrRows, nrCols, b + 1)
-      pl.title(self.plotTrajParams['labels'][b])
+      pl.title(labels[b])
       # print('--------------b', b)
       # plot traj samples
       for i in range(nrSamples):
@@ -488,12 +662,143 @@ class PlotterGP:
         self.plotSubjData(ax, XsubjValidBSX[b], YsubjValidBSX[b], diagValidS, labelExtra = '')
 
       ax.plot(xsTrajX,predTrajXB[:,b],
-        lw=2, color='black', label='estim traj')
+        lw=2, color='black', label='estim. traj.')
 
-      ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
-        color=(0.5,0.5,0.5), lw=2)
+      # ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
+      #   color=(0.5,0.5,0.5), lw=2)
 
       ax.set_ylim([min_yB[b]-deltaB[b], max_yB[b]+deltaB[b]])
+
+      pl.legend(ncol=1,fontsize=12)
+
+    # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+
+
+    fig.text(0.5, 0.04, 'Disease Progression (months)', ha='center')
+    fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
+
+
+    if replaceFig:
+      fig.show()
+    else:
+      pl.show()
+    pl.pause(0.05)
+
+    return fig
+
+
+  def plotTrajInDisSpaceOverlap(self, xsTrajX, predTrajXB, trajSamplesBXS,params,
+    replaceFig=True):
+    """
+    plot biomarker traj and subject data in disease space. function doesn't do any scaling of xs or ys
+
+    :param xsTrajX:
+    :param predTrajXB:
+    :param trajSamplesBXS:
+    :param replaceFig:
+    :return:
+    """
+
+    font = {'family': 'normal',
+      'size': 13}
+
+    import matplotlib
+    matplotlib.rc('font', **font)
+
+    # Plot method
+    figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
+    fig = pl.figure(1, figsize = figSizeInch)
+    # pl.subplots(nrows = 3, ncols = 3, sharex = True, sharey = True)
+    pl.clf()
+    fig.show()
+
+    diagNrs = np.unique(self.plotTrajParams['diag'])
+    nrDiags = diagNrs.shape[0]
+
+    # nrBiomk = 18
+    nrBiomk = predTrajXB.shape[1]
+
+
+    nrSamples = trajSamplesBXS.shape[2]
+
+    nrBiomkGroups = 5 # DTI, FDG, MRI, AV45, AV1451
+    biomkIndInGr = [[] for g in range(nrBiomkGroups)]
+    nrBiomkPerGroup = 6 # Frontal, Parietal, Temporal, Cingulate, Occipital, Hippocampus
+
+    nrRows, nrCols = auxFunc.findOptimalRowsCols(nrBiomkGroups)
+
+    colorsTraj = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
+      np.linspace(0, 1, num=nrBiomkPerGroup, endpoint=False)]
+
+
+    for g in range(nrBiomkGroups):
+      biomkIndInGr[g] = np.array(range(g * nrBiomkPerGroup, (g+1)*nrBiomkPerGroup))
+
+      groupName = params['labels'][biomkIndInGr[g][0]].split(' ')[0]
+
+      print('groupName', groupName)
+      print('biomkIndInGr[g]', biomkIndInGr[g])
+      print('labels in group', [params['labels'][b] for b in biomkIndInGr[g]])
+      # print(asda)
+
+      predTrajXBCurrGr = predTrajXB[:,biomkIndInGr[g]]
+      trajSamplesBXSCurrGr = trajSamplesBXS[biomkIndInGr[g],:,:]
+
+      min_yB = np.zeros(nrBiomk)
+      max_yB = np.zeros(nrBiomk)
+      for b in range(nrBiomkPerGroup):
+        listsMin = [np.min(predTrajXBCurrGr[:,b])]
+        listsMax = [np.max(predTrajXBCurrGr[:,b])]
+
+        min_yB[b] = np.min(listsMin)
+        max_yB[b] = np.max(listsMax)
+
+      deltaB = (max_yB - min_yB)/5
+
+      min_y = np.min(min_yB)
+      max_y = np.max(max_yB)
+
+      ax = pl.subplot(nrRows, nrCols, g+1)
+      pl.title(groupName)
+      # ax.xlabel()
+
+      for b in range(nrBiomkPerGroup):
+
+        for i in range(nrSamples):
+          ax.plot(xsTrajX, trajSamplesBXSCurrGr[b,:,i], lw = 0.05,
+            color = colorsTraj[b], alpha=0.7)
+
+        currLabel = self.plotTrajParams['labels'][biomkIndInGr[g][b]]
+        ax.plot(xsTrajX,predTrajXBCurrGr[:,b],
+          lw=2, c=colorsTraj[b], label=currLabel.split(' ')[-1])
+
+        # ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
+        #   color=(0.5,0.5,0.5), lw=2)
+
+        ax.set_ylim([min_yB[b]-deltaB[b], max_yB[b]+deltaB[b]])
+
+      # pl.tight_layout(pad=1, w_pad=0.5, h_pad=1.0)
+
+    axe = pl.subplot(nrRows, nrCols, nrBiomkGroups+1)
+    for b in range(nrBiomkPerGroup):
+
+      currLabel = self.plotTrajParams['labels'][biomkIndInGr[0][b]]
+      plH = axe.plot(xsTrajX, predTrajXBCurrGr[:, b],
+        lw=2, c=colorsTraj[b], label=currLabel.split(' ')[-1], alpha=1)
+
+      axe.set_ylim([1000, 100000])
+
+      pl.legend(loc='upper left')
+
+      pl.axis('off')
+
+      # for group in plH:
+      #   for x in group:
+      #     x.set_visible(False)
+
+    fig.text(0.55, 0.04, 'Disease Progression (months)', ha='center')
+    fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
+
 
 
     if replaceFig:

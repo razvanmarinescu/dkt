@@ -105,8 +105,8 @@ plotTrajParams['diagColors'] = {CTL:'g', MCI:'y', AD:'r',
 plotTrajParams['diagScatterMarkers'] = {CTL:'o', MCI:'o', AD:'o',
   CTL2:'x', PCA:'x', AD2:'x'}
 plotTrajParams['legendCols'] = 4
-plotTrajParams['diagLabels'] = {CTL:'CTL ADNI', MCI:'MCI ADNI', AD:'AD ADNI',
-  CTL2:'CTL DRC', PCA:'PCA DRC', AD2:'AD DRC'}
+plotTrajParams['diagLabels'] = {CTL:'CTL ADNI', MCI:'MCI ADNI', AD:'tAD ADNI',
+  CTL2:'CTL LOCAL', PCA:'PCA LOCAL', AD2:'tAD LOCAL'}
 
 plotTrajParams['freesurfPath'] = freesurfPath
 # plotTrajParams['ylimitsRandPoints'] = (-3,2)
@@ -1376,12 +1376,13 @@ def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = Non
   params['excludeStaging'] = [-1]
 
   params['outFolder'] = 'resfiles/%s' % expName
+  params['expName'] = expName
 
   dpmObjStd, res['std'] = evaluationFramework.runStdDPM(params,
     expName, dpmBuilder, params['runPartMain'])
 
 
-  plotAllBiomkDisSpace(dpmObjStd, params, disNr=0)
+  # plotAllBiomkDisSpace(dpmObjStd, params, disNr=0)
 
   # perform the validation against DRC data
   validateDRCBiomk(dpmObjStd, params)
@@ -1580,12 +1581,34 @@ def validateDRCBiomk(dpmObj, params):
   # print(ads)
 
 
-  fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
-    XshiftedDisModelBS, Yfilt, diagSubjCurrDis,
-    XvalidShifFilt, YvalidFilt, diagValidFilt, replaceFig=True)
-  fig.savefig('%s/validPCA.png' % params['outFolder'])
+  # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
+  #   XshiftedDisModelBS, Yfilt, diagSubjCurrDis,
+  #   XvalidShifFilt, YvalidFilt, diagValidFilt, replaceFig=True)
+  # fig.savefig('%s/validPCA.png' % params['outFolder'])
 
 
+  # plot just the DTI biomarkers
+  dtiColsArrayIndx = np.array(dtiColsIdx)
+  print('dtiColsArrayIndx', dtiColsArrayIndx)
+  predTrajDtiXB = predTrajXB[:,dtiColsArrayIndx]
+  trajSamplesDtiBXS = trajSamplesBXS[dtiColsArrayIndx,:,:]
+  # print(len(XshiftedDisModelBS))
+  # print(ads)
+  XvalidShifDtiFilt = [XvalidShifFilt[b] for b in dtiColsIdx]
+  YvalidFiltDti = [YvalidFilt[b] for b in dtiColsIdx]
+
+  labelsDti = [params['labels'][b] for b in dtiColsIdx]
+
+  fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajDtiXB, trajSamplesDtiBXS,
+    XvalidShifDtiFilt, YvalidFiltDti, diagValidFilt,
+    None, None, None, labelsDti, replaceFig=True)
+  fig.savefig('%s/validDtiPCA.png' % params['outFolder'])
+
+  # plot just the trajectories by modality groups
+  # fig = dpmObj.plotterObj.plotTrajInDisSpaceOverlap(xsTrajX, predTrajXB,
+  #   trajSamplesBXS, params, replaceFig=True)
+  # fig.savefig('%s/trajDisSpaceOverlap_%s_%s.png' % (params['outFolder'],
+  # params['disLabels'][disNr], params['expName']))
 
 
 if __name__ == '__main__':

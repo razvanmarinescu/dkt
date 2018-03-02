@@ -104,6 +104,13 @@ class JointModel(DisProgBuilder.DPMInterface):
         self.unitModels[u].minScX = self.unitModels[u].applyScalingX(self.unitModels[u].minX)
         self.unitModels[u].maxScX = self.unitModels[u].applyScalingX(self.unitModels[u].maxX)
 
+        plotTrajParamsFuncUnit = self.createPlotTrajParamsFuncUnit(nrCurrFuncUnit=u)
+        plotterObjCurrFuncUnit = Plotter.PlotterGP(plotTrajParamsFuncUnit)  # set separate plotter for the
+
+        # fig = plotterObjCurrFuncUnit.plotTraj(self.unitModels[u], replaceFig=True, legendExtraPlot=True)
+        # fig.savefig('%s/unit%s_allTraj_%s.png' % (self.outFolder, u, self.expName))
+
+
 
       # print(asda)
 
@@ -217,6 +224,12 @@ class JointModel(DisProgBuilder.DPMInterface):
         self.disModels[disNr].minScX = self.disModels[disNr].applyScalingX(self.disModels[disNr].minX)
         self.disModels[disNr].maxScX = self.disModels[disNr].applyScalingX(self.disModels[disNr].maxX)
 
+        plotTrajParamsDis = self.createPlotTrajParamsDis(disNr)
+        plotterCurrDis = Plotter.PlotterGP(plotTrajParamsDis)  # set separate plotter for the
+
+        # fig = plotterCurrDis.plotTrajSameSpace(self.disModels[disNr])
+        # fig.savefig('%s/%s_trajSameSpace_%s.png' % (self.outFolder, self.params['disLabels'][disNr],
+        #   self.expName))
 
     res = None
     return res
@@ -348,6 +361,8 @@ class JointModel(DisProgBuilder.DPMInterface):
       # print(plotTrajParamsDis['trueParams']['trueTrajXB'].shape)
       # print(adsa)
 
+    print(self.params['nrBiomkDisModel'])
+    # print(adssa)
 
     plotTrajParamsDis['labels'] = self.params['plotTrajParams']['unitNames']
     plotTrajParamsDis['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
