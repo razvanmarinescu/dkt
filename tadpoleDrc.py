@@ -1095,7 +1095,15 @@ def main():
   diag = ds['diag']
 
   # visDataHist(dataDfAll)
+  nrUnqDiags = np.unique(dataDfAll.diag)
+  print(dataDfAll)
+  for d in nrUnqDiags:
+    idxCurrDiag = ds['diag'] == d
+    print('nr subj %s %d' % (plotTrajParams['diagLabels'][d], np.sum(idxCurrDiag)))
+    # avgScans = []
+    # print('avg scans %s %d' % plotTrajParams['diagLabels'][d])
 
+  print(ads)
 
   meanVols = np.array([np.mean(Y[0][s]) for s in range(RID.shape[0])])
   meanVols[diag != CTL2] = np.inf
