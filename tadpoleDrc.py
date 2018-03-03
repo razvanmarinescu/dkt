@@ -1103,7 +1103,7 @@ def main():
     # avgScans = []
     # print('avg scans %s %d' % plotTrajParams['diagLabels'][d])
 
-  print(ads)
+  # print(ads)
 
   meanVols = np.array([np.mean(Y[0][s]) for s in range(RID.shape[0])])
   meanVols[diag != CTL2] = np.inf

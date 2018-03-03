@@ -144,6 +144,7 @@ class GP_progression_model(object):
                 obs = np.array([self.X_array[biom][k][0] for k in range(int(np.sum(self.N_obs_per_sub[biom][:sub])),
                                                                np.sum(self.N_obs_per_sub[biom][:sub + 1]))])
 
+        # self.addInitTimeShifts()
 
 
     # def addMinXMaxXExtraRange(self, deltaRangeFactor = 0.0):
@@ -735,6 +736,46 @@ class GP_progression_model(object):
 
       # objective_grad = lambda test_params_time_shift: self.grad_time_shift(test_params_time_shift)
       # fun_value, fun_grad = objective_grad(params_time_shift)
+
+
+    def addInitTimeShifts(self):
+
+        convTimeOnlyToTimePlusAcc = lambda params_time_shift_only_shift: \
+          np.concatenate((params_time_shift_only_shift.reshape(1,-1),
+          np.ones((1, params_time_shift_only_shift.shape[0]))),axis=0)
+
+        initTimeShifts = []
+        for s in range(len(self.Y[0])):
+          initTimeShifts += [[self.Y[b][s][0] for b in range(len(self.Y)) if self.Y[b][s].shape[0] > 0][0] * 50] # 50 months
+
+
+        print('initTimeShifts', initTimeShifts)
+        initTimeShifts = np.array(initTimeShifts)
+        initTimeShifts = initTimeShifts - np.mean(initTimeShifts)
+        initTimeShifts = convTimeOnlyToTimePlusAcc(np.array(initTimeShifts))
+        print('initTimeShifts', initTimeShifts)
+        # print(ads)
+
+        # import pdb
+        # pdb.set_trace()
+
+        for l in range(1):
+            self.params_time_shift[l] = self.params_time_shift[l] + initTimeShifts[l]
+
+        for i in range(self.N_biom):
+            Xdata = np.array([[100]])
+            for sub in range(self.N_samples):
+                temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub+1])]
+                shifted_temp = (temp + initTimeShifts[0][sub])
+                Xdata = np.hstack([Xdata,shifted_temp.T])
+
+            self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
+
+
+        minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+        maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+        self.updateMinMax(minX, maxX)
+        self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
 
 
