@@ -80,7 +80,7 @@ def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
     return Xtrain, Ytrain, np.array(RID), list_biomarkers, np.array(diagLong)
 
 def makeShiftsIdentif(subShiftsCross, ageAtVisitCross, crossDiag, ctlDiagNr, patDiagNr):
-  # make the subject shifts identifiable so that the dps_score(controls) ~ N(0,1) (as in Jedynak, 2012)
+  # set origin t=0 as best threshold that separates the two diagnostic histograms
 
   dpsCross = subShiftsCross + ageAtVisitCross
   nrSegments = 100

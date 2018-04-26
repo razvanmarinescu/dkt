@@ -1015,7 +1015,6 @@ class GP_progression_model(object):
               fig2.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i + 1, self.expName))
 
 
-
     def Return_time_shift(self):
         individual_time = []
         for sub in range(self.N_samples):
