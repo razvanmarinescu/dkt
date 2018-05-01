@@ -1103,8 +1103,6 @@ def main():
     # avgScans = []
     # print('avg scans %s %d' % plotTrajParams['diagLabels'][d])
 
-  # print(ads)
-
   meanVols = np.array([np.mean(Y[0][s]) for s in range(RID.shape[0])])
   meanVols[diag != CTL2] = np.inf
   idxOfDRCSubjWithLowVol = np.argmin(meanVols)
@@ -1177,6 +1175,16 @@ def main():
   params['iterParamsUnit'] = 60
   params['nrGlobIterDis'] = 10
   params['iterParamsDis'] = 60
+
+  nrSubj = len(ds['Yvalid'][0])
+  for b in range(6,12):
+    print(b, labels[b], [ds['Yvalid'][b][s][0] for s in range(nrSubj) if (ds['Yvalid'][b][s] and ds['diag'][s]
+    == CTL)])
+    print('mean CTL', np.mean([ds['Yvalid'][b][s][0] for s in range(nrSubj) if (ds['Yvalid'][b][s] and ds['diag'][s]
+    == CTL)]))
+    # print('mean AD', np.mean(ds['Yvalid'][b][ds['diag'] == AD]))
+
+  print(ads)
 
 
   nrBiomkDisModel = nrFuncUnits + 3
