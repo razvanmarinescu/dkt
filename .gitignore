@@ -8,3 +8,9 @@
 *.log
 *.backup
 *.mat
+*.swp
+GP_progression_model_RAZ.zip
+GP_progression_model_RAZ/
+*#
+resfiles/
+
