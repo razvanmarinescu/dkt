@@ -796,6 +796,10 @@ def prepareData(finalDataFile, tinyData):
   #validDf = addDRCValidDataMock(validDf) # generate random numbers for now
   validDf = addDRCValidData(validDf) # change to this real dataset one when ready
 
+
+  visValidDf(validDf)
+  print(asdas)
+
   validDf.to_csv('validDf.csv')
 
   print('validDf', validDf)
