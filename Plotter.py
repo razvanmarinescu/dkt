@@ -492,7 +492,6 @@ class PlotterGP:
 
     nrSubjLong = len(gpModel.X[0])
 
-
     if subjStagesEstim is None:
       subjStagesEstim = gpModel.getSubShiftsLong()
 
@@ -567,9 +566,6 @@ class PlotterGP:
     else:
       raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
 
-
-
-
     # pl.gca().set_ylim([yMinAll, yMaxAll])
     for b in range(nrBiomk):
       pl.plot(newXTraj, predTrajScaledXB[:, b], '-',lw=2
@@ -617,7 +613,7 @@ class PlotterGP:
 
     # Plot method
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
-    fig = pl.figure(1, figsize = figSizeInch)
+    fig = pl.figure(10, figsize = figSizeInch)
     pl.clf()
     fig.show()
 
@@ -682,7 +678,7 @@ class PlotterGP:
       fig.show()
     else:
       pl.show()
-    pl.pause(0.05)
+    pl.pause(5)
 
     return fig
 
