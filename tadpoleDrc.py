@@ -713,13 +713,17 @@ def regressCov(data, regressorVector, diag, diagsCTL = (CTL, CTL2), printFigs=Fa
 
   return data, params
 
-
 def applyRegFromParams(data, regressorVector, diag, params, diagsCTL = (CTL, CTL2),
-  printFigs=False):
+  printFigs=False, otherDataToPlot=None):
 
   oldData = copy.deepcopy(data)
   M = params['M']
   desiredMean = params['desiredMean']
+  diagNrs = [[CTL, CTL2], [PCA]]
+  diagLabels = ['CTL', 'PCA']
+  diagCols = ['g', 'r']
+
+  assert regressorVector.shape[0] == diag.shape[0]
   for i in range(data.shape[1]):
       currCol = data.columns[i]
       # notNanIndices = np.logical_not(np.isnan(regressorVector))
@@ -747,20 +751,30 @@ def applyRegFromParams(data, regressorVector, diag, params, diagsCTL = (CTL, CTL
 
       if printFigs:
         h = pl.figure(1, figsize=(15,10))
-        pl.scatter(regressorVector, oldData.loc[:,currCol], c='r',label='before', s=5)
-        pl.scatter(regressorVector, data[currCol], c='b',label='after', s=5)
-        # pl.plot(regressorVectorNN, Yhat[notNanIndices], c='r')
+        pl.clf()
+        for d in range(len(diagNrs)):
+          currDiagInd = np.in1d(diag, diagNrs[d])
+          print(regressorVector[currDiagInd])
+          print(oldData.loc[currDiagInd,currCol])
+          pl.scatter(regressorVector[currDiagInd], oldData.loc[currDiagInd,currCol],
+            c=diagCols[d],marker='.',label='%s before' % diagLabels[d], s=12)
+          pl.scatter(regressorVector[currDiagInd], data.loc[currDiagInd, currCol],
+            c=diagCols[d],marker='x',label='%s after' % diagLabels[d], s=12)
+
+          # pl.scatter(regressorVector, oldData.loc[:, currCol], c='r', m='.', label='before', s=5)
+          # pl.scatter(regressorVector, data[currCol], c='b', m='.', label='after', s=5)
+
+        pl.plot(regressorVector, Yhat, c='k', label='line')
         # correctedPred = np.nanmean(dataNNcurrCol.loc[indicesCtl]) * \
         #                 np.ones(dataNNcurrCol.loc[indicesCtl].shape[0])
         # pl.plot(regressorVectorNN[indicesCtl],correctedPred  , c='b')
         pl.title('%s' % data.columns[i])
         pl.legend()
+        pl.gca().set_xlim([np.min(regressorVector), np.max(regressorVector)])
 
         pl.show()
 
   return data
-
-
 
 def prepareData(finalDataFile, tinyData):
 
@@ -796,11 +810,11 @@ def prepareData(finalDataFile, tinyData):
   #validDf = addDRCValidDataMock(validDf) # generate random numbers for now
   validDf = addDRCValidData(validDf) # change to this real dataset one when ready
 
-
-  visValidDf(validDf)
-  print(asdas)
+  outFilePrefix = 'befReg'
+  # visValidDf(validDf, outFilePrefix)
 
   validDf.to_csv('validDf.csv')
+  # print(asdas)
 
   print('validDf', validDf)
 
@@ -809,8 +823,6 @@ def prepareData(finalDataFile, tinyData):
   print(dataDfTadpole.columns.tolist())
   print(dataDfDrc.columns.tolist())
   assert all([x == y for x,y in zip(dataDfTadpole.columns.tolist(), dataDfDrc.columns.tolist())])
-
-
 
   # regress out covariates: age, gender, ICV and dataset
   colsList = dataDfAll.columns.tolist()
@@ -822,7 +834,7 @@ def prepareData(finalDataFile, tinyData):
     dataDfAll['ICV'], dataDfAll['diag'])
 
   validDf[mriCols] = applyRegFromParams(validDf[mriCols],
-    validDf['ICV'], validDf['diag'], regParamsICV)
+    validDf['ICV'], validDf['diag'], regParamsICV, dataDfAll[mriCols],printFigs=True)
 
   testValidDfConsist(validDf, dataDfAll)
 
@@ -996,9 +1008,9 @@ def prepareData(finalDataFile, tinyData):
   validDf.loc[:,mriCols] = np.nan
   print('validDf', validDf.loc[:,mriCols])
 
-
-  # visValidDf(validDf)
-
+  outFilePrefix = 'afterReg'
+  visValidDf(validDf, outFilePrefix)
+  # print(ads)
 
   Xvalid, Yvalid, RIDvalid, _, diagValid = \
     auxFunc.convert_table_marco(validDf, list_biomarkers = selectedBiomk)
@@ -1053,21 +1065,6 @@ def visDataHist(dataDfAll):
     fig.show()
     os.system('mkdir -p resfiles/tad-drc')
     fig.savefig('resfiles/tad-drc/%d_%s.png' % (b, biomks[b]))
-
-# test why there are some subj with bad FDG in temporal
-#   smallFdgInd = dataDfAll['FDG Temporal'] < 0.8
-#   largeFdgInd = dataDfAll['FDG Temporal'] > 0.8
-#
-#   print('smallFdgInd', dataDfAll.loc[np.where(smallFdgInd)[0],:])
-#   print('largeFdgInd', dataDfAll.loc[np.where(largeFdgInd)[0], :])
-#
-#   dfSmallFdg = dataDfAll.loc[smallFdgInd,:].copy()
-#   dfLargeFdg = dataDfAll.loc[largeFdgInd,:].copy()
-#
-#   dfSmallFdg.to_csv('resfiles/tad-drc/smallFdg.csv')
-#   dfLargeFdg.to_csv('resfiles/tad-drc/largeFdg.csv')
-
-  # print(adsas)
 
 
 def main():
@@ -1180,15 +1177,15 @@ def main():
   params['nrGlobIterDis'] = 10
   params['iterParamsDis'] = 60
 
-  nrSubj = len(ds['Yvalid'][0])
-  for b in range(6,12):
-    print(b, labels[b], [ds['Yvalid'][b][s][0] for s in range(nrSubj) if (ds['Yvalid'][b][s] and ds['diag'][s]
-    == CTL)])
-    print('mean CTL', np.mean([ds['Yvalid'][b][s][0] for s in range(nrSubj) if (ds['Yvalid'][b][s] and ds['diag'][s]
-    == CTL)]))
+  # nrSubj = len(ds['Yvalid'][0])
+  # for b in range(6,12):
+  #   print(b, labels[b], [ds['Yvalid'][b][s][0] for s in range(nrSubj) if (ds['Yvalid'][b][s] and ds['diag'][s]
+  #   == CTL)])
+  #   print('mean CTL', np.mean([ds['Yvalid'][b][s][0] for s in range(nrSubj) if (ds['Yvalid'][b][s] and ds['diag'][s]
+  #   == CTL)]))
     # print('mean AD', np.mean(ds['Yvalid'][b][ds['diag'] == AD]))
 
-  print(ads)
+  # print(ads)
 
 
   nrBiomkDisModel = nrFuncUnits + 3
@@ -1237,90 +1234,77 @@ def main():
    args.modelToRun, runAllExpTadpoleDrc)
 
 
-# def addDRCValidDataMock(validDf):
-#   state = np.random.get_state()
-#   # print(np.random.rand())
-#
-#   nrDRCentries = np.sum(validDf.dataset == 2)
-#   colsList = validDf.loc[:,'DTI FA Cingulate' : 'DTI FA Temporal'].columns.tolist()
-#   # print('colsList', colsList)
-#   validDf[colsList] = \
-#     np.random.rand(nrDRCentries, len(colsList))
-#
-#   np.random.set_state(state)
-#   # print(np.random.rand())
-#   # print(asda)
-#
-#   return validDf
 
 def addDRCValidData(validDf):
   '''perform validation on DTI data from the DRC '''
 
   #dtiSS = pd.read_csv('../data/DRC/DTI/DTI_summary_forRaz.xlsx')
   dtiSS = pd.read_csv('DTI_summary_forRaz.csv')
-  mappingIDtoRegion = {0 : "Unclassified" ,
-    1: ["Middle cerebellar peduncle", "ICP"], #
-    2: ["Pontine Crossing tract","PCT"], #
-    3: ["Genu of corpus callosum", "GCC"],
-    4: ["Body of corpus callosum", "BCC"],
-    5: ["Splenium of corpus callosum", "SCC"],
-    6: ["Fornix (column and body of fornix)","FX"],
-    7: ["Corticospinal tract R", "CST"],
-    8: ["Corticospinal tract L", "CST"],
-    9: ["Medial lemniscus R", "ML"],#
-    10: ["Medial lemniscus L","ML"], #
-    11: ["Inferior cerebellar peduncle R", "ICP"],  #
-    12: ["Inferior cerebellar peduncle L", "ICP"],  #
-    13: ["Superior cerebellar peduncle R", "SCP"],  #
-    14: ["Superior cerebellar peduncle L", "SCP"],  #
-    15: ["Cerebral peduncle R", "CP"],  #
-    16: ["Cerebral peduncle L", "CP"],  #
-    17: ["Anterior limb of internal capsule R", "ALIC"],  #
-    18: ["Anterior limb of internal capsule L", "ALIC"],  #
-    19: ["Posterior limb of internal capsule R", "PLIC"], #
-    20: ["Posterior limb of internal capsule L", "PLIC"], #
-    21: ["Retrolenticular part of internal capsule R", "RLIC"], #
-    22: ["Retrolenticular part of internal capsule L", "RLIC"], #
-    23: ["Anterior corona radiata R", "ACR"],
-    24: ["Anterior corona radiata L", "ACR"],
-    25: ["Superior corona radiata R", "SCR"],
-    26: ["Superior corona radiata L", "SCR"],
-    27: ["Posterior corona radiata R", "PCR"],
-    28: ["Posterior corona radiata L", "PCR"],
-    29: ["Posterior thalamic radiation R", "PTR"],
-    30: ["Posterior thalamic radiation L", "PTR"],
-    31: ["Sagittal stratum R", "SS"],
-    32: ["Sagittal stratum L", "SS"],
-    33: ["External capsule R", "EC"], #
-    34: ["External capsule L", "EC"], #
-    35: ["Cingulum (cingulate gyrus) R", "CGC"],
-    36: ["Cingulum (cingulate gyrus) L", "CGC"],
-    37: ["Cingulum (hippocampus) R", "CGH"],
-    38: ["Cingulum (hippocampus) L", "CGH"],
-    39: ["Fornix (cres) / Stria terminalis R", "FX"],
-    40: ["Fornix (cres) / Stria terminalis L", "FX"],
-    41: ["Superior longitudinal fasciculus R", "SLF"],
-    42: ["Superior longitudinal fasciculus L", "SLF"],
-    43: ["Superior fronto-occipital fasciculus R", "SFO"],
-    44: ["Superior fronto-occipital fasciculus L", "SFO"],
-    45: ["Uncinate fasciculus R", "UNC"],
-    46: ["Uncinate fasciculus L", "UNC"],
-    47: ["Tapetum R", "TP"],
-    48: ["Tapetum L", "TP"]}
+  mappingIDtoRegion = {0 : ["Unclassified", "UNC"] ,
+    1: ["Middle cerebellar peduncle", "ICP"], # TBC
+    2: ["Pontine Crossing tract","PCT"], # TBC
+    3: ["Genu of corpus callosum", "GCC"],# cingulate
+    4: ["Body of corpus callosum", "BCC"],# cingulate
+    5: ["Splenium of corpus callosum", "SCC"],  # cingulate
+    6: ["Fornix (column and body of fornix)","FX"], # hippo
+    7: ["Corticospinal tract R", "CST"],# frontal
+    8: ["Corticospinal tract L", "CST"],# frontal
+    9: ["Medial lemniscus R", "ML"],## TBC
+    10: ["Medial lemniscus L","ML"], ## TBC
+    11: ["Inferior cerebellar peduncle R", "ICP"],  ## TBC
+    12: ["Inferior cerebellar peduncle L", "ICP"],  ## TBC
+    13: ["Superior cerebellar peduncle R", "SCP"],  ## TBC
+    14: ["Superior cerebellar peduncle L", "SCP"],  ## TBC
+    15: ["Cerebral peduncle R", "CP"],  # TBC
+    16: ["Cerebral peduncle L", "CP"],  # TBC
+    17: ["Anterior limb of internal capsule R", "ALIC"],  # TBC
+    18: ["Anterior limb of internal capsule L", "ALIC"],  # TBC
+    19: ["Posterior limb of internal capsule R", "PLIC"], # TBC
+    20: ["Posterior limb of internal capsule L", "PLIC"], # TBC
+    21: ["Retrolenticular part of internal capsule R", "RLIC"], # TBC
+    22: ["Retrolenticular part of internal capsule L", "RLIC"], # TBC
+    23: ["Anterior corona radiata R", "ACR"],# Frontal
+    24: ["Anterior corona radiata L", "ACR"],# Frontal
+    25: ["Superior corona radiata R", "SCR"], # Frontal
+    26: ["Superior corona radiata L", "SCR"],# Frontal
+    27: ["Posterior corona radiata R", "PCR"],# Parietal
+    28: ["Posterior corona radiata L", "PCR"],# Parietal
+    29: ["Posterior thalamic radiation R", "PTR"], # Parietal
+    30: ["Posterior thalamic radiation L", "PTR"], # Parietal
+    31: ["Sagittal stratum R", "SS"], # Temporal
+    32: ["Sagittal stratum L", "SS"],# Temporal
+    33: ["External capsule R", "EC"], # TBC
+    34: ["External capsule L", "EC"], # TBC
+    35: ["Cingulum (cingulate gyrus) R", "CGC"], # Cingulate
+    36: ["Cingulum (cingulate gyrus) L", "CGC"],# Cingulate
+    37: ["Cingulum (hippocampus) R", "CGH"], # hippocampus
+    38: ["Cingulum (hippocampus) L", "CGH"], # hippocampus
+    39: ["Fornix (cres) / Stria terminalis R", "FX"], # hippocampus
+    40: ["Fornix (cres) / Stria terminalis L", "FX"], # hippocampus
+    41: ["Superior longitudinal fasciculus R", "SLF"], # occip
+    42: ["Superior longitudinal fasciculus L", "SLF"], # occip
+    43: ["Superior fronto-occipital fasciculus R", "SFO"], # TBC
+    44: ["Superior fronto-occipital fasciculus L", "SFO"], # TBC
+    45: ["Uncinate fasciculus R", "UNC"], # TBC
+    46: ["Uncinate fasciculus L", "UNC"], # TBC
+    47: ["Tapetum R", "TP"],# TBC
+    48: ["Tapetum L", "TP"]}# TBC
+
+
 
   dtiBiomkStructTemplate_updated = {
           'CST':'Frontal',
           'ACR':'Frontal',
           'SCR':'Frontal',
-          'TP':'Frontal',
+          'TP':'TBC',
           'PCR':'Parietal',
           'PTR':'Parietal',
           'SS':'Temporal',
-          'UNC':'Temporal',
+          'UNC':'TBC',
           'SLF':'Occipital',
-          'SFO':'Occipital',
+          'SFO':'TBC',
           'CGC':'Cingulate',
-          'GCC':'Cingulate',
+          'GCC':'TBC',
           'BCC':'Cingulate',
           'SCC':'Cingulate',
           'CGH':'Hippocampus',
@@ -1331,19 +1315,88 @@ def addDRCValidData(validDf):
           'ICP':'TBC',
           'SCP':'TBC',
           'CP':'TBC',
-          'EC':'TBC',
           'PCT':'TBC',
           'EC':'TBC',
           'ML':'TBC',
           'n':'NA'
   }
+
+  # dtiBiomkStructTemplate = {
+  #   'Frontal' : ['CST', 'ACR', 'SCR'],
+  #   'Parietal' : ['PCR', 'PTR'],
+  #   'Temporal' : ['SS'],
+  #   'Occipital' : ['SLF'], # not only occipital, but also frontal & temporal
+  #   'Cingulate' : ['CGC', 'GCC', 'BCC', 'SCC'],
+  #   'Hippocampus': ['CGH', 'FX']
+  # }
+
+  ##########################
+
+  # remove subj ID 1719, fa values too low due to presence of artifact.
+  dtiSS = dtiSS[~np.in1d(dtiSS.Scan1Study, [1719, 1496, 1760])]
+  dtiSS.reset_index(drop=True, inplace=True)
+
+  print('-------------------------\n\n')
+  dtiSS.replace({'Diagnosis': {'AD (PCA)':4, 'Control':5}}, inplace=True)
+  print(dtiSS['Diagnosis'])
+  # print(ads)
+  dtiSS_grouped = dtiSS.groupby(['region', 'metric'])
+
+  diagNrs = [4,5]
+  diagLabels = ['PCA', 'Control']
+  diagColors = ['r', 'g']
+  nrWMregions = 48
+  nrSubj = dtiSS_grouped.get_group((0,'fa')).shape[0]
+  sortedIdMS = np.zeros((nrWMregions,int(nrSubj/2)))
+
+  for r in range(nrWMregions):
+    for measure in ['fa', 'md', 'ad']:
+      # print('r = %s' % mappingIDtoRegion[r], 'meas=', measure)
+      # print(dtiSS_grouped.get_group((r,measure))[['mean', 'Diagnosis']])
+      colLabel = mappingIDtoRegion[r][0].replace("/", "")
+      outFile = 'resfiles/tad-drc/validDf_%s_%d%s.png' % (measure, r, colLabel)
+      currGroup = dtiSS_grouped.get_group((r,measure)).reset_index()
+      measureCol = currGroup['mean']
+      diagCol = currGroup['Diagnosis']
+      print('colLabel', colLabel)
+
+      # visDfCol(measureCol, colLabel, diagCol, diagNrs, diagLabels, diagColors, outFile)
+
+      ctlIndx = np.where(diagCol == diagNrs[1])[0]
+      measCtl = measureCol[diagCol == diagNrs[1]].as_matrix().reshape(-1)
+      minInd = np.argmin(measCtl)
+      indxSorted = np.argsort(measCtl)
+      # print(measCtl)
+      # print('indxSorted', indxSorted)
+      # print('ctlIndx[indxSorted]', ctlIndx[indxSorted])
+      sortedIdMS[r,:] = currGroup.loc[ctlIndx[indxSorted],'Scan1Study'].as_matrix()
+      # print('indxSorted', currGroup.loc[ctlIndx[indxSorted],'Scan1Study'])
+      # print('minInd', currGroup.loc[ctlIndx[minInd],:])
+      print('sortedIdMS',colLabel, sortedIdMS[r,:])
+
+      # import pdb
+      # pdb.set_trace()
+
+  # print('sortedIdMS', sortedIdMS)
+  # remove subj ID 1719, fa values too low due to presence of artifact.
+  # dtiSS = dtiSS[dtiSS.Scan1Study != 1719]
+  # dtiSS.reset_index(drop=True, inplace=True)
+
+  # print(dtiSS.Scan1Study)
+  # print(ads)
+  ###########################
+
   dtiSS['region'] = dtiSS['region'].map(lambda x: \
        'DTI FA '+dtiBiomkStructTemplate_updated[mappingIDtoRegion[x][1]])
 
-  print(dtiSS)
+  # print(dtiSS)
   # print(asd)
   dtiSS_means = dtiSS.groupby(['Scan1Study','region', 'metric'])['mean']\
                   .mean().reset_index()
+
+  print(dtiSS.groupby(['Scan1Study','region', 'metric']).mean())
+  # print(adsa)
+
 
   idx = dtiSS_means.metric == 'fa'
   print('idx', idx)
@@ -1366,22 +1419,77 @@ def addDRCValidData(validDf):
   validDf_u.update(dtiSS_pivoted)
   validDf_u = validDf_u.reset_index()
 
+  # print(validDf_u)
+  # print(asda)
+
   return validDf_u
 
-def visValidDf(validDf):
+
+def visValidDf(validDf, outFilePrefix):
   fig = pl.figure(1)
+  # print(validDf.columns.tolist())
+  # print(adsa)
   dtiCols = validDf.loc[:, 'DTI FA Cingulate' : 'DTI FA Temporal'].columns.tolist()
+  dtiDf = validDf[dtiCols]
+
+  # validDfByDiag = validDf.groupby([diag])
+  diagNrs = [4,5]
+
+  ctlVals = validDf.loc[validDf.diag == 4, dtiCols[0]].dropna()
+  patVals = validDf.loc[validDf.diag == 5, dtiCols[0]].dropna()
+
+  ridSortedCtlBS = np.zeros((len(dtiCols),ctlVals.shape[0]))
+  ridSortedPatBS = np.zeros((len(dtiCols), patVals.shape[0]))
+
   for b in range(len(dtiCols)):
     pl.clf()
-    print(validDf.loc[validDf.diag == 4, dtiCols[b]].dropna())
-    print(validDf.loc[validDf.diag == 5, dtiCols[b]].dropna())
-    pl.hist(validDf.loc[validDf.diag == 4, dtiCols[b]].dropna(), color='g', label='ctl')
-    pl.hist(validDf.loc[validDf.diag == 5, dtiCols[b]].dropna(), color='r', label='pca')
+    ctlVals = validDf.loc[validDf.diag == 4, dtiCols[b]].dropna()
+    patVals = validDf.loc[validDf.diag == 5, dtiCols[b]].dropna()
+    pl.hist(ctlVals, color='g', label='ctl', histtype='step',fill=False)
+    pl.hist(patVals, color='r', label='pca', histtype='step',fill=False)
     pl.title(dtiCols[b])
+    pl.legend()
     fig.show()
-    fig.savefig('resfiles/tad-drc/valid_%d_%s.png' % (b, dtiCols[b]))
+    outFile = 'resfiles/tad-drc/valid_%s_%d_%s.png' % (outFilePrefix, b, dtiCols[b])
+    fig.savefig(outFile)
+    # print(adas)
 
+    ctlScanID = validDf.loc[np.logical_and(validDf.diag == 4, ~np.isnan(validDf[dtiCols[b]])), 'scanID'].as_matrix().reshape(-1)
+    patScanID = validDf.loc[np.logical_and(validDf.diag == 5, ~np.isnan(validDf[dtiCols[b]])), 'scanID'].as_matrix().reshape(-1)
+    print('ctlScanID', ctlScanID)
+    print('patScanID', patScanID)
+    print('~np.isnan(validDf[dtiCols[b]])', np.sum(~np.isnan(validDf[dtiCols[b]])))
+    print('validDf.diag == 4 ', np.sum(validDf.diag == 4) )
+    # print(ads)
 
+    idxSortCtl = np.argsort(ctlVals)
+    idxSortPat = np.argsort(patVals)
+    ridSortedCtlBS[b,:] = ctlScanID[idxSortCtl]
+    ridSortedPatBS[b,:] = patScanID[idxSortPat]
+
+  print('ridSortedCtlBS', ridSortedCtlBS)
+  print('ridSortedPatBS', ridSortedPatBS)
+  # print(ads)
+
+def visDfCol(dfCol, colLabel, diagCol, diagNrs, diagLabels, diagColors, outFile):
+  fig = pl.figure(1)
+  nrDiags = len(diagNrs)
+  pl.clf()
+  for d in range(nrDiags):
+    # print(dfCol)
+    # print(diagCol)
+    # print(diagNrs[d])
+    # print(diagCol == diagNrs[d])
+    # print(dfCol.loc[diagCol == diagNrs[d]])
+    # print(dfCol[diagCol == diagNrs[d]])
+    pl.hist(dfCol.loc[diagCol == diagNrs[d]].dropna(), color=diagColors[d], label=diagLabels[d], histtype='step',fill=False)
+
+  pl.legend()
+  pl.title(colLabel)
+  fig.show()
+  outFile = outFile.replace(" ", "_")
+  fig.savefig(outFile)
+  # print(ads)
 
 def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = None):
   """ runs all experiments"""
