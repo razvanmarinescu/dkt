@@ -91,6 +91,7 @@ plotTrajParams['isSynth'] = True
 
 
 
+
 if args.agg:
   plotTrajParams['agg'] = True
 else:
@@ -125,7 +126,7 @@ def main():
 
   params = {}
 
-  nrFuncUnits = 3
+  nrFuncUnits = 2
   nrBiomkInFuncUnits = 3
 
   nrBiomk = nrBiomkInFuncUnits * nrFuncUnits
@@ -135,7 +136,7 @@ def main():
 
   biomkInFuncUnit = [0 for u in range(nrFuncUnits+1)]
   for u in range(nrFuncUnits):
-    biomkInFuncUnit[u] = list(np.where(mapBiomkToFuncUnits == u)[0])
+    biomkInFuncUnit[u] = np.where(mapBiomkToFuncUnits == u)[0]
 
   biomkInFuncUnit[nrFuncUnits] = [] # need to leave this as empty list
 
@@ -162,7 +163,7 @@ def main():
   params['penaltyUnits'] = args.penalty
   params['penaltyDis'] = 1
   params['nrFuncUnits'] = nrFuncUnits
-  params['mapBiomkToFuncUnits'] = mapBiomkToFuncUnits
+  params['biomkInFuncUnit'] = biomkInFuncUnit
   params['nrBiomkDisModel'] = nrFuncUnits
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
@@ -182,11 +183,12 @@ def main():
   # set first funtional unit to have traj with lower slopes
   thetas[mapBiomkToFuncUnits == 0, 1] = 5
   thetas[mapBiomkToFuncUnits == 1, 1] = 10
-  thetas[mapBiomkToFuncUnits == 2, 1] = 7
+  # thetas[mapBiomkToFuncUnits == 2, 1] = 7
 
 
   sigmaB = 0.05 * np.ones(nrBiomk)
 
+  # scale every biomarker with mean and std.
   scalingBiomk2B = np.zeros((2, nrBiomk))
   scalingBiomk2B[:, 0] = [200, 100] # mean +/- std
   scalingBiomk2B[:, 0] = [200, 100]  # mean +/- std
@@ -194,19 +196,22 @@ def main():
   scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
   scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
 
-  scalingBiomk2B[:, 2] = [20, 10]  # mean +/- std
-  scalingBiomk2B[:, 2] = [20, 10]  # mean +/- std
+  # scalingBiomk2B[:, 2] = [20, 10]  # mean +/- std
+  # scalingBiomk2B[:, 2] = [20, 10]  # mean +/- std
 
-  scalingBiomk2B[:, 3:6] = scalingBiomk2B[:, 0:3]
-  scalingBiomk2B[:, 6:9] = scalingBiomk2B[:, 0:3]
+  # scalingBiomk2B[:, 3:6] = scalingBiomk2B[:, 0:3]
+  # scalingBiomk2B[:, 6:9] = scalingBiomk2B[:, 0:3]
+  scalingBiomk2B[:, 2:4] = scalingBiomk2B[:, 0:2]
+  scalingBiomk2B[:, 4:6] = scalingBiomk2B[:, 0:2]
+
 
   ##### disease 1 - disease specific parameters ###########
 
   # params of the dysfunctional trajectories
   dysfuncParamsDisOne = np.zeros((nrFuncUnits, 4), float)
   dysfuncParamsDisOne[:, 0] = 1  # ak
-  dysfuncParamsDisOne[:, 1] = [0.3, 0.2, 0.3] # bk
-  dysfuncParamsDisOne[:, 2] = [-4, 2, 6]  # ck
+  dysfuncParamsDisOne[:, 1] = [0.3, 0.2] # bk
+  dysfuncParamsDisOne[:, 2] = [-4, 6]  # ck
   dysfuncParamsDisOne[:, 3] = 0  # dk
 
   synthModelDisOne = ParHierModel.ParHierModel(dysfuncParamsDisOne, thetas,
@@ -220,7 +225,7 @@ def main():
 
   paramsDisOne['plotTrajParams']['trueParams'] = paramsDisOne['trueParams']
 
-  replaceFigMode = True
+  replaceFigMode = False
 
   if regenerateData:
     synthPlotter = Plotter.PlotterJDM(paramsDisOne['plotTrajParams'])
@@ -233,8 +238,8 @@ def main():
 
   # params of the dysfunctional trajectories
   dysfuncParamsDisTwo = copy.deepcopy(dysfuncParamsDisOne)
-  dysfuncParamsDisTwo[:, 1] = [0.3, 0.2, 0.3] # bk
-  dysfuncParamsDisTwo[:, 2] = [6, 2, -4]
+  dysfuncParamsDisTwo[:, 1] = [0.3, 0.2] # bk
+  dysfuncParamsDisTwo[:, 2] = [-4, 6]
 
   synthModelDisTwo = ParHierModel.ParHierModel(dysfuncParamsDisTwo, thetas, mapBiomkToFuncUnits, sigmoidFunc, sigmaB)
 
@@ -267,8 +272,8 @@ def main():
         XemptyListsAllBiomk[b][s] = paramsDisTwo['Xtrue'][b][s]
         YemptyListsAllBiomk[b][s] = paramsDisTwo['Ytrue'][b][s]
       else:
-        XemptyListsAllBiomk[b][s] = []
-        YemptyListsAllBiomk[b][s] = []
+        XemptyListsAllBiomk[b][s] = np.array([])
+        YemptyListsAllBiomk[b][s] = np.array([])
 
   paramsDisTwo['XemptyListsAllBiomk'] = XemptyListsAllBiomk
   paramsDisTwo['YemptyListsAllBiomk'] = YemptyListsAllBiomk

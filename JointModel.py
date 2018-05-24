@@ -53,8 +53,6 @@ class JointModel(DisProgBuilder.DPMInterface):
       self.params['diagsSetInDis'][disNr]) for disNr in range(self.nrDis)]
 
 
-
-
   def runStd(self, runPart):
     self.run(runPart)
 
@@ -246,7 +244,6 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     # first predict the dysfunctionality scores in the disease specific model
     dysfuncPredXU = self.disModels[disNr].predictBiomk(newXs)
-
 
 
     # then predict the inidividual biomarkers in the disease agnostic models

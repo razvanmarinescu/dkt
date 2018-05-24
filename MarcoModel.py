@@ -199,6 +199,11 @@ class GP_progression_model(object):
 
           XshiftedScaled[b] += [self.applyScalingX(XshiftedCurrSubj)]
 
+          print('XshiftedScaled[b][s]', XshiftedScaled[b][s], XshiftedScaled[b][s].shape)
+          print(type(self.X[b][s]))
+          # print(XshiftedScaled[b][s].shape[0])
+          # print(ads)
+
           assert XshiftedScaled[b][s].shape[0] == self.X[b][s].shape[0]
           assert XshiftedScaled[b][s].shape[0] == self.Y[b][s].shape[0]
 

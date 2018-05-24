@@ -402,13 +402,14 @@ def prepareData(finalDataFile, tinyData):
     auxFunc.convert_table_marco(dataDfAll, list_biomarkers=selectedBiomk)
 
 
-
   # now drop all the mri values, which were used for testing consistency
   # and only keep the DTI. Don't remove the MRI cols though, needs to be in
   # same format as dataDfAll
-  print('validDf', validDf.loc[:, mriCols])
-  validDf.loc[:,mriCols] = np.nan
-  print('validDf', validDf.loc[:,mriCols])
+  # UPDATE May 2018: No, don't drop MRI values. I need them for prediction of DTI vals
+  # from simpler linear model
+  # print('validDf', validDf.loc[:, mriCols])
+  # validDf.loc[:,mriCols] = np.nan
+  # print('validDf', validDf.loc[:,mriCols])
 
   outFilePrefix = 'afterReg'
   visValidDf(validDf, outFilePrefix)

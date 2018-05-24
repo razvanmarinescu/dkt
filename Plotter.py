@@ -65,45 +65,35 @@ class PlotterJDM:
       ax2 = pl.subplot(nrRows, nrCols, f + 2)
       ax2.set_title('dysfunc %d' % f)
       moveTicksInside(ax2)
-      biomkInCurrUnit = np.where(self.plotTrajParams['mapBiomkToFuncUnits'] == f)[0]
+      biomkInCurrUnit = self.plotTrajParams['biomkInFuncUnit'][f]
       for b in range(len(biomkInCurrUnit)):
-        ax2.plot(dysScoresSF[:, f], modelPredSB[:, biomkInCurrUnit[b]], 'k-', linewidth=lw)
+        ax2.plot(dysScoresSF[:, f], modelPredSB[:, biomkInCurrUnit[b]], '-',
+          color=self.plotTrajParams['colorsTraj'][biomkInCurrUnit[b]],  linewidth=lw)
 
       ax2.set_xlim((0, 1))
 
     for b in range(nrBiomk):
       ax = pl.subplot(nrRows, nrCols, b + model.nrFuncUnits + 2)
-      ax.set_title('biomk %d func %d' % (b, self.plotTrajParams['mapBiomkToFuncUnits'][b]))
+      ax.set_title('biomk %d func %d' % (b, [f for f in range(model.nrFuncUnits) if b in self.plotTrajParams['biomkInFuncUnit'][f]][0]))
       moveTicksInside(ax)
-
-      pl.plot(xs, modelPredSB[:, b], 'k-', linewidth=lw)  # label='sigmoid traj %d' % b
-      if showConfInt:
-        pass
-        # pl.fill(np.concatenate([xs, xs[::-1]]), np.concatenate([fsCurr - 1.9600 * stdDevs[b],
-        #   (fsCurr + 1.9600 * stdDevs[b])[::-1]]), alpha=.3, fc='b', ec='None')
-        # label='conf interval (1.96*std)')
-
-      # print(xs[50:60], fsCurr[50:60], thetas[b,:])
-      # print(asda)
-
 
       ############# spagetti plot subjects ######################
       counterDiagLegend = dict(zip(diagNrs, [0 for x in range(diagNrs.shape[0])]))
       for s in range(nrSubjLong):
         labelCurr = None
-        # print(diag[s])
-        # print(counterDiagLegend[diag[s]])
-        # print(self.plotTrajParams['diagLabels'])
         if counterDiagLegend[diag[s]] == 0:
           labelCurr = self.plotTrajParams['diagLabels'][diag[s]]
           counterDiagLegend[diag[s]] += 1
 
-        # print('X[b][s]', X[b][s])
-        # print('X[b][s] + subShiftsMarcoFormat[s]', X[b][s] + subShiftsMarcoFormat[s])
-        # print('Y[b][s]', Y[b][s])
+
         pl.plot(X[b][s] + subShiftsMarcoFormat[s], YScaled[b][s],
           c=self.plotTrajParams['diagColors'][diag[s]],
           label=labelCurr, alpha=0.5)
+
+
+      pl.plot(xs, modelPredSB[:, b], '-', color=self.plotTrajParams['colorsTraj'][b], linewidth=lw)  # label='sigmoid traj %d' % b
+      if showConfInt:
+        pass
 
       pl.xlim(np.min(minX), np.max(maxX))
 
@@ -588,7 +578,8 @@ class PlotterGP:
     return fig
 
   def plotTrajInDisSpace(self, xsTrajX, predTrajXB, trajSamplesBXS,
-      XsubjBSX, YsubjBSX, diagS, XsubjValidBSX, YsubjValidBSX, diagValidS, labels, replaceFig=True):
+      XsubjBSX, YsubjBSX, diagS, XsubjValidBSX, YsubjValidBSX, diagValidS, labels,
+      ssdDKT=None, ssdNoDKT=None, replaceFig=True):
     """
     plot biomarker traj and subject data in disease space. function doesn't do any scaling of xs or ys
 
@@ -663,9 +654,16 @@ class PlotterGP:
       # ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
       #   color=(0.5,0.5,0.5), lw=2)
 
-      ax.set_ylim([min_yB[b]-deltaB[b], max_yB[b]+deltaB[b]])
+      minY = min_yB[b]-deltaB[b]
+      maxY = max_yB[b]+deltaB[b]
+      ax.set_ylim([minY, maxY])
+      minX, maxX = ax.get_xlim()
 
-      pl.legend(ncol=1,fontsize=12)
+      # pl.legend(ncol=1,fontsize=12)
+
+
+      ax.text(minX + 0.1*(maxX-minX), minY + 0.9*(maxY-minY), 'SSD DKT=%.3f' % ssdDKT[b])
+      ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD no-DKT=%.3f' % ssdNoDKT[b])
 
     # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
@@ -673,14 +671,147 @@ class PlotterGP:
     fig.text(0.5, 0.04, 'Disease Progression (months)', ha='center')
     fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
 
+    h, labels = ax.get_legend_handles_labels()
+    print(h, labels)
+    # legend =  pl.legend(handles=h, bbox_to_anchor=plotTrajParams['legendPos'], loc='upper center', ncol=plotTrajParams['legendCols'])
+
+    legend = pl.figlegend(h[:5], labels[:5], loc='upper center', ncol=5, labelspacing=0.)
+    # set the linewidth of each legend object
+    for legobj in legend.legendHandles:
+      legobj.set_linewidth(4.0)
+
 
     if replaceFig:
       fig.show()
     else:
       pl.show()
-    pl.pause(5)
+    # pl.pause(5)
 
     return fig
+
+
+  def plotTrajInBiomkSpace(self, xsTrajXB, predTrajXB, trajSamplesBXS,
+      XsubjData1BSX, YsubjData1BSX, diagData1S, XsubjData2BSX, YsubjData2BSX, diagData2S,
+      XsubjData3BSX, YsubjData3BSX, diagData3S, labels, ssdDKT=None, ssdNoDKT=None,
+      replaceFig=True):
+    """
+    plot biomarker traj and subject data over the space of other biomarkers.
+    assumes xsTrajXB.shape[1] == predTrajXB.shape[1], so each biomarker in predTrajXB
+    is plotted against another biomarkers in xsTrajXB
+
+    """
+
+    font = {'family': 'normal',
+      'size': 13}
+
+    import matplotlib
+    matplotlib.rc('font', **font)
+
+    # Plot method
+    figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
+    fig = pl.figure(10, figsize = figSizeInch)
+    pl.clf()
+    fig.show()
+
+    diagNrs = np.unique(self.plotTrajParams['diag'])
+    nrDiags = diagNrs.shape[0]
+
+    nrBiomk = len(XsubjData1BSX)
+    # nrBiomk = 18
+    nrRows, nrCols = auxFunc.findOptimalRowsCols(nrBiomk)
+
+    min_yB = np.zeros(nrBiomk)
+    max_yB = np.zeros(nrBiomk)
+    for b in range(nrBiomk):
+      # print([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0])
+      # print([np.min(predTrajXB[:,b])])
+      # print([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.min(predTrajXB[:,b])])
+      listsMin = []
+      listsMax = []
+
+      if predTrajXB is not None:
+        listsMin = [np.min(predTrajXB[:, b])]
+        listsMax = [np.max(predTrajXB[:, b])]
+      if YsubjData1BSX is not None:
+        listsMin = [np.min(yS) for yS in YsubjData1BSX[b] if len(yS) > 0]
+        listsMax = [np.max(yS) for yS in YsubjData1BSX[b] if len(yS) > 0]
+      if YsubjData2BSX is not None:
+        listsMin += [np.min(yS) for yS in YsubjData2BSX[b] if len(yS) > 0]
+        listsMax += [np.max(yS) for yS in YsubjData2BSX[b] if len(yS) > 0]
+
+      min_yB[b] = np.min(listsMin)
+      max_yB[b] = np.max(listsMax)
+
+    deltaB = (max_yB - min_yB)/5
+    legendEntries = 3
+
+    for b in range(nrBiomk):
+      ax = pl.subplot(nrRows, nrCols, b + 1)
+      pl.title(labels[b])
+      # print('--------------b', b)
+      # plot traj samples
+      if xsTrajXB is not None:
+        nrSamples = trajSamplesBXS.shape[2]
+        for i in range(nrSamples):
+          ax.plot(xsTrajXB[:,b], trajSamplesBXS[b, :, i], lw = 0.05,
+            color = 'red', alpha=1)
+
+      if XsubjData1BSX is not None:
+        self.plotSubjData(ax, XsubjData1BSX[b], YsubjData1BSX[b], diagData1S, labelExtra ='')
+
+      # print('-------------- validation data')
+      if XsubjData2BSX is not None:
+        self.plotSubjData(ax, XsubjData2BSX[b], YsubjData2BSX[b], diagData2S, labelExtra ='')
+        legendEntries += np.unique(diagData2S).shape[0]
+
+      if XsubjData3BSX is not None:
+        self.plotSubjData(ax, XsubjData3BSX[b], YsubjData3BSX[b], diagData3S, labelExtra ='')
+        legendEntries += np.unique(diagData3S).shape[0]
+
+      if xsTrajXB is not None:
+        ax.plot(xsTrajXB[:,b],predTrajXB[:, b],
+          lw=2, color='black', label='estim. traj.')
+
+      # ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
+      #   color=(0.5,0.5,0.5), lw=2)
+
+      minY = min_yB[b]-deltaB[b]
+      maxY = max_yB[b]+deltaB[b]
+      ax.set_ylim([minY, maxY])
+      minX, maxX = ax.get_xlim()
+
+      # pl.legend(ncol=1,fontsize=12)
+
+
+      ax.text(minX + 0.1*(maxX-minX), minY + 0.9*(maxY-minY), 'SSD DKT=%.3f' % ssdDKT[b])
+      ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD no-DKT=%.3f' % ssdNoDKT[b])
+
+    # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+
+
+    fig.text(0.5, 0.04, 'Disease Progression (months)', ha='center')
+    fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
+
+    h, labels = ax.get_legend_handles_labels()
+    print(h, labels)
+    # legend =  pl.legend(handles=h, bbox_to_anchor=plotTrajParams['legendPos'], loc='upper center', ncol=plotTrajParams['legendCols'])
+
+
+    legend = pl.figlegend(h[:legendEntries], labels[:legendEntries], loc='upper center', ncol=5, labelspacing=0.)
+    # set the linewidth of each legend object
+    for legobj in legend.legendHandles:
+      legobj.set_linewidth(4.0)
+
+
+    if replaceFig:
+      fig.show()
+    else:
+      pl.show()
+    # pl.pause(5)
+
+    return fig
+
+
 
 
   def plotTrajInDisSpaceOverlap(self, xsTrajX, predTrajXB, trajSamplesBXS,params,
@@ -819,15 +950,16 @@ class PlotterGP:
       # print('XsubjSX[sub]', XsubjSX[sub])
       # print('YsubjSX[sub]', YsubjSX[sub])
 
-      ax.plot(XsubjSX[sub], YsubjSX[sub],
-              color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=0.5)
+      if XsubjSX[sub].shape[0] > 0:
+        ax.plot(XsubjSX[sub], YsubjSX[sub],
+                color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=0.5)
 
-      ax.scatter(XsubjSX[sub], YsubjSX[sub],
-                 marker=self.plotTrajParams['diagScatterMarkers'][diagCurrSubj],
-                 color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=2.5,
-                 label=currLabel)
+        ax.scatter(XsubjSX[sub], YsubjSX[sub],
+                   marker=self.plotTrajParams['diagScatterMarkers'][diagCurrSubj],
+                   color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=2.5,
+                   label=currLabel)
 
-      diagCounters[diagCurrSubj] += 1
+        diagCounters[diagCurrSubj] += 1
 
 
   def scatterPlotShifts(self, gpModel, subjStagesEstim):

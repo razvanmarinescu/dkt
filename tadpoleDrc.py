@@ -103,17 +103,30 @@ else:
                    'application paths in python code above')
 
 
+#                      DKT     OTHER_MODEL        VALID           TRAINING
+#                     circle    triangle      diagonal cross       square
+#
+# ADNI CTL  green
+#      MCI  orange
+#      AD   red
+# DRC  CTL  yellow
+#      PCA  magenta
+#      AD   blue
+
 plotTrajParams = {}
 plotTrajParams['SubfigTrajWinSize'] = (1600,900)
 plotTrajParams['nrRows'] = args.nrRows
 plotTrajParams['nrCols'] = args.nrCols
-plotTrajParams['diagColors'] = {CTL:'g', MCI:'y', AD:'r',
-  CTL2:'g', PCA:'y', AD2:'r'}
-plotTrajParams['diagScatterMarkers'] = {CTL:'o', MCI:'o', AD:'o',
-  CTL2:'x', PCA:'x', AD2:'x'}
+plotTrajParams['diagColors'] = {CTL:'g', MCI:'#FFA500', AD:'r',
+  CTL2:'y', PCA:'m', AD2:'b', CTL_OTHER_MODEL:'k', PCA_OTHER_MODEL:'b',
+  CTL_DKT:'g', PCA_DKT:'r'}
+plotTrajParams['diagScatterMarkers'] = {CTL:'s', MCI:'s', AD:'s',
+  CTL2:'s', PCA:'s', AD2:'s', CTL_OTHER_MODEL:'^', PCA_OTHER_MODEL:'^',
+  CTL_DKT: 'o', PCA_DKT: 'o'}
 plotTrajParams['legendCols'] = 4
 plotTrajParams['diagLabels'] = {CTL:'CTL ADNI', MCI:'MCI ADNI', AD:'tAD ADNI',
-  CTL2:'CTL LOCAL', PCA:'PCA LOCAL', AD2:'tAD LOCAL'}
+  CTL2:'CTL LOCAL', PCA:'PCA LOCAL', AD2:'tAD LOCAL', CTL_OTHER_MODEL:'CTL LOCAL - No DKT',
+  PCA_OTHER_MODEL:'PCA LOCAL - No DKT', CTL_DKT:'CTL - DTK', PCA_DKT:'PCA - DTK'}
 
 plotTrajParams['freesurfPath'] = freesurfPath
 # plotTrajParams['ylimitsRandPoints'] = (-3,2)
@@ -198,7 +211,7 @@ def main():
   labels = ds['list_biomarkers']
   diag = ds['diag']
 
-  # visDataHist(dataDfAll)
+  visDataHist(dataDfAll)
   nrUnqDiags = np.unique(dataDfAll.diag)
   print(dataDfAll)
   for d in nrUnqDiags:
@@ -274,6 +287,7 @@ def main():
   params['Yvalid'] = ds['Yvalid']
   params['RIDvalid'] = ds['RIDvalid']
   params['diagValid'] = ds['diagValid']
+  params['dataDfAll'] = dataDfAll
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
   params['iterParamsUnit'] = 60
@@ -429,9 +443,6 @@ def plotAllBiomkDisSpace(dpmObj, params, disNr):
     XshiftedDisModelBS, Yfilt, diagSubjCurrDis,
     None, None, None, replaceFig=True)
   fig.savefig('%s/allBiomkDisSpace%s.png' % (params['outFolder'], params['disLabels'][disNr]))
-
-
-
 
 
 if __name__ == '__main__':

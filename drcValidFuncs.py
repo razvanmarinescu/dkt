@@ -2,6 +2,9 @@ from env import *
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as pl
+import sklearn
+import copy
+import scipy
 
 def addDRCValidData(validDf):
   '''perform validation on DTI data from the DRC '''
@@ -343,14 +346,16 @@ def validateDRCBiomk(dpmObj, params):
 
   labels = params['labels']
   print('labels', labels)
-  dtiColsIdx = [i for i in range(len(labels)) if labels[i].startswith('DTI')]
+  dtiBiomksList = [i for i in range(len(labels)) if labels[i].startswith('DTI')]
+  mriBiomksList = [i for i in range(len(labels)) if labels[i].startswith('Volume')]
 
   assert len(ysPredBS) == len(Yvalid)
 
-  nrDtiCols = len(dtiColsIdx)
-  mse = [0 for b in dtiColsIdx]
+  nrDtiCols = len(dtiBiomksList)
+  mse = [0 for b in dtiBiomksList]
 
-  subjWithValidIndx = np.where([ys.shape[0] > 0 for ys in Yvalid[dtiColsIdx[0]]])[0]
+  # subjects who have DTI validation
+  subjWithValidIndx = np.where([ys.shape[0] > 0 for ys in Yvalid[dtiBiomksList[0]]])[0]
   nrSubjWithValid = subjWithValidIndx.shape[0]
   YvalidFilt = [0 for b in range(nrBiomk)]
   XvalidFilt = [0 for b in range(nrBiomk)]
@@ -370,19 +375,19 @@ def validateDRCBiomk(dpmObj, params):
       idxCurrDis = np.where(RIDvalidFilt[s] == ridCurrDis)[0][0]
       xsOrigFromModel = xsOrigPred1S[idxCurrDis]
 
-      assert np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0].shape[0] == 1
-      idxXsWithValid = np.where(xsOrigFromModel == XvalidFilt[dtiColsIdx[b]][s][0])[0][0]
-      ysPredCurrSubj = ysPredBS[dtiColsIdx[b]][idxCurrDis][idxXsWithValid]
+      assert np.where(xsOrigFromModel == XvalidFilt[dtiBiomksList[b]][s][0])[0].shape[0] == 1
+      idxXsWithValid = np.where(xsOrigFromModel == XvalidFilt[dtiBiomksList[b]][s][0])[0][0]
+      ysPredCurrSubj = ysPredBS[dtiBiomksList[b]][idxCurrDis][idxXsWithValid]
 
-      assert YvalidFilt[dtiColsIdx[b]][s].shape[0] > 0
+      assert YvalidFilt[dtiBiomksList[b]][s].shape[0] > 0
 
-      mseList += [(ysPredCurrSubj - YvalidFilt[dtiColsIdx[b]][s][0]) ** 2]
+      mseList += [(ysPredCurrSubj - YvalidFilt[dtiBiomksList[b]][s][0]) ** 2]
 
       # also compose the shifted Xs for the validation subjects
       xsShiftedFromModel = XshiftedDisModelBS[0][idxCurrDis]
-      XvalidShifFilt[dtiColsIdx[b]][s] = np.array([xsShiftedFromModel[idxXsWithValid]])
+      XvalidShifFilt[dtiBiomksList[b]][s] = np.array([xsShiftedFromModel[idxXsWithValid]])
 
-      assert XvalidShifFilt[dtiColsIdx[b]][s].shape[0] == YvalidFilt[dtiColsIdx[b]][s].shape[0]
+      assert XvalidShifFilt[dtiBiomksList[b]][s].shape[0] == YvalidFilt[dtiBiomksList[b]][s].shape[0]
 
 
     mse[b] = np.mean(mseList)
@@ -412,22 +417,209 @@ def validateDRCBiomk(dpmObj, params):
   # fig.savefig('%s/validPCA.png' % params['outFolder'])
 
 
-  # plot just the DTI biomarkers
-  dtiColsArrayIndx = np.array(dtiColsIdx)
+  ### build a simpler linear predictor from MR to DTI for every ROI independently.
+  # Train it on ADNI MR+DTI data and use it to predict DRC-DTI from DRC-MR.
+
+  dataDfAll = params['dataDfAll']
+  colsList = dataDfAll.columns.tolist()
+  mriBiomksDf = [i for i in range(len(colsList)) if colsList[i].startswith('Volume')]
+  dtiBiomksDf = [i for i in range(len(colsList)) if colsList[i].startswith('DTI')]
+
+  dataDfAllMat = dataDfAll.values
+  # print('dataDfAllMat', dataDfAllMat)
+
+  YvalidLinModelDti = [0 for f in range(dpmObj.nrFuncUnits)]
+  YvalidDktDti = [0 for f in range(dpmObj.nrFuncUnits)]
+
+  ssdNoDKT = np.zeros(dpmObj.nrFuncUnits)
+  ssdDKT = np.zeros(dpmObj.nrFuncUnits)
+
+  # select just the DTI biomarkers
+  dtiColsArrayIndx = np.array(dtiBiomksList)
+  mriColsArrayIndx = np.array(mriBiomksList)
   print('dtiColsArrayIndx', dtiColsArrayIndx)
   predTrajDtiXB = predTrajXB[:,dtiColsArrayIndx]
+  predTrajMriXB = predTrajXB[:, mriColsArrayIndx]
   trajSamplesDtiBXS = trajSamplesBXS[dtiColsArrayIndx,:,:]
-  # print(len(XshiftedDisModelBS))
-  # print(ads)
-  XvalidShifDtiFilt = [XvalidShifFilt[b] for b in dtiColsIdx]
-  YvalidFiltDti = [YvalidFilt[b] for b in dtiColsIdx]
+  XvalidShifDtiFilt = [XvalidShifFilt[b] for b in dtiBiomksList]
+  YvalidFiltDti = [YvalidFilt[b] for b in dtiBiomksList]
+  YvalidFiltMriClosestToDti = [[] for b in mriBiomksList] # only the MRI where DTI exists
 
-  labelsDti = [params['labels'][b] for b in dtiColsIdx]
+  dtiValValidAll = [[] for f in range(dpmObj.nrFuncUnits)]
+  dtiPredValidLinAll = [[] for f in range(dpmObj.nrFuncUnits)]
+  dtiPredValidDktAll = [[] for f in range(dpmObj.nrFuncUnits)]
 
-  fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajDtiXB, trajSamplesDtiBXS,
-    XvalidShifDtiFilt, YvalidFiltDti, diagValidFilt,
-    None, None, None, labelsDti, replaceFig=True)
-  fig.savefig('%s/validDtiPCA.png' % params['outFolder'])
+  corrDkt = np.zeros(dpmObj.nrFuncUnits)
+  pValDkt = np.zeros(dpmObj.nrFuncUnits)
+  corrLin = np.zeros(dpmObj.nrFuncUnits)
+  pValLin = np.zeros(dpmObj.nrFuncUnits)
+
+  for f in range(dpmObj.nrFuncUnits):
+
+    mriDataCurrCol = dataDfAllMat[:, mriBiomksDf[f]]
+    dtiDataCurrCol = dataDfAllMat[:, dtiBiomksDf[f]]
+
+    nnMask = ~np.isnan(mriDataCurrCol) & ~np.isnan(dtiDataCurrCol)
+    linModel = sklearn.linear_model.LinearRegression(fit_intercept=True)
+
+    print('mriDataCurrCol', mriDataCurrCol)
+    print('dtiDataCurrCol', dtiDataCurrCol)
+
+    linModel.fit(mriDataCurrCol[nnMask].reshape(-1,1),
+      dtiDataCurrCol[nnMask].reshape(-1,1))
+
+    YvalidLinModelDti[f] = [] # DTI predictions of linear model for subj in validation set
+    YvalidDktDti[f] = [] # DTI predictions of DKT model for subj in validation set
+
+
+    # print('dataDfAll.loc[mriBiomksDf[f]].iloc[nnMask]', dataDfAll.loc[mriBiomksDf[f]].iloc[nnMask])
+    # print('dataDfAll.loc[dtiBiomksDf[f]].iloc[nnMask]', dataDfAll.loc[dtiBiomksDf[f]].iloc[nnMask])
+
+    # print('YvalidFilt[dtiBiomksList[f]]', YvalidFilt[dtiBiomksList[f]])
+    # print('Yvalid[mriBiomksList[f]]', Yvalid[mriBiomksList[f]])
+    for s in range(nrSubjWithValid):
+      mrValsValidCurrSubj = np.array(YvalidFilt[mriBiomksList[f]][s]).reshape(-1,1)
+      dtiValValidCurrSubj = YvalidFilt[dtiBiomksList[f]][s][0]
+
+      xMriCurr = np.array(XvalidFilt[mriBiomksList[f]][s])
+      xDTICurr = XvalidFilt[dtiBiomksList[f]][s][0]
+
+      closestMriIdx = np.argmin(np.abs(xMriCurr - xDTICurr))
+
+      YvalidFiltMriClosestToDti[f] += [np.array(mrValsValidCurrSubj[closestMriIdx])]
+
+      # print('mrValsValidCurrSubj', mrValsValidCurrSubj)
+      # print('xMriCurr', xMriCurr)
+      # print('xDTICurr', xDTICurr)
+      # print('closestMriIdx', closestMriIdx)
+      dtiPredValidLin = linModel.predict(mrValsValidCurrSubj[closestMriIdx].reshape(-1,1))
+
+      dtiPredValidLin = dtiPredValidLin[0][0]
+
+      YvalidLinModelDti[f] += [np.array(dtiPredValidLin)]
+
+
+
+      # print('XvalidFilt MRI', [XvalidFilt[mriBiomksList[f]][s] for s in range(len(XvalidFilt[mriBiomksList[f]]))])
+      # print('XvalidFilt DTI', [XvalidFilt[dtiBiomksList[f]][s] for s in range(len(XvalidFilt[dtiBiomksList[f]]))])
+      # print('dtiPredValidLin', dtiPredValidLin)
+      # print(adsa)
+
+      indOfXTrajClosestToCurrSubj = np.argmin(np.abs(XvalidShifDtiFilt[f][s][0] - xsTrajX))
+      dtiPredValidDkt = predTrajDtiXB[indOfXTrajClosestToCurrSubj, f]
+
+      YvalidDktDti[f] += [np.array(dtiPredValidDkt)]
+      # print('XvalidShifDtiFilt[f][s][0]', XvalidShifDtiFilt[f][s][0])
+      # print('xsTrajX', xsTrajX)
+
+      if diagValidFilt[s] == CTL2:
+        ssdNoDKT[f] += (dtiValValidCurrSubj - dtiPredValidLin) ** 2
+        ssdDKT[f]  += (dtiValValidCurrSubj - dtiPredValidDkt) ** 2
+
+      dtiValValidAll[f] += [dtiValValidCurrSubj]
+      dtiPredValidLinAll[f] += [dtiPredValidLin]
+      dtiPredValidDktAll[f] += [dtiPredValidDkt]
+
+    dtiValValidAll[f] = np.array(dtiValValidAll[f])
+    dtiPredValidLinAll[f] = np.array(dtiPredValidLinAll[f])
+    dtiPredValidDktAll[f] = np.array(dtiPredValidDktAll[f])
+
+    print('dtiValValidAll', dtiValValidAll[f].shape, dtiValValidAll[f])
+    print('dtiPredValidLinAll', dtiPredValidLinAll[f].shape, dtiPredValidLinAll[f])
+    print('dtiPredValidDktAll', dtiPredValidDktAll[f].shape, dtiPredValidDktAll[f])
+
+    corrDkt[f], pValDkt[f] = scipy.stats.spearmanr(dtiValValidAll[f].reshape(-1, 1).astype(float), dtiPredValidDktAll[f].reshape(-1, 1).astype(float))
+    corrLin[f], pValLin[f] = scipy.stats.spearmanr(dtiValValidAll[f].reshape(-1, 1).astype(float), dtiPredValidLinAll[f].reshape(-1, 1).astype(float))
+
+  print('corrLin', np.mean(corrLin), corrLin, pValLin)
+  print('corrDkt', np.mean(corrDkt), corrDkt, pValDkt)
+  print([params['labels'][b] for b in dtiBiomksList])
+  print(adsa)
+
+
+
+  # print('dtiValValidCurrSubj', dtiValValidCurrSubj)
+      # print('dtiPredValidLin', dtiPredValidLin)
+      # print('dtiPredValidDkt', dtiPredValidDkt)
+      # print('----------')
+
+    # print(asda)
+
+
+  # plot against MRI vals instead of DPS time-shifts
+
+  # also plot training data DTI[f] in MRI[f] space
+  YDti = [params['Y'][b] for b in dtiBiomksList]
+  YMriClosestToDti = [[0 for s in range(len(YDti[b]))] for b in mriBiomksList]  # only the MRI where DTI exists
+  # idxWithDti = [s for s in range(len(YDti)) ]
+  # print('YDti', YDti)
+  # print(adsa)
+
+  for f in range(dpmObj.nrFuncUnits):
+
+    for s in range(len(YDti[f])):
+
+      YMriClosestToDti[f][s] = np.array([])
+
+      if YDti[f][s].shape[0] > 0:
+
+        xsMriCurrSubj = params['X'][mriBiomksList[f]][s]
+        xsDtiCurrSubj = params['X'][dtiBiomksList[f]][s]
+
+        mriValsCorrespToDtiCurrSubj = []
+        for t in range(xsDtiCurrSubj.shape[0]):
+          mriIndClosestToCurrDtiScan = np.argmin(np.abs(xsDtiCurrSubj[t] - xsMriCurrSubj))
+
+          mriValsCorrespToDtiCurrSubj += [params['Y'][mriBiomksList[f]][s][mriIndClosestToCurrDtiScan]]
+
+          YMriClosestToDti[f][s] = np.array(mriValsCorrespToDtiCurrSubj)
+
+
+      print(YMriClosestToDti[f][s].shape[0])
+      print(YDti[f][s].shape[0])
+      assert YMriClosestToDti[f][s].shape[0] == YDti[f][s].shape[0]
+
+
+  print('YMriClosestToDti[0]', YMriClosestToDti[0][:520])
+  print('YDti[0]', YDti[0][:520])
+  # print(adsa)
+
+  labelsDti = [params['labels'][b] for b in dtiBiomksList]
+
+  # change diagnosis numbers to get different plotting behaviour (specific labels, colors and markers)
+  diagValidFiltLinModel = copy.deepcopy(diagValidFilt)
+  diagValidFiltLinModel[diagValidFiltLinModel == CTL2] = CTL_OTHER_MODEL
+  diagValidFiltLinModel[diagValidFiltLinModel == PCA] = PCA_OTHER_MODEL
+
+  diagValidFiltDktModel = copy.deepcopy(diagValidFilt)
+  diagValidFiltDktModel[diagValidFiltDktModel == CTL2] = CTL_DKT
+  diagValidFiltDktModel[diagValidFiltDktModel == PCA] = PCA_DKT
+
+  # plot DTI over MRI space: traj, validation data, predictions of linear model, training data.
+  fig = dpmObj.plotterObj.plotTrajInBiomkSpace(xsTrajXB=predTrajMriXB, predTrajXB=predTrajDtiXB,
+    trajSamplesBXS=trajSamplesDtiBXS,
+    XsubjData1BSX=YvalidFiltMriClosestToDti, YsubjData1BSX=YvalidFiltDti, diagData1S=diagValidFilt,
+    XsubjData2BSX=YvalidFiltMriClosestToDti, YsubjData2BSX=YvalidLinModelDti, diagData2S=diagValidFiltLinModel,
+    XsubjData3BSX=YMriClosestToDti, YsubjData3BSX=YDti, diagData3S=params['diag'],
+    labels=labelsDti,
+    ssdDKT=ssdDKT, ssdNoDKT=ssdNoDKT, replaceFig=True)
+  fig.savefig('%s/validTrajDtiOverMriPCA.png' % params['outFolder'])
+
+  # plot DTI over MRI space: DKT predictions, predictions of linear model, validation data.
+  fig = dpmObj.plotterObj.plotTrajInBiomkSpace(
+    xsTrajXB=None, predTrajXB=None, trajSamplesBXS=None,
+    XsubjData1BSX=YvalidFiltMriClosestToDti, YsubjData1BSX=YvalidFiltDti, diagData1S=diagValidFilt,
+    XsubjData2BSX=YvalidFiltMriClosestToDti, YsubjData2BSX=YvalidLinModelDti, diagData2S=diagValidFiltLinModel,
+    XsubjData3BSX=YvalidFiltMriClosestToDti, YsubjData3BSX=YvalidDktDti, diagData3S=diagValidFiltDktModel,
+    labels=labelsDti,
+    ssdDKT=ssdDKT, ssdNoDKT=ssdNoDKT, replaceFig=True)
+  fig.savefig('%s/validPredDtiOverMriPCA.png' % params['outFolder'])
+
+  # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajDtiXB, trajSamplesDtiBXS,
+  #   XvalidShifDtiFilt, YvalidFiltDti, diagValidFilt,
+  #   XvalidShifDtiFilt, YvalidLinModelDti, diagValidFiltLinModel, labelsDti, ssdDKT, ssdNoDKT,
+  #   replaceFig=False)
+  # fig.savefig('%s/validDtiPCA.png' % params['outFolder'])
 
   # plot just the trajectories by modality groups
   # fig = dpmObj.plotterObj.plotTrajInDisSpaceOverlap(xsTrajX, predTrajXB,
