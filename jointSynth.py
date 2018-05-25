@@ -147,8 +147,8 @@ def main():
   plotTrajParams['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in np.linspace(0, 1, num=nrBiomk, endpoint=False)]
 
   # plotTrajParams['yNormMode'] = 'zScoreTraj'
-  plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
-  # plotTrajParams['yNormMode'] = 'unscaled'
+  # plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
+  plotTrajParams['yNormMode'] = 'unscaled'
 
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
@@ -185,25 +185,20 @@ def main():
   thetas[mapBiomkToFuncUnits == 1, 1] = 10
   # thetas[mapBiomkToFuncUnits == 2, 1] = 7
 
-
   sigmaB = 0.05 * np.ones(nrBiomk)
 
   # scale every biomarker with mean and std.
   scalingBiomk2B = np.zeros((2, nrBiomk))
-  scalingBiomk2B[:, 0] = [200, 100] # mean +/- std
-  scalingBiomk2B[:, 0] = [200, 100]  # mean +/- std
+  # scalingBiomk2B[:, 0] = [200, 100] # mean +/- std
+  # scalingBiomk2B[:, 0] = [200, 100]  # mean +/- std
+  #
+  # scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
+  # scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
+  #
+  # scalingBiomk2B[:, 2:4] = scalingBiomk2B[:, 0:2]
+  # scalingBiomk2B[:, 4:6] = scalingBiomk2B[:, 0:2]
 
-  scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
-  scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
-
-  # scalingBiomk2B[:, 2] = [20, 10]  # mean +/- std
-  # scalingBiomk2B[:, 2] = [20, 10]  # mean +/- std
-
-  # scalingBiomk2B[:, 3:6] = scalingBiomk2B[:, 0:3]
-  # scalingBiomk2B[:, 6:9] = scalingBiomk2B[:, 0:3]
-  scalingBiomk2B[:, 2:4] = scalingBiomk2B[:, 0:2]
-  scalingBiomk2B[:, 4:6] = scalingBiomk2B[:, 0:2]
-
+  scalingBiomk2B[1,:] = 1
 
   ##### disease 1 - disease specific parameters ###########
 
@@ -225,7 +220,7 @@ def main():
 
   paramsDisOne['plotTrajParams']['trueParams'] = paramsDisOne['trueParams']
 
-  replaceFigMode = False
+  replaceFigMode = True
 
   if regenerateData:
     synthPlotter = Plotter.PlotterJDM(paramsDisOne['plotTrajParams'])
