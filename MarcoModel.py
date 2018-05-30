@@ -147,13 +147,6 @@ class GP_progression_model(object):
         # self.addInitTimeShifts()
 
 
-    # def addMinXMaxXExtraRange(self, deltaRangeFactor = 0.0):
-    #     deltaXRange = deltaRangeFactor * (self.maxX - self.minX)
-    #     minX =self.minX - deltaXRange
-    #     maxX =self.maxX + deltaXRange
-    #
-    #     return minX,maxX
-
     def applyScalingX(self, x_data, biomk=0):
       scaleX = self.max_X[biomk] * self.mean_std_X[biomk][1]
       return scaleX * x_data + self.mean_std_X[biomk][0]
@@ -218,27 +211,6 @@ class GP_progression_model(object):
 
       return self.min_yB - deltaB, self.max_yB + deltaB
 
-    # def rescale(self):
-    #     # Standardizes X and Y axes and saves the rescaling parameters for future output
-    #     for l in range(self.N_biom):
-    #         self.X_array[l] = np.array(self.X_array[l]).reshape([len(self.X_array[l]),1])
-    #         self.Y_array[l] = np.array(self.Y_array[l]).reshape([len(self.Y_array[l]), 1])
-    #         sd = np.std(self.X_array[l])
-    #         if (sd > 0):
-    #             self.mean_std_X.append([np.mean(self.X_array[l]), np.std(self.X_array[l])])
-    #         else:
-    #             self.mean_std_X.append([np.mean(self.X_array[l]), 1])
-    #
-    #         self.mean_std_Y.append([np.mean(self.Y_array[l]), np.std(self.Y_array[l])])
-    #         self.X_array[l] = (self.X_array[l] - self.mean_std_X[l][0])/ self.mean_std_X[l][1]
-    #         if np.max(self.X_array[l]) > 0:
-    #             self.max_X.append(np.max(self.X_array[l]))
-    #         else:
-    #             self.max_X.append(1)
-    #         self.X_array[l] = self.X_array[l]/self.max_X[l]
-    #         self.Y_array[l] = (self.Y_array[l] - self.mean_std_Y[l][0]) / self.mean_std_Y[l][1]
-    #         self.max_Y.append(np.max(self.Y_array[l]))
-    #         self.Y_array[l] = self.Y_array[l] / self.max_Y[l]
 
     def rescale(self):
       # Standardizes X and Y axes and saves the rescaling parameters for future output
@@ -412,6 +384,7 @@ class GP_progression_model(object):
         Dterm = np.sum(penalty * np.dot(Doutput, W) - np.log(1 + np.exp(penalty * np.dot(Doutput, W))))
         prior = (eps - 1) ** 2 / 1e-2 + (sigma - 2) ** 2 / 1e-3  + (l - prior_length_scale)**2/1e-2
 
+
         posterior = -0.5 *  ( np.log(2 * np.pi * eps) + np.sum((Y - np.dot(output,W))**2)/eps) - Kullback_Leibler  - prior + Dterm
 
         # Derivative of weights mean ad sd
@@ -472,10 +445,11 @@ class GP_progression_model(object):
             output_grad_penalty.append(0)
             loglik = 0
             for j in range(100):
-                perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(\
-                                                                            [ 2*self.N_rnd_features,1])
-                objective_cost_function = lambda params: \
-                    self.log_posterior_grad(current_X, current_Y,self.N_rnd_features, perturbation_W, params, self.penalty[l])
+                perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(
+                  [ 2*self.N_rnd_features,1])
+                objective_cost_function = lambda params: self.log_posterior_grad(
+                  current_X, current_Y,self.N_rnd_features, perturbation_W, params,
+                  self.penalty[l])
 
                 value, grad, grad_penalty = objective_cost_function(current_params)
                 MC_grad = MC_grad - grad
@@ -525,6 +499,7 @@ class GP_progression_model(object):
             output_MC_grad.append(float(len(Xdata)) / len(self.X_array[l]) * MC_grad / 100)
             output_loglik.append(float(len(Xdata)) / len(self.X_array[l]) * loglik / 100)
             output_grad_penalty[l] = float(len(Xdata)) / len(self.X_array[l]) * output_grad_penalty[l] / 100
+
         return output_loglik, output_MC_grad, output_grad_penalty
 
 
@@ -561,11 +536,13 @@ class GP_progression_model(object):
               diag_penalty[l] = 0.9 * diag_penalty[l] + 0.1 * fun_grad_penalty[l] ** 2
               param_penalty[l] = param_penalty[l] - learning_rate * fun_grad_penalty[l]/ np.sqrt(diag_penalty[l] + epsilon)
 
+
           print(i,end=' ')
           sys.stdout.flush()
 
           for l in range(self.N_biom):
             self.parameters[l] = params[l]
+            print('params[l]', params[l])
 
             if output_grad_penalty:
                 self.penalty [l]= param_penalty[l]
@@ -575,16 +552,55 @@ class GP_progression_model(object):
     def Optimize_GP_parameters(self, optimize_penalty = False, Niterat = 10):
         # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
         self.Reset_parameters()
-        #objective_grad = lambda params: self.stochastic_grad(params)
-        #objective_grad = lambda params: self.stochastic_grad_mini_batch(params, 10)
         objective_grad = lambda params: self.stochastic_grad_manual(params)
-        # objective_grad = lambda params: self.stochastic_grad_manual_mini_batch(params,
-        #   np.min([30,self.N_samples])) #50 for syn and 30 for AD, 180 for tadpole?
-        # print('self.parameters', self.parameters)
-        # print('objective_grad(self.parameters)', objective_grad(self.parameters))
         self.Adadelta(Niterat, objective_grad, 0.05, self.parameters, output_grad_penalty = optimize_penalty)
-        # print('self.parameters', self.parameters)
-        # print(asdasad)
+
+    def Optimize_GP_parameters_Raz(self, optimize_penalty = False, Niterat = 10):
+        # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
+        self.Reset_parameters()
+
+        params = self.parameters
+
+        for l in range(self.N_biom):
+          objFuncCurrBiomk = lambda params: self.stochasticObjFuncOneBiomkRaz(params, self.X_array[l],
+            self.Y_array[l], self.penalty[l])
+
+          print('objFuncCurrBiomk', objFuncCurrBiomk(self.parameters[l]))
+          # resStruct = scipy.optimize.minimize(objFuncCurrBiomk, self.parameters[l], method='Nelder-Mead',
+          #   options={'disp': True, 'xatol':1e+0, 'adaptive':True, 'maxiter':50, 'maxfev':50})
+
+          resStruct = scipy.optimize.minimize(objFuncCurrBiomk, self.parameters[l], method='BFGS', jac=True,
+            options={'disp': True, 'xatol':1e+0, 'adaptive':True, 'maxiter':50, 'maxfev':50})
+
+          self.parameters[l] = resStruct.x
+
+
+    def stochasticObjFuncOneBiomkRaz(self, current_params, current_X, current_Y, current_penalty):
+      # Stochastic gradient of log-posterior with respect ot given parameters
+      # Default number of MC samples is 100
+      output_MC_grad = []
+      output_loglik = []
+      output_grad_penalty = 0
+
+      MC_grad = np.zeros(len(current_params))
+      loglik = 0
+      nrPerturb = 100
+      for j in range(nrPerturb):
+          perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(
+            [ 2*self.N_rnd_features,1])
+          objective_cost_function = lambda params: self.log_posterior_grad(
+            current_X, current_Y,self.N_rnd_features, perturbation_W, params,
+            current_penalty)
+
+          value, grad, grad_penalty = objective_cost_function(current_params)
+          loglik = loglik + value
+          MC_grad = MC_grad + grad
+          output_grad_penalty = output_grad_penalty + grad_penalty
+
+      return loglik/nrPerturb, MC_grad/nrPerturb
+
+
+
 
     def log_posterior_time_shift(self, params, params_time_shift):
         # Input: X, Y and a biomarker's parameters, current time-shift estimates
@@ -734,10 +750,10 @@ class GP_progression_model(object):
 
         return loglik, MC_grad
 
-    def Optimize_time_shift(self):
+    # def Optimize_time_shift(self):
 
       # self.Optimize_time_shift_Marco(Niterat)
-      self.Optimize_time_shift_Raz_indiv()
+
 
       # objective_grad = lambda test_params_time_shift: self.grad_time_shift(test_params_time_shift)
       # fun_value, fun_grad = objective_grad(params_time_shift)
@@ -935,71 +951,71 @@ class GP_progression_model(object):
         self.DX = np.linspace(minX, maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
 
-    def Optimize_time_shift_Marco(self, Niterat = 10, learning_rate = 0.1):
-        # Adadelta for optimization of time shift parameters
-        params_time_shift = self.params_time_shift.copy()
-        params_time_shift[0] = np.zeros(len(params_time_shift[0]))
-        diag = []
-
-        for l in range(2):
-            diag.append(np.zeros(len(params_time_shift [l])))
-        epsilon = 1e-8
-
-        fun_value = 0
-        gradient = []
-
-        for i in range(Niterat):
-            objective_grad = lambda test_params_time_shift: self.grad_time_shift(test_params_time_shift)
-            fun_value, fun_grad = objective_grad(params_time_shift)
-
-            print('sub shift fun_value', fun_value.shape, fun_value)
-            # print('fun_grad', len(fun_grad), fun_grad)
-            # print(bbbbbbbb)
-
-            for l in range(2):
-                # diag[l] = 0.9 * diag[l] + 0.1 * fun_grad[l] ** 2
-                diag[l] = 0.1 * diag[l] + 0.9 * fun_grad[l] ** 2
-                params_time_shift[l] = params_time_shift[l] + np.multiply(learning_rate * fun_grad[l],
-                                                                          1 / np.sqrt(diag[l] + epsilon))
-
-        print('final lik subj shift', -fun_value)
-
-        for l in range(1):
-            self.params_time_shift[l] = self.params_time_shift[l] + params_time_shift[l]
-
-        for i in range(self.N_biom):
-            Xdata = np.array([[100]])
-            for sub in range(self.N_samples):
-                temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub+1])]
-                shifted_temp = (temp + params_time_shift[0][sub])
-                Xdata = np.hstack([Xdata,shifted_temp.T])
-
-            self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
-
-
-        minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-        maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-        self.updateMinMax(minX, maxX)
-        self.DX = np.linspace(minX, maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
+    # def Optimize_time_shift_Marco(self, Niterat = 10, learning_rate = 0.1):
+    #     # Adadelta for optimization of time shift parameters
+    #     params_time_shift = self.params_time_shift.copy()
+    #     params_time_shift[0] = np.zeros(len(params_time_shift[0]))
+    #     diag = []
+    #
+    #     for l in range(2):
+    #         diag.append(np.zeros(len(params_time_shift [l])))
+    #     epsilon = 1e-8
+    #
+    #     fun_value = 0
+    #     gradient = []
+    #
+    #     for i in range(Niterat):
+    #         objective_grad = lambda test_params_time_shift: self.grad_time_shift(test_params_time_shift)
+    #         fun_value, fun_grad = objective_grad(params_time_shift)
+    #
+    #         print('sub shift fun_value', fun_value.shape, fun_value)
+    #         # print('fun_grad', len(fun_grad), fun_grad)
+    #         # print(bbbbbbbb)
+    #
+    #         for l in range(2):
+    #             # diag[l] = 0.9 * diag[l] + 0.1 * fun_grad[l] ** 2
+    #             diag[l] = 0.1 * diag[l] + 0.9 * fun_grad[l] ** 2
+    #             params_time_shift[l] = params_time_shift[l] + np.multiply(learning_rate * fun_grad[l],
+    #                                                                       1 / np.sqrt(diag[l] + epsilon))
+    #
+    #     print('final lik subj shift', -fun_value)
+    #
+    #     for l in range(1):
+    #         self.params_time_shift[l] = self.params_time_shift[l] + params_time_shift[l]
+    #
+    #     for i in range(self.N_biom):
+    #         Xdata = np.array([[100]])
+    #         for sub in range(self.N_samples):
+    #             temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub+1])]
+    #             shifted_temp = (temp + params_time_shift[0][sub])
+    #             Xdata = np.hstack([Xdata,shifted_temp.T])
+    #
+    #         self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
+    #
+    #
+    #     minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+    #     maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+    #     self.updateMinMax(minX, maxX)
+    #     self.DX = np.linspace(minX, maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
 
     def Optimize(self, N_global_iterations, iterGP, Plot = True):
 
         # Global optimizer (GP parameters + time shift)
-        fig = self.plotter.plotTraj(self)
-        fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, 0, self.expName))
-        fig2 = self.plotter.plotCompWithTrueParams(self)
-        fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
+        # fig = self.plotter.plotTraj(self)
+        # fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, 0, self.expName))
+        # fig2 = self.plotter.plotCompWithTrueParams(self)
+        # fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
 
         for i in range(N_global_iterations):
             print("iteration ", i, "of ", N_global_iterations)
             print("Optimizing GP parameters")
             if i>float(N_global_iterations)-2:
-                self.Optimize_GP_parameters(Niterat = iterGP)
+                self.Optimize_GP_parameters_Raz(Niterat = iterGP)
             else:
                 # self.N_Dpoints = 10
                 self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-                self.Optimize_GP_parameters(Niterat=iterGP, optimize_penalty = False)
+                self.Optimize_GP_parameters_Raz(Niterat=iterGP, optimize_penalty = False)
                 print("Current penalty parameters: ")
                 print(self.penalty)
 
@@ -1011,7 +1027,7 @@ class GP_progression_model(object):
 
             if i<(N_global_iterations -1):
                 print("Optimizing time shift")
-                self.Optimize_time_shift()
+                self.Optimize_time_shift_Raz_indiv()
 
             if Plot:
               fig = self.plotter.plotTraj(self)

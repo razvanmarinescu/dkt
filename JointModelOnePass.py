@@ -16,7 +16,7 @@ import MarcoModel
 
 import DisProgBuilder
 
-class JMDBuilder(DisProgBuilder.DPMBuilder):
+class JMDBuilderOnePass(DisProgBuilder.DPMBuilder):
   # builds a Joint Disease model
 
   def __init__(self, plotTrajParams):
@@ -26,9 +26,9 @@ class JMDBuilder(DisProgBuilder.DPMBuilder):
     self.plotterObj = plotterObj
 
   def generate(self, dataIndices, expName, params):
-    return JointModel(dataIndices, expName, params, self.plotterObj)
+    return JDMOnePass(dataIndices, expName, params, self.plotterObj)
 
-class JointModel(DisProgBuilder.DPMInterface):
+class JDMOnePass(DisProgBuilder.DPMInterface):
 
   def __init__(self, dataIndices, expName, params, plotterObj):
     self.dataIndices = dataIndices
@@ -105,12 +105,6 @@ class JointModel(DisProgBuilder.DPMInterface):
         plotTrajParamsFuncUnit = self.createPlotTrajParamsFuncUnit(nrCurrFuncUnit=u)
         plotterObjCurrFuncUnit = Plotter.PlotterGP(plotTrajParamsFuncUnit)  # set separate plotter for the
 
-        # fig = plotterObjCurrFuncUnit.plotTraj(self.unitModels[u], replaceFig=True, legendExtraPlot=True)
-        # fig.savefig('%s/unit%s_allTraj_%s.png' % (self.outFolder, u, self.expName))
-
-
-
-      # print(asda)
 
     disModelsFile = '%s/disModels.npz' % self.outFolder
     nrSubj = self.unitModels[0].N_samples

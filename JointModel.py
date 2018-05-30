@@ -11,8 +11,8 @@ from matplotlib import pyplot as pl
 import Plotter
 import copy
 import colorsys
-
 import MarcoModel
+import JointModelOnePass
 
 import DisProgBuilder
 
@@ -53,28 +53,74 @@ class JointModel(DisProgBuilder.DPMInterface):
       self.params['diagsSetInDis'][disNr]) for disNr in range(self.nrDis)]
 
 
+
+
   def runStd(self, runPart):
     self.run(runPart)
 
   def run(self, runPart):
     filePath = '%s/unitModels.npz' % self.outFolder
     nrRandFeatures = int(3)  # Number of random features for kernel approximation
+
+    plotFigs = True
+
     if runPart[0] == 'R':
+      self.initParams()
 
-      # estimate biomk trajectories - disease agnostic
-      self.biomkTrajParams = self.estimBiomkTraj()
+    if runPart[1] == 'R':
 
-      # estimate unit trajectories - disease specific
-      self.unitTrajParams = self.estimUnitTraj()
+      if plotFigs:
+        fig = self.plotter.plotCompWithTrueParams(self)
+        fig.savefig('%s/compTrueParams00_%s.png' % (self.outFolder, self.expName))
 
-      # estimate  subject latent variables
-      self.subjShifts = self.estimSubjShifts()
+      for i in range(nrIt):
+        # estimate biomk trajectories - disease agnostic
+        for f in range(self.nrFuncUnits):
+          self.estimBiomkTraj(unitModels[f])
 
+        fig = self.plotter.plotCompWithTrueParams(self)
+        fig.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i, self.expName))
 
+        # estimate unit trajectories - disease specific
+        for d in range(self.nrDis):
+          self.disModels[d].estimUnitTraj()
+
+        fig = self.plotter.plotCompWithTrueParams(self)
+        fig.savefig('%s/compTrueParams%d2_%s.png' % (self.outFolder, i, self.expName))
+
+        # estimate  subject latent variables
+        self.estimSubjShifts()
+
+        fig = self.plotter.plotCompWithTrueParams(self)
+        fig.savefig('%s/compTrueParams%d3_%s.png' % (self.outFolder, i, self.expName))
 
 
     res = None
     return res
+
+
+
+  def initParams(self):
+    paramsCopy = copy.deepcopy(self.params)
+    paramsCopy['nrGlobIterDis'] = 2 # set only two iterations, quick initialisation
+    paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
+    plotterObjOnePass = Plotter.PlotterGP(self.params['plotTrajParams'])
+    onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy,
+      self.plotterObj)
+
+    onePassModel.run(runPart = 'RR')
+
+    self.unitModels = onePassModel.unitModels
+    self.disModels = onePassModel.disModels
+
+  def estimBiomkTraj(self, unitModel):
+
+    self.Reset_parameters()
+
+    objFuncGrad = lambda params: self.fullLik(params)
+
+    self.Adadelta(Niterat, objFuncGrad, 0.05, self.parameters, output_grad_penalty=optimize_penalty)
+
 
   def predictBiomkSubjGivenXs(self, newXs, disNr):
     """

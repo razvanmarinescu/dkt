@@ -48,15 +48,17 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
     modelNames += [modelName]
 
   if np.any(modelToRun == 0) or np.any(modelToRun == 16):
-    # Incomplete JMD - Joint Model of Diseases
+    # Incomplete JMD - Joint Model of Diseases - One Pass
     filePathUnitModels = params['filePathUnitModels']
     gpModels = pickle.load(open(filePathUnitModels, 'rb'))
-    dpmBuilder = IncompleteModel.IncompleteBuilder(params['plotTrajParams'], gpModels)
-    modelName = 'IJDM'
+    dpmBuilder = JointModelOnePass.JointModelOnePass(params['plotTrajParams'], gpModels)
+    modelName = 'JDMOnePass'
     expNameCurrModel = '%s_%s' % (expName, modelName)
     params['currModel'] = 16
     res += [runAllExpFunc(params, expNameCurrModel, dpmBuilder)]
     modelNames += [modelName]
+
+
 
   return modelNames, res
 
