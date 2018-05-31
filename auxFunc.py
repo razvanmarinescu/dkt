@@ -3,11 +3,13 @@ from env import *
 import numpy as np
 import ParHierModel
 import sklearn.metrics
-
+import pandas as pd
 
 
 def convert_csv(file):
   table = pd.read_csv(file)
+
+  print('table', table)
 
   return convert_table_marco(table)
 
@@ -48,14 +50,11 @@ def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
                 flag_missing = flag_missing + 1
 
 
-        # print(sub, monthsSinceBlCurrSub)
         diagCurrSub = np.array(table['diag'][indices])
         diagNNind = np.logical_not(np.isnan(diagCurrSub))
         # print(diagCurrSub)
         monthsSinceBlCurrSub = np.array(table['Month_bl'])[indices][diagNNind]
 
-        # if flag_missing == 0:
-        #     print('missing data for sub: ', sub)
 
         diagExistsForAtLeastOneVisit = monthsSinceBlCurrSub.shape[0] > 0
         if diagExistsForAtLeastOneVisit:

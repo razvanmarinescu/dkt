@@ -192,8 +192,8 @@ class GP_progression_model(object):
 
           XshiftedScaled[b] += [self.applyScalingX(XshiftedCurrSubj)]
 
-          print('XshiftedScaled[b][s]', XshiftedScaled[b][s], XshiftedScaled[b][s].shape)
-          print(type(self.X[b][s]))
+          # print('XshiftedScaled[b][s]', XshiftedScaled[b][s], XshiftedScaled[b][s].shape)
+          # print(type(self.X[b][s]))
           # print(XshiftedScaled[b][s].shape[0])
           # print(ads)
 
@@ -380,12 +380,26 @@ class GP_progression_model(object):
 
         # Modify the prior length scale according to current X range
         prior_length_scale = (self.maxX-self.minX)/3
+        prior_length_scale_std = 1e-4
+        prior_sigma = 2
+
 
         Dterm = np.sum(penalty * np.dot(Doutput, W) - np.log(1 + np.exp(penalty * np.dot(Doutput, W))))
-        prior = (eps - 1) ** 2 / 1e-2 + (sigma - 2) ** 2 / 1e-3  + (l - prior_length_scale)**2/1e-2
+        prior = (eps - 1) ** 2 / 1e-2 + (sigma - prior_sigma) ** 2 / 1e-3  + (l - prior_length_scale)**2/prior_length_scale_std
+
+        # print(np.min(Y), np.max(Y), np.std(Y))
+        # print(ads)
+
+        if ~np.isfinite(Dterm):
+          # import pdb
+          # pdb.set_trace()
 
 
-        posterior = -0.5 *  ( np.log(2 * np.pi * eps) + np.sum((Y - np.dot(output,W))**2)/eps) - Kullback_Leibler  - prior + Dterm
+          return np.inf, np.repeat(0, len(params)).flatten(), 0
+
+
+        posterior = -0.5 *  ( np.log(2 * np.pi * eps) + np.sum((Y - np.dot(output,W))**2)/eps) - \
+          Kullback_Leibler  - prior + Dterm
 
         # Derivative of weights mean ad sd
         d_m_w = np.dot(((Y - np.dot(output,W))).T,output)/eps + penalty * np.sum(Doutput,0) \
@@ -410,26 +424,26 @@ class GP_progression_model(object):
               + penalty  *  np.sum( grad2_prod ) \
               - np.sum(np.multiply(np.multiply(np.exp(penalty * np.dot(Doutput, W)), 1 / (1 + np.exp(penalty * np.dot(Doutput, W)))), \
             penalty * grad2_prod))\
-            -  2* (l - prior_length_scale)/1e-2 * l
+            -  2* (l - prior_length_scale)/prior_length_scale_std * l
 
         # Derivative of amplitude
         d_sigma = + np.sum(np.multiply(((Y - np.dot(output,W))).T/eps,np.dot(output,W).T/np.sqrt(sigma))) * np.sqrt(sigma) \
                   -  0.5* penalty  *  np.sum(np.dot(Doutput, W)) \
                   + np.sum(np.multiply( np.multiply(np.exp(penalty * np.dot(Doutput, W)), 1 / (1 + np.exp(penalty * np.dot(Doutput, W)))), \
                                         0.5 * penalty * (np.dot(Doutput, W))))\
-                  - 2* (sigma - 2)/1e-2 * sigma
+                  - 2* (sigma - prior_sigma)/1e-2 * sigma
 
         # Derivative of noise term
         d_eps = + 0.5 *  ( 1 + np.sum((Y - np.dot(output,W))**2)/eps) - 2* (eps - 0.5) / 1e-2 * eps
 
-        # Derivative of penalization parameter
-        d_penalty = np.sum(np.dot(Doutput, W)) \
-                    - np.sum( np.multiply( np.multiply(np.dot(Doutput, W),np.exp(penalty * np.dot(Doutput, W))), \
-                                1/(1 + np.exp(penalty * np.dot(Doutput, W)))))
+        # # Derivative of penalization parameter
+        # d_penalty = np.sum(np.dot(Doutput, W)) \
+        #             - np.sum( np.multiply( np.multiply(np.dot(Doutput, W),np.exp(penalty * np.dot(Doutput, W))), \
+        #                         1/(1 + np.exp(penalty * np.dot(Doutput, W)))))
 
+        d_penalty = 0
 
         return posterior, np.hstack([np.repeat(0,len(s_omega)).flatten(), np.repeat(0,len(m_omega)).flatten(), d_s_w.flatten(), d_m_w.flatten(),  np.array([d_sigma]), np.array(d_l), np.array([d_eps])]), d_penalty
-
 
     def stochastic_grad_manual(self, params):
         # Stochastic gradient of log-posterior with respect ot given parameters
@@ -441,7 +455,12 @@ class GP_progression_model(object):
             current_params = params[l]
             current_X = self.X_array[l]
             current_Y = self.Y_array[l]
+            # print('self.parameters', self.parameters)
+            # print('params[l]', params[l], type(params[l]), params)
+            # print(self.parameters)
             MC_grad = np.zeros(len(params[l]))
+            # MC_grad = np.zeros(params[l].shape[0])
+            # print(adsa)
             output_grad_penalty.append(0)
             loglik = 0
             for j in range(100):
@@ -458,7 +477,9 @@ class GP_progression_model(object):
             output_MC_grad.append(MC_grad/100)
             output_loglik.append(loglik/100)
             output_grad_penalty[l] = output_grad_penalty[l]/100
+
         return output_loglik, output_MC_grad, output_grad_penalty
+        # return output_loglik, output_MC_grad
 
     def stochastic_grad_manual_mini_batch(self, params, batch_size):
         # Mini-batch implementation of stochastic gradient of log-posterior with respect ot given parameters
@@ -529,20 +550,19 @@ class GP_progression_model(object):
 
           for l in range(self.N_biom):
             # diag[l] = 0.9 * diag[l] + 0.1 * fun_grad[l] ** 2
-            diag[l] = 0.1 * diag[l] + 0.9 * fun_grad[l] ** 2
+            diag[l] = 0.9 * diag[l] + 0.1 * fun_grad[l] ** 2
             params[l] = params[l] - np.multiply(learning_rate * fun_grad[l], 1 / np.sqrt(diag[l] + epsilon))
 
             if output_grad_penalty:
               diag_penalty[l] = 0.9 * diag_penalty[l] + 0.1 * fun_grad_penalty[l] ** 2
               param_penalty[l] = param_penalty[l] - learning_rate * fun_grad_penalty[l]/ np.sqrt(diag_penalty[l] + epsilon)
 
-
           print(i,end=' ')
           sys.stdout.flush()
 
           for l in range(self.N_biom):
             self.parameters[l] = params[l]
-            print('params[l]', params[l])
+            # print('params[l]', params[l])
 
             if output_grad_penalty:
                 self.penalty [l]= param_penalty[l]
@@ -553,27 +573,39 @@ class GP_progression_model(object):
         # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
         self.Reset_parameters()
         objective_grad = lambda params: self.stochastic_grad_manual(params)
+
+        # print('self.parameters[0]', self.parameters[0], objective_grad(self.parameters))
+
         self.Adadelta(Niterat, objective_grad, 0.05, self.parameters, output_grad_penalty = optimize_penalty)
 
+
     def Optimize_GP_parameters_Raz(self, optimize_penalty = False, Niterat = 10):
-        # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
-        self.Reset_parameters()
+      # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
+      self.Reset_parameters()
 
-        params = self.parameters
+      encapsParams = lambda par: np.concatenate((np.zeros(2 * self.N_rnd_features) - 1, par))
+      decapsParams = lambda par: par[2 * self.N_rnd_features:]
 
-        for l in range(self.N_biom):
-          objFuncCurrBiomk = lambda params: self.stochasticObjFuncOneBiomkRaz(params, self.X_array[l],
-            self.Y_array[l], self.penalty[l])
+      for l in range(self.N_biom):
+        objFuncCurrBiomk = lambda params: self.stochasticObjFuncOneBiomkRaz(params,
+          self.X_array[l], self.Y_array[l], self.penalty[l])
 
-          print('objFuncCurrBiomk', objFuncCurrBiomk(self.parameters[l]))
-          # resStruct = scipy.optimize.minimize(objFuncCurrBiomk, self.parameters[l], method='Nelder-Mead',
-          #   options={'disp': True, 'xatol':1e+0, 'adaptive':True, 'maxiter':50, 'maxfev':50})
+        print('objFuncCurrBiomk', objFuncCurrBiomk(decapsParams(self.parameters[l])))
+        # resStruct = scipy.optimize.minimize(objFuncCurrBiomk, decapsParams(self.parameters[l]), method='Powell',
+        #   jac=True, options={'disp': True, 'xatol':1e+0, 'adaptive':True, 'maxiter':100, 'maxfev':300, 'eps':1e+1})
 
-          resStruct = scipy.optimize.minimize(objFuncCurrBiomk, self.parameters[l], method='BFGS', jac=True,
-            options={'disp': True, 'xatol':1e+0, 'adaptive':True, 'maxiter':50, 'maxfev':50})
+        resStruct = scipy.optimize.minimize(objFuncCurrBiomk, decapsParams(self.parameters[l]), method='CG',
+          jac=True, options={'disp': True, 'maxiter':100})
 
-          self.parameters[l] = resStruct.x
+        # print('self.parameters[l]', self.parameters[l], objFuncCurrBiomk(decapsParams(self.parameters[l])))
+        # print('resStruct.x', resStruct.x, objFuncCurrBiomk(resStruct.x))
+        print('resStruct', resStruct)
 
+
+        self.parameters[l] = encapsParams(resStruct.x)
+
+      # import pdb
+      # pdb.set_trace()
 
     def stochasticObjFuncOneBiomkRaz(self, current_params, current_X, current_Y, current_penalty):
       # Stochastic gradient of log-posterior with respect ot given parameters
@@ -581,6 +613,9 @@ class GP_progression_model(object):
       output_MC_grad = []
       output_loglik = []
       output_grad_penalty = 0
+
+      encapsParams = lambda par: np.concatenate((np.zeros(2 * self.N_rnd_features) - 1, par))
+      decapsParams = lambda par: par[2 * self.N_rnd_features:]
 
       MC_grad = np.zeros(len(current_params))
       loglik = 0
@@ -592,14 +627,23 @@ class GP_progression_model(object):
             current_X, current_Y,self.N_rnd_features, perturbation_W, params,
             current_penalty)
 
-          value, grad, grad_penalty = objective_cost_function(current_params)
-          loglik = loglik + value
-          MC_grad = MC_grad + grad
-          output_grad_penalty = output_grad_penalty + grad_penalty
+          value, grad, grad_penalty = objective_cost_function(encapsParams(current_params))
 
-      return loglik/nrPerturb, MC_grad/nrPerturb
+          # print('value, current_params, grad', value, current_params, grad)
 
+          if ~np.isfinite(grad).all():
+            import pdb
+            pdb.set_trace()
 
+          loglik = loglik - value
+          # print(decapsParams(grad).shape)
+          # print(MC_grad.shape)
+          MC_grad = MC_grad - decapsParams(grad)
+          output_grad_penalty = output_grad_penalty - grad_penalty
+
+      # print('lik grad params', loglik/nrPerturb, MC_grad/nrPerturb, current_params)
+
+      return loglik/nrPerturb, MC_grad/(nrPerturb)
 
 
     def log_posterior_time_shift(self, params, params_time_shift):
@@ -820,12 +864,7 @@ class GP_progression_model(object):
           objectiveGrad(init_params_time_only))
 
 
-
-        # fun_value, fun_grad = objective_grad(init_params)
-
         options = {'disp': True, 'gtol':1e-8}
-        # resStruct = scipy.optimize.minimize(objectiveFun, init_params_time_only, method='BFGS',
-        #   jac=objectiveGrad, options=options)
         resStruct = scipy.optimize.minimize(objectiveFun, init_params_time_only, method='Nelder-Mead',
           options={'disp': True})
 
@@ -1011,19 +1050,23 @@ class GP_progression_model(object):
             print("iteration ", i, "of ", N_global_iterations)
             print("Optimizing GP parameters")
             if i>float(N_global_iterations)-2:
-                self.Optimize_GP_parameters_Raz(Niterat = iterGP)
+              self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
+              self.Optimize_GP_parameters(Niterat = iterGP)
             else:
-                # self.N_Dpoints = 10
-                self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-                self.Optimize_GP_parameters_Raz(Niterat=iterGP, optimize_penalty = False)
-                print("Current penalty parameters: ")
-                print(self.penalty)
+              # self.N_Dpoints = 10
+              self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
+              self.Optimize_GP_parameters(Niterat=iterGP, optimize_penalty = False)
+              print("Current penalty parameters: ")
+              print(self.penalty)
 
             if Plot:
               fig = self.plotter.plotTraj(self)
               fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, i + 1, self.expName))
               fig2 = self.plotter.plotCompWithTrueParams(self)
               fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, i + 1, self.expName))
+
+            # import pdb
+            # pdb.set_trace()
 
             if i<(N_global_iterations -1):
                 print("Optimizing time shift")

@@ -52,7 +52,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.indxSubjForEachDisD = [np.in1d(self.params['plotTrajParams']['diag'],
       self.params['diagsSetInDis'][disNr]) for disNr in range(self.nrDis)]
 
-
+    self.plotter = Plotter.PlotterJDM()
 
 
   def runStd(self, runPart):
@@ -94,21 +94,19 @@ class JointModel(DisProgBuilder.DPMInterface):
         fig = self.plotter.plotCompWithTrueParams(self)
         fig.savefig('%s/compTrueParams%d3_%s.png' % (self.outFolder, i, self.expName))
 
-
     res = None
     return res
-
-
 
   def initParams(self):
     paramsCopy = copy.deepcopy(self.params)
     paramsCopy['nrGlobIterDis'] = 2 # set only two iterations, quick initialisation
+    paramsCopy['nrGlobIterUnit'] = 2  # set only two iterations, quick initialisation
     paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
     plotterObjOnePass = Plotter.PlotterGP(self.params['plotTrajParams'])
     onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy,
       self.plotterObj)
 
-    onePassModel.run(runPart = 'RR')
+    onePassModel.run(runPart = 'LR')
 
     self.unitModels = onePassModel.unitModels
     self.disModels = onePassModel.disModels

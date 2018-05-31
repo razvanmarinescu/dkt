@@ -327,7 +327,7 @@ def main():
   # first disease has CTL+AD, second disease has CTL2+PCA
   params['diagsSetInDis'] = [np.array([CTL, AD]), np.array([CTL2, PCA])]
   params['disLabels'] = ['dis0', 'dis1']
-
+  params['otherBiomkPerDisease'] = [[], []]
 
   print('diag', params['diag'].shape[0])
   print('X[0]',len(params['X'][0]))
