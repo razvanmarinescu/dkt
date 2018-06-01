@@ -150,26 +150,41 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
 
     localParams['diag'] = diagMarcoFormat
 
+    biomkInFuncUnit = localParams['biomkInFuncUnit']
+    nrFuncUnits = localParams['nrFuncUnits']
+
     # disease agnostic
     trueDysfuncXsX = np.linspace(0, 1, num=50)
     trueTrajFromDysXB = model.predPopFromDysfunc(trueDysfuncXsX)
     trueTrajFromDysXB = auxFunc.applyScalingToBiomk(trueTrajFromDysXB, scalingBiomk2B)
-    trueLineSpacedDPSsX = np.linspace(np.min(dpsCross), np.max(dpsCross), num=50)
+    trueSubjDysfuncScoresSU = model.predPopDys(subShiftsTrueMarcoFormatS) # dysf scores over DPS
 
+    trueParamsFuncUnits = [0 for _ in range(nrFuncUnits)]
+    for f in range(nrFuncUnits):
+      trueParamsFuncUnits[f] = dict(xsX=trueDysfuncXsX, ysXB=trueTrajFromDysXB[:, biomkInFuncUnit[f]],
+      subShiftsS=trueSubjDysfuncScoresSU[:,f], scalingBiomk2B=scalingBiomk2B[:, biomkInFuncUnit[f]])
 
     # disease specific
-    trueTrajPredXB = model.predPop(trueLineSpacedDPSsX)
+    trueLineSpacedDPSsX = np.linspace(np.min(dpsCross), np.max(dpsCross), num=50) # DPS in disease space
+    trueTrajPredXB = model.predPop(trueLineSpacedDPSsX) # biomk trajectory over DPS
     trueTrajPredXB = auxFunc.applyScalingToBiomk(trueTrajPredXB, scalingBiomk2B)
-    trueDysTrajFromDpsXU = model.predPopDys(trueLineSpacedDPSsX)
-    trueSubjDysfuncScoresSU = model.predPopDys(subShiftsTrueMarcoFormatS)
+    trueDysTrajFromDpsXU = model.predPopDys(trueLineSpacedDPSsX) # dysf traj over DPS
 
+    trueParamsDis = dict(xsX=trueLineSpacedDPSsX, ysXU=trueDysTrajFromDpsXU, ysXB=trueTrajPredXB,
+       subShiftsS=subShiftsTrueMarcoFormatS, scalingBiomk2B=scalingBiomk2B)
 
-    trueParamsMarcoFormat = dict(subShiftsTrueMarcoFormatS=subShiftsTrueMarcoFormatS,
-    trueSubjDysfuncScoresSU=trueSubjDysfuncScoresSU, trueLineSpacedDPSsX=trueLineSpacedDPSsX,
-      trueTrajPredXB=trueTrajPredXB, trueDysTrajFromDpsXU=trueDysTrajFromDpsXU,
-      trueDysfuncXsX=trueDysfuncXsX,trueTrajFromDysXB=trueTrajFromDysXB,
-      scalingBiomk2B=scalingBiomk2B)
-    localParams['trueParams'] = trueParamsMarcoFormat
+    # trueParamsMarcoFormat = dict(subShiftsTrueMarcoFormatS=subShiftsTrueMarcoFormatS,
+    #   trueSubjDysfuncScoresSU=trueSubjDysfuncScoresSU, trueLineSpacedDPSsX=trueLineSpacedDPSsX,
+    #   trueTrajPredXB=trueTrajPredXB, trueDysTrajFromDpsXU=trueDysTrajFromDpsXU,
+    #   trueDysfuncXsX=trueDysfuncXsX,trueTrajFromDysXB=trueTrajFromDysXB,
+    #   scalingBiomk2B=scalingBiomk2B, trueParamsFuncUnits=trueParamsFuncUnits,
+    #   trueParamsDis=trueParamsDis)
+    # localParams['trueParams'] = trueParamsMarcoFormat
+
+    trueParamsMarcoFormat = dict(trueParamsFuncUnits=trueParamsFuncUnits,
+      trueParamsCurrDis=trueParamsDis)
+    localParams['trueParamsFuncUnits'] = trueParamsFuncUnits
+    localParams['trueParamsDis'] = trueParamsDis # add more diseases later
 
     os.system('mkdir -p %s' % outFolder)
     outFileFull = '%s/%s' % (outFolder, fileName)

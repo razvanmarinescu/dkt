@@ -31,7 +31,7 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
 
   if np.any(modelToRun == 0) or np.any(modelToRun == 14):
     # JMD - Joint Model of Diseases
-    dpmBuilder = JointModel.JMDBuilder(params['plotTrajParams'])
+    dpmBuilder = JointModel.JMDBuilder()
     modelName = 'JMD'
     expNameCurrModel = '%s_%s' % (expName, modelName)
     params['currModel'] = 14
@@ -48,10 +48,8 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
     modelNames += [modelName]
 
   if np.any(modelToRun == 0) or np.any(modelToRun == 16):
-    # Incomplete JMD - Joint Model of Diseases - One Pass
-    filePathUnitModels = params['filePathUnitModels']
-    gpModels = pickle.load(open(filePathUnitModels, 'rb'))
-    dpmBuilder = JointModelOnePass.JointModelOnePass(params['plotTrajParams'], gpModels)
+    # Joint Model of Diseases - One Pass
+    dpmBuilder = JointModelOnePass.JMDBuilderOnePass()
     modelName = 'JDMOnePass'
     expNameCurrModel = '%s_%s' % (expName, modelName)
     params['currModel'] = 16

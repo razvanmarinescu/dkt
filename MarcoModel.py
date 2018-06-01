@@ -1043,8 +1043,8 @@ class GP_progression_model(object):
         # Global optimizer (GP parameters + time shift)
         # fig = self.plotter.plotTraj(self)
         # fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, 0, self.expName))
-        # fig2 = self.plotter.plotCompWithTrueParams(self)
-        # fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
+        fig2 = self.plotter.plotCompWithTrueParams(self)
+        fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
 
         for i in range(N_global_iterations):
             print("iteration ", i, "of ", N_global_iterations)

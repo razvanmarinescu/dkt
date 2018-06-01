@@ -19,18 +19,15 @@ import DisProgBuilder
 class JMDBuilder(DisProgBuilder.DPMBuilder):
   # builds a Joint Disease model
 
-  def __init__(self, plotTrajParams):
-    self.plotterObj = Plotter.PlotterGP(plotTrajParams)
-
-  def setPlotter(self, plotterObj):
-    self.plotterObj = plotterObj
+  def __init__(self):
+    pass
 
   def generate(self, dataIndices, expName, params):
-    return JointModel(dataIndices, expName, params, self.plotterObj)
+    return JointModel(dataIndices, expName, params)
 
 class JointModel(DisProgBuilder.DPMInterface):
 
-  def __init__(self, dataIndices, expName, params, plotterObj):
+  def __init__(self, dataIndices, expName, params):
     self.dataIndices = dataIndices
     self.expName = expName
     self.params = params
@@ -38,7 +35,6 @@ class JointModel(DisProgBuilder.DPMInterface):
     os.system('mkdir -p %s' % self.outFolder)
     self.params['plotTrajParams']['outFolder'] = self.outFolder
     self.params['plotTrajParams']['expName'] = expName
-    self.plotterObj = plotterObj
     self.nrBiomk = len(params['X'])
     self.nrFuncUnits = params['nrFuncUnits']
     self.biomkInFuncUnit = params['biomkInFuncUnit']
@@ -52,8 +48,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.indxSubjForEachDisD = [np.in1d(self.params['plotTrajParams']['diag'],
       self.params['diagsSetInDis'][disNr]) for disNr in range(self.nrDis)]
 
-    self.plotter = Plotter.PlotterJDM()
-
+    self.plotter = Plotter.PlotterJDM(self.params['plotTrajParams'])
 
   def runStd(self, runPart):
     self.run(runPart)
@@ -70,7 +65,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     if runPart[1] == 'R':
 
       if plotFigs:
-        fig = self.plotter.plotCompWithTrueParams(self)
+        fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels)
         fig.savefig('%s/compTrueParams00_%s.png' % (self.outFolder, self.expName))
 
       for i in range(nrIt):
@@ -78,35 +73,28 @@ class JointModel(DisProgBuilder.DPMInterface):
         for f in range(self.nrFuncUnits):
           self.estimBiomkTraj(unitModels[f])
 
-        fig = self.plotter.plotCompWithTrueParams(self)
-        fig.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i, self.expName))
+
 
         # estimate unit trajectories - disease specific
         for d in range(self.nrDis):
           self.disModels[d].estimUnitTraj()
 
-        fig = self.plotter.plotCompWithTrueParams(self)
-        fig.savefig('%s/compTrueParams%d2_%s.png' % (self.outFolder, i, self.expName))
 
         # estimate  subject latent variables
         self.estimSubjShifts()
 
-        fig = self.plotter.plotCompWithTrueParams(self)
-        fig.savefig('%s/compTrueParams%d3_%s.png' % (self.outFolder, i, self.expName))
 
     res = None
     return res
 
   def initParams(self):
     paramsCopy = copy.deepcopy(self.params)
-    paramsCopy['nrGlobIterDis'] = 2 # set only two iterations, quick initialisation
-    paramsCopy['nrGlobIterUnit'] = 2  # set only two iterations, quick initialisation
+    paramsCopy['nrGlobIterDis'] = 4 # set only two iterations, quick initialisation
+    paramsCopy['nrGlobIterUnit'] = 4  # set only two iterations, quick initialisation
     paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
-    plotterObjOnePass = Plotter.PlotterGP(self.params['plotTrajParams'])
-    onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy,
-      self.plotterObj)
+    onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy)
 
-    onePassModel.run(runPart = 'LR')
+    onePassModel.run(runPart = 'LL')
 
     self.unitModels = onePassModel.unitModels
     self.disModels = onePassModel.disModels
@@ -211,20 +199,12 @@ class JointModel(DisProgBuilder.DPMInterface):
       plotTrajParamsFuncUnit['trueParams']['subShiftsTrueMarcoFormatS'] = \
       plotTrajParamsFuncUnit['trueParams']['trueSubjDysfuncScoresSU'][:, nrCurrFuncUnit]
 
-      # print(self.params['plotTrajParams']['trueParams']['trueTrajFromDysXB'].shape)
-      # print(plotTrajParamsFuncUnit['trueParams']['trueTrajXB'].shape)
-      # print(asd)
-
-
 
     labels = [self.params['labels'][b] for b in self.biomkInFuncUnit[nrCurrFuncUnit]]
     plotTrajParamsFuncUnit['labels'] = labels
     plotTrajParamsFuncUnit['colorsTraj'] =  [self.params['plotTrajParams']['colorsTraj'][b]
       for b in self.biomkInFuncUnit[nrCurrFuncUnit]]
 
-
-    # print('plotTrajParamsFuncUnit', plotTrajParamsFuncUnit)
-    # print(adsa)
     return plotTrajParamsFuncUnit
 
   def createPlotTrajParamsDis(self, disNr):
@@ -243,22 +223,12 @@ class JointModel(DisProgBuilder.DPMInterface):
       plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'] = \
         plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'][self.indxSubjForEachDisD[disNr]]
 
-      # print(plotTrajParamsDis['trueParams']['trueTrajXB'].shape)
-      # print(adsa)
-
-    print(self.params['nrBiomkDisModel'])
-    # print(adssa)
-
     plotTrajParamsDis['labels'] = self.params['plotTrajParams']['unitNames']
     plotTrajParamsDis['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
       np.linspace(0, 1, num = self.params['nrBiomkDisModel'], endpoint = False)]
     # if False, plot estimated traj. in separate plot from true traj. If True, use only one plot
     plotTrajParamsDis['allTrajOverlap'] = False
 
-    # plotTrajParamsDis['yNormMode'] = None
-
-    # print('plotTrajParamsFuncUnit', plotTrajParamsFuncUnit)
-    # print(adsa)
     return plotTrajParamsDis
 
 
