@@ -50,6 +50,14 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     self.plotter = Plotter.PlotterJDM(self.params['plotTrajParams'])
 
+    self.disIdxForEachSubjS = np.zeros(len(params['X'][0]))
+    for d in range(self.nrDis):
+      self.disIdxForEachSubjS[self.indxSubjForEachDisD == d] = d
+
+    self.ridsPerDisD = [_ for _ in range(self.nrDis)]
+    for d in range(self.nrDis):
+      self.ridsPerDisD[d] = [s for s in np.where(self.indxSubjForEachDisD[d])[0]]
+
   def runStd(self, runPart):
     self.run(runPart)
 
@@ -65,15 +73,13 @@ class JointModel(DisProgBuilder.DPMInterface):
     if runPart[1] == 'R':
 
       if plotFigs:
-        fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels)
+        fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=False)
         fig.savefig('%s/compTrueParams00_%s.png' % (self.outFolder, self.expName))
 
       for i in range(nrIt):
         # estimate biomk trajectories - disease agnostic
         for f in range(self.nrFuncUnits):
           self.estimBiomkTraj(unitModels[f])
-
-
 
         # estimate unit trajectories - disease specific
         for d in range(self.nrDis):
@@ -94,17 +100,42 @@ class JointModel(DisProgBuilder.DPMInterface):
     paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
     onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy)
 
-    onePassModel.run(runPart = 'LL')
+    onePassModel.run(runPart = 'LR')
 
     self.unitModels = onePassModel.unitModels
     self.disModels = onePassModel.disModels
 
-  def estimBiomkTraj(self, unitModel):
+  def estimBiomkTraj(self, unitModel, disModels):
 
     self.Reset_parameters()
 
-    objFuncGrad = lambda params: self.fullLik(params)
+    # update the DPS scores of subjects
+    predScoresDS = [0 for _ in range(self.nrDis)]
 
+    XshiftedScaledDBS = [0 for _ in range(self.nrDis)]
+    for d in range(self.nrDis):
+      XshiftedScaledDBS[d], _, _ = self.disModels[d].getData()
+
+
+
+    for s in range(self.unitModel.nrSubj):
+      currDis = self.disIdxForEachSubjS[s]
+      currRID = self.params['RID'][s]
+      # get shifts for curr subj from correct disModel
+      currXdataShifted = XshiftedScaledDBS[currDis][0][self.ridsPerDisD == currRID]
+
+      # predict dysf scoresf for curr subj
+
+      predScoresCurrXU = disModels[currDis].predBiomk(currXdataShifted)
+
+
+    for b in range(self.unitModel.nrBiomk):
+      self.X_array.append([np.float128(item) for sublist in X[l] for item in sublist])
+      self.unitModels.X_array[b] =
+
+
+
+    objFuncGrad = lambda params: self.fullLik(params)
     self.Adadelta(Niterat, objFuncGrad, 0.05, self.parameters, output_grad_penalty=optimize_penalty)
 
 
@@ -202,7 +233,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     labels = [self.params['labels'][b] for b in self.biomkInFuncUnit[nrCurrFuncUnit]]
     plotTrajParamsFuncUnit['labels'] = labels
-    plotTrajParamsFuncUnit['colorsTraj'] =  [self.params['plotTrajParams']['colorsTraj'][b]
+    plotTrajParamsFuncUnit['colorsTraj'] =  [self.params['plotTrajParams']['colorsTrajBiomkB'][b]
       for b in self.biomkInFuncUnit[nrCurrFuncUnit]]
 
     return plotTrajParamsFuncUnit
@@ -224,8 +255,7 @@ class JointModel(DisProgBuilder.DPMInterface):
         plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'][self.indxSubjForEachDisD[disNr]]
 
     plotTrajParamsDis['labels'] = self.params['plotTrajParams']['unitNames']
-    plotTrajParamsDis['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
-      np.linspace(0, 1, num = self.params['nrBiomkDisModel'], endpoint = False)]
+    plotTrajParamsDis['colorsTraj'] = plotTrajParamsDis['colorsTrajUnitsU']
     # if False, plot estimated traj. in separate plot from true traj. If True, use only one plot
     plotTrajParamsDis['allTrajOverlap'] = False
 

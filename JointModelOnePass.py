@@ -66,7 +66,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
       # functional units
       for u in range(self.nrFuncUnits):
-        plotTrajParamsFuncUnit = JDMOnePass.createPlotTrajParamsFuncUnit(self.params, nrCurrFuncUnit=u)
+        plotTrajParamsFuncUnit = JDMOnePass.createPlotTrajParamsFuncUnit(self.params, unitNr=u)
         plotterObjCurrFuncUnit = Plotter.PlotterFuncUnit(plotTrajParamsFuncUnit)  # set separate plotter for the
 
         XfiltCurrUnit = [Xfilt[b] for b in self.biomkInFuncUnit[u]]
@@ -92,7 +92,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
           assert np.all(self.unitModels[0].Y[b][s] == self.params['Y'][idxInAllBiomk][s])
 
       for u in range(self.nrFuncUnits):
-        plotTrajParamsFuncUnit = JDMOnePass.createPlotTrajParamsFuncUnit(self.params, nrCurrFuncUnit=u)
+        plotTrajParamsFuncUnit = JDMOnePass.createPlotTrajParamsFuncUnit(self.params, unitNr=u)
         plotterObjCurrFuncUnit = Plotter.PlotterFuncUnit(plotTrajParamsFuncUnit)  # set separate plotter for the
 
 
@@ -104,6 +104,10 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
       iterParamsDis = self.params['iterParamsDis']
       dysfuncScoresU = [0 for x in range(self.nrFuncUnits)]
       xDysfunSubjU = [0 for x in range(self.nrFuncUnits)]
+
+      minDys = np.zeros(self.nrFuncUnits)
+      maxDys = np.zeros(self.nrFuncUnits)
+
       for u in range(self.nrFuncUnits):
         dysfuncScoresU[u] = [[] for _ in range(nrSubj)]
         xDysfunSubjU[u] = [[] for _ in range(nrSubj)]
@@ -114,33 +118,29 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
           for b in range(self.unitModels[u].N_biom):
             xDysfunSubjUCurrSubj = XunitModel[b][sub]  # Xs in the unit model
             xDysfunSubjU[u][sub] += list(xDysfunSubjUCurrSubj)
-
-            # dysfuncScoresCurrSubExtr = [self.unitModels[u].X_array[b][k][0] for k in range(int(np.sum(
-            #   self.unitModels[u].N_obs_per_sub[b][:sub])), np.sum(self.unitModels[u].N_obs_per_sub[b][:sub + 1]))]
-
             dysfuncScoresU[u][sub] += list(XshiftedUnitModel[b][sub]) # (Xs + timeShift) in the unit model
 
           xDysfunSubjU[u][sub] = np.sort(np.unique(xDysfunSubjU[u][sub]))
           dysfuncScoresU[u][sub] = np.sort(np.unique(dysfuncScoresU[u][sub]))
 
-
           assert len(dysfuncScoresU[u][sub]) == len(xDysfunSubjU[u][sub])
 
-
         dysfuncScoresSerial = [x2 for x in dysfuncScoresU[u] for x2 in x]
-        minDys = np.min(dysfuncScoresSerial)
-        maxDys = np.max(dysfuncScoresSerial)
+        minDys[u] = np.min(dysfuncScoresSerial)
+        maxDys[u] = np.max(dysfuncScoresSerial)
 
         # make the functional scores be between [0,1]
         # 26/02/18: actually this is not needed, re-scaling will be done in the plotting
-        # dysfuncScoresU[u] = [ (x - minDys) / (maxDys - minDys) for x in  dysfuncScoresU[u]]
-
+        # 2 June 2018: actually I need this, otherwise the plotting of unit-traj in dis space
+        # will have wrong Y-scale
+        dysfuncScoresU[u] = [self.unitModels[u].applyScalingXzeroOneFwd(xs) for xs in dysfuncScoresU[u]]
 
 
       # now build separate model for each disease
       disLabels = self.params['disLabels']
       nrDis = len(disLabels)
       self.disModels = [_ for _ in range(nrDis)]
+
 
       for disNr in range(nrDis):
         nrBiomkDisModel = len(xDysfunSubjU) + len(self.params['otherBiomkPerDisease'][disNr])
@@ -151,8 +151,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         if 'otherBiomkPerDisease' in self.params.keys():
           xDysfunSubjUCopy += [self.params['X'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
           dysfuncScoresUCopy += [self.params['Y'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
-          # print(self.params['otherBiomkPerDisease'][disNr])
-          # print(asd)
+
 
         # first filter the data .. keep only subj in current disease
         xDysfunSubjCurrDisU = [_ for _ in range(nrBiomkDisModel)]
@@ -163,6 +162,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
             np.where(self.indxSubjForEachDisD[disNr])[0]]
           dysfuncScoresCurrDisU[b] = [dysfuncScoresUCopy[b][s] for s in
             np.where(self.indxSubjForEachDisD[disNr])[0]]
+
 
         plotTrajParamsDis = JDMOnePass.createPlotTrajParamsDis(self.params, disNr)
         plotterCurrDis = Plotter.PlotterDis(plotTrajParamsDis)  # set separate plotter for the
@@ -212,12 +212,14 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
     dysfuncPredXU = self.disModels[disNr].predictBiomk(newXs)
 
 
+
     # then predict the inidividual biomarkers in the disease agnostic models
     biomkPredXB = np.zeros((newXs.shape[0], self.nrBiomk))
     for u in range(self.nrFuncUnits):
-      # dysfScaled = self.unitModels[u].applyScalingX(dysfuncPredXU[:,u])
+      dysfScaled = self.unitModels[u].applyScalingXzeroOneInv(dysfuncPredXU[:,u])
+
       biomkPredXB[:, self.biomkInFuncUnit[u]] = \
-        self.unitModels[u].predictBiomk(dysfuncPredXU[:,u])
+        self.unitModels[u].predictBiomk(dysfScaled)
 
 
     biomkIndNotInFuncUnits = self.biomkInFuncUnit[-1]
@@ -272,26 +274,21 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
     return trajSamplesBXS
 
   @staticmethod
-  def createPlotTrajParamsFuncUnit(params, nrCurrFuncUnit):
+  def createPlotTrajParamsFuncUnit(params, unitNr):
 
     plotTrajParamsFuncUnit = copy.deepcopy(params['plotTrajParams'])
     plotTrajParamsFuncUnit['nrRows'] = params['plotTrajParams']['nrRowsFuncUnit']
     plotTrajParamsFuncUnit['nrCols'] = params['plotTrajParams']['nrColsFuncUnit']
 
-
     if 'trueParamsFuncUnits' in params.keys():
         # set the params for plotting true trajectories - the Xs and f(Xs), i.e. trueTraj
-      # plotTrajParamsFuncUnit['trueParams']['trueXsTrajX'] = params['plotTrajParams']['trueParams']['trueDysfuncXsX']
-      # plotTrajParamsFuncUnit['trueParams']['trueTrajXB'] = \
-      #   params['plotTrajParams']['trueParams']['trueTrajFromDysXB'][:, params['biomkInFuncUnit'][nrCurrFuncUnit]]
-      # plotTrajParamsFuncUnit['trueParams']['subShiftsTrueMarcoFormatS'] = \
-      # plotTrajParamsFuncUnit['trueParams']['trueSubjDysfuncScoresSU'][:, nrCurrFuncUnit]
-      plotTrajParamsFuncUnit['trueParams'] = params['trueParamsFuncUnits'][nrCurrFuncUnit]
+      plotTrajParamsFuncUnit['trueParams'] = params['trueParamsFuncUnits'][unitNr]
 
-    labels = [params['labels'][b] for b in params['biomkInFuncUnit'][nrCurrFuncUnit]]
+    labels = [params['labels'][b] for b in params['biomkInFuncUnit'][unitNr]]
     plotTrajParamsFuncUnit['labels'] = labels
-    plotTrajParamsFuncUnit['colorsTraj'] =  [params['plotTrajParams']['colorsTraj'][b]
-      for b in params['biomkInFuncUnit'][nrCurrFuncUnit]]
+    plotTrajParamsFuncUnit['colorsTraj'] =  [params['plotTrajParams']['colorsTrajBiomkB'][b]
+                                             for b in params['biomkInFuncUnit'][unitNr]]
+    plotTrajParamsFuncUnit['title'] = params['unitNames'][unitNr]
 
     return plotTrajParamsFuncUnit
 
@@ -303,23 +300,14 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
     plotTrajParamsDis['diag'] = plotTrajParamsDis['diag'][params['indxSubjForEachDisD'][disNr]]
 
     if 'trueParamsDis' in params.keys():
-      # set the params for plotting true trajectories - the Xs and f(Xs), i.e. trueTraj
-      # plotTrajParamsDis['trueParams']['trueXsTrajX'] = \
-      #   params['plotTrajParams']['trueParams']['trueLineSpacedDPSsX']
-      # plotTrajParamsDis['trueParams']['trueTrajXB'] = \
-      #   params['plotTrajParams']['trueParams']['trueDysTrajFromDpsXU'][disNr]
-      # # need to filter out the subjects with other diseases
-      # plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'] = \
-      #   plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'][params['indxSubjForEachDisD'][disNr]]
-
       plotTrajParamsDis['trueParams'] = params['trueParamsDis'][disNr]
 
 
-    plotTrajParamsDis['labels'] = params['plotTrajParams']['unitNames']
-    plotTrajParamsDis['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
-      np.linspace(0, 1, num = params['nrBiomkDisModel'], endpoint = False)]
+    plotTrajParamsDis['labels'] = params['unitNames']
+    plotTrajParamsDis['colorsTraj'] =  plotTrajParamsDis['colorsTrajUnitsU']
     # if False, plot estimated traj. in separate plot from true traj. If True, use only one plot
     plotTrajParamsDis['allTrajOverlap'] = False
+    plotTrajParamsDis['title'] = params['disLabels'][disNr]
 
 
     return plotTrajParamsDis

@@ -144,16 +144,21 @@ def main():
   plotTrajParams['labels'] = ['b%d' % n for n in range(nrBiomk)]
   plotTrajParams['nrRowsFuncUnit'] = 3
   plotTrajParams['nrColsFuncUnit'] = 4
-  plotTrajParams['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in np.linspace(0, 1, num=nrBiomk, endpoint=False)]
+  plotTrajParams['colorsTrajBiomkB'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
+    np.linspace(0, 1, num=nrBiomk, endpoint=False)]
+  plotTrajParams['colorsTrajUnitsU'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
+    np.linspace(0, 1, num=nrFuncUnits, endpoint=False)]
+
 
   # plotTrajParams['yNormMode'] = 'zScoreTraj'
   # plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
   plotTrajParams['yNormMode'] = 'unscaled'
 
+
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
 
-  plotTrajParams['unitNames'] = ['unit%d' % f for f in range(nrFuncUnits)]
+  params['unitNames'] = ['Unit%d' % f for f in range(nrFuncUnits)]
 
   params['runIndex'] = args.runIndex
   params['nrProc'] = args.nrProc
@@ -234,7 +239,7 @@ def main():
   # params of the dysfunctional trajectories
   dysfuncParamsDisTwo = copy.deepcopy(dysfuncParamsDisOne)
   dysfuncParamsDisTwo[:, 1] = [0.3, 0.2] # bk
-  dysfuncParamsDisTwo[:, 2] = [-4, 6]
+  dysfuncParamsDisTwo[:, 2] = [6, -4]
 
   synthModelDisTwo = ParHierModel.ParHierModel(dysfuncParamsDisTwo, thetas, mapBiomkToFuncUnits, sigmoidFunc, sigmaB)
 
@@ -312,7 +317,7 @@ def main():
   # map which diagnoses belong to which disease
   # first disease has CTL+AD, second disease has CTL2+PCA
   params['diagsSetInDis'] = [np.array([CTL, AD]), np.array([CTL2, PCA])]
-  params['disLabels'] = ['dis0', 'dis1']
+  params['disLabels'] = ['Dis0', 'Dis1']
   params['otherBiomkPerDisease'] = [[], []]
 
   nrDis = len(params['disLabels'])
@@ -335,7 +340,6 @@ def main():
   expNameDisOne = '%s' % expName
   modelNames, res = evaluationFramework.runModels(params, expName,
     args.modelToRun, runAllExpSynth)
-
 
 
 def runAllExpSynth(params, expName, dpmBuilder, compareTrueParamsFunc = None):

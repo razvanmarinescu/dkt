@@ -54,7 +54,9 @@ class GP_progression_model(object):
         self.group = group
         self.N_rnd_features = int(N_rnd_features)
         self.N_samples = len(X[0])
+        self.nrSubj = len(X[0])
         self.N_biom = len(X)
+        self.nrBiomk = len(X)
         self.X_array = []
         self.Y_array = []
         self.X = X
@@ -144,7 +146,6 @@ class GP_progression_model(object):
                 obs = np.array([self.X_array[biom][k][0] for k in range(int(np.sum(self.N_obs_per_sub[biom][:sub])),
                                                                np.sum(self.N_obs_per_sub[biom][:sub + 1]))])
 
-        # self.addInitTimeShifts()
 
 
     def applyScalingX(self, x_data, biomk=0):
@@ -179,6 +180,13 @@ class GP_progression_model(object):
     def applyGivenScalingY(self, y_data, meanY, stdY):
       return (y_data - meanY)/stdY
 
+    def applyScalingXzeroOneFwd(self, xs):
+      return (xs - self.minScX) / \
+        (self.maxScX - self.minScX)
+
+    def applyScalingXzeroOneInv(self, xs):
+      return xs * (self.maxScX - self.minScX) + self.minScX
+
     def getData(self):
       nrBiomk = len(self.X)
       nrSubj = len(self.X[0])
@@ -192,15 +200,11 @@ class GP_progression_model(object):
 
           XshiftedScaled[b] += [self.applyScalingX(XshiftedCurrSubj)]
 
-          # print('XshiftedScaled[b][s]', XshiftedScaled[b][s], XshiftedScaled[b][s].shape)
-          # print(type(self.X[b][s]))
-          # print(XshiftedScaled[b][s].shape[0])
-          # print(ads)
-
           assert XshiftedScaled[b][s].shape[0] == self.X[b][s].shape[0]
           assert XshiftedScaled[b][s].shape[0] == self.Y[b][s].shape[0]
 
       return XshiftedScaled, self.X, self.Y
+
 
     def getSubShiftsLong(self):
       return self.applyScalingX(self.params_time_shift[0])
@@ -752,7 +756,7 @@ class GP_progression_model(object):
         # print('tempY - np.dot(output, W)) ** 2 ', np.sum((tempY - np.dot(output, W)) ** 2))
 
         # subj specific
-        timeShiftPriorSpread = 3
+        timeShiftPriorSpread = 6
         prior_time_shift = (time_shift_one_sub - 0) ** 2 / timeShiftPriorSpread
         loglik = loglik - 0.5 * (np.sum((Ydata - np.dot(output, W)) ** 2) / eps) - prior_time_shift
         # loglik = loglik - 0.5 * (np.sum((Ydata - np.dot(output, W)) ** 2) / eps)
@@ -814,11 +818,9 @@ class GP_progression_model(object):
           initTimeShifts += [[self.Y[b][s][0] for b in range(len(self.Y)) if self.Y[b][s].shape[0] > 0][0] * 50] # 50 months
 
 
-        print('initTimeShifts', initTimeShifts)
         initTimeShifts = np.array(initTimeShifts)
         initTimeShifts = initTimeShifts - np.mean(initTimeShifts)
         initTimeShifts = convTimeOnlyToTimePlusAcc(np.array(initTimeShifts))
-        print('initTimeShifts', initTimeShifts)
         # print(ads)
 
         # import pdb
@@ -832,61 +834,6 @@ class GP_progression_model(object):
             for sub in range(self.N_samples):
                 temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub+1])]
                 shifted_temp = (temp + initTimeShifts[0][sub])
-                Xdata = np.hstack([Xdata,shifted_temp.T])
-
-            self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
-
-
-        minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-        maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-        self.updateMinMax(minX, maxX)
-        self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-
-
-
-    def Optimize_time_shift_Raz(self):
-        # Adadelta for optimization of time shift parameters
-        init_params = self.params_time_shift.copy()
-        init_params[0] = np.zeros(len(init_params[0]))
-
-        convTimeOnlyToTimePlusAcc = lambda params_time_shift_only_shift: \
-          np.concatenate((params_time_shift_only_shift.reshape(1,-1),
-          np.ones((1, params_time_shift_only_shift.shape[0]))),axis=0)
-        objectiveFun = lambda params_time_shift_only_shift: -self.grad_time_shift(
-          convTimeOnlyToTimePlusAcc(params_time_shift_only_shift))[0]
-        objectiveGrad = lambda params_time_shift_only_shift: -np.array(self.grad_time_shift(
-          convTimeOnlyToTimePlusAcc(params_time_shift_only_shift))[1][0])
-
-        init_params_time_only = init_params[0]
-        print('objectiveFun(init_params_time_only)', objectiveFun(init_params_time_only).shape,
-          objectiveFun(init_params_time_only))
-        print('objectiveGrad(init_params_time_only)', objectiveGrad(init_params_time_only).shape,
-          objectiveGrad(init_params_time_only))
-
-
-        options = {'disp': True, 'gtol':1e-8}
-        resStruct = scipy.optimize.minimize(objectiveFun, init_params_time_only, method='Nelder-Mead',
-          options={'disp': True})
-
-        optimal_params_time_only = resStruct.x
-        optimal_params = convTimeOnlyToTimePlusAcc(optimal_params_time_only)
-
-        print('objectiveFun(optimal_params_time_only)', objectiveFun(optimal_params_time_only))
-        print('objectiveFun(init_params_time_only)', objectiveFun(init_params_time_only))
-        print('objectiveGrad(optimal_params_time_only)', objectiveGrad(optimal_params_time_only))
-        print('optimal_params_time_only', optimal_params_time_only)
-
-        # import pdb
-        # pdb.set_trace()
-
-        for l in range(1):
-            self.params_time_shift[l] = self.params_time_shift[l] + optimal_params[l]
-
-        for i in range(self.N_biom):
-            Xdata = np.array([[100]])
-            for sub in range(self.N_samples):
-                temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub+1])]
-                shifted_temp = (temp + optimal_params[0][sub])
                 Xdata = np.hstack([Xdata,shifted_temp.T])
 
             self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
@@ -927,13 +874,6 @@ class GP_progression_model(object):
           Omegas += [Omega]
           epss += [eps]
 
-
-          # Doutput = self.Dbasis(self.DX, sigma, Omega)
-          # Kullback_Leibler = self.KL(s_omega, m_omega, s_w, m_w, l)
-          # Dterm = np.sum(
-          #   np.log(2) - self.penalty[i] * np.dot(Doutput, W) / 2 + (self.penalty[i] * np.dot(Doutput, W)) ** 2 / 8)
-          # prior = (eps - 0.3) ** 2 / 1e-2 + (sigma - 0.5) ** 2 / 1e-2  # + (l - np.log(0.2))**2/1e-0
-
         #### end of subject non-specific part
 
         optimal_params_time_only = np.zeros(init_params_time_only.shape)
@@ -952,17 +892,6 @@ class GP_progression_model(object):
           resStruct = scipy.optimize.minimize(objectiveFun, init_params_time_only[s], method='Nelder-Mead', options={'disp': True})
 
           optimal_params_time_only[s] = resStruct.x
-
-          print('objectiveFun(optimal_params_time_only)', objectiveFun(optimal_params_time_only[s]))
-          print('objectiveFun(init_params_time_only)', objectiveFun(init_params_time_only[s]))
-          print('objectiveGrad(optimal_params_time_only)', objectiveGrad(optimal_params_time_only[s]))
-          print('optimal_params_time_only', optimal_params_time_only[s])
-
-
-          # print time shift of CTL DRC subject with low MRI volume and three visits
-          # if s == idxOfDRCSubj:
-          #   import pdb
-          #   pdb.set_trace()
 
 
         convTimeOnlyToTimePlusAcc = lambda params_time_shift_only_shift: \
@@ -990,93 +919,44 @@ class GP_progression_model(object):
         self.DX = np.linspace(minX, maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
 
-    # def Optimize_time_shift_Marco(self, Niterat = 10, learning_rate = 0.1):
-    #     # Adadelta for optimization of time shift parameters
-    #     params_time_shift = self.params_time_shift.copy()
-    #     params_time_shift[0] = np.zeros(len(params_time_shift[0]))
-    #     diag = []
-    #
-    #     for l in range(2):
-    #         diag.append(np.zeros(len(params_time_shift [l])))
-    #     epsilon = 1e-8
-    #
-    #     fun_value = 0
-    #     gradient = []
-    #
-    #     for i in range(Niterat):
-    #         objective_grad = lambda test_params_time_shift: self.grad_time_shift(test_params_time_shift)
-    #         fun_value, fun_grad = objective_grad(params_time_shift)
-    #
-    #         print('sub shift fun_value', fun_value.shape, fun_value)
-    #         # print('fun_grad', len(fun_grad), fun_grad)
-    #         # print(bbbbbbbb)
-    #
-    #         for l in range(2):
-    #             # diag[l] = 0.9 * diag[l] + 0.1 * fun_grad[l] ** 2
-    #             diag[l] = 0.1 * diag[l] + 0.9 * fun_grad[l] ** 2
-    #             params_time_shift[l] = params_time_shift[l] + np.multiply(learning_rate * fun_grad[l],
-    #                                                                       1 / np.sqrt(diag[l] + epsilon))
-    #
-    #     print('final lik subj shift', -fun_value)
-    #
-    #     for l in range(1):
-    #         self.params_time_shift[l] = self.params_time_shift[l] + params_time_shift[l]
-    #
-    #     for i in range(self.N_biom):
-    #         Xdata = np.array([[100]])
-    #         for sub in range(self.N_samples):
-    #             temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub+1])]
-    #             shifted_temp = (temp + params_time_shift[0][sub])
-    #             Xdata = np.hstack([Xdata,shifted_temp.T])
-    #
-    #         self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
-    #
-    #
-    #     minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-    #     maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-    #     self.updateMinMax(minX, maxX)
-    #     self.DX = np.linspace(minX, maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-
-
     def Optimize(self, N_global_iterations, iterGP, Plot = True):
+      # Global optimizer (GP parameters + time shift)
+      # fig = self.plotter.plotTraj(self)
+      # fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, 0, self.expName))
+      fig2 = self.plotter.plotCompWithTrueParams(self)
+      fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
 
-        # Global optimizer (GP parameters + time shift)
-        # fig = self.plotter.plotTraj(self)
-        # fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, 0, self.expName))
-        fig2 = self.plotter.plotCompWithTrueParams(self)
-        fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
+      for i in range(N_global_iterations):
+        print("iteration ", i, "of ", N_global_iterations)
+        print("Optimizing GP parameters")
+        if i>float(N_global_iterations)-2:
+          self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
+          self.Optimize_GP_parameters(Niterat = iterGP)
+        else:
+          # self.N_Dpoints = 10
+          self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
+          self.Optimize_GP_parameters(Niterat=iterGP, optimize_penalty = False)
+          print("Current penalty parameters: ")
+          print(self.penalty)
 
-        for i in range(N_global_iterations):
-            print("iteration ", i, "of ", N_global_iterations)
-            print("Optimizing GP parameters")
-            if i>float(N_global_iterations)-2:
-              self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-              self.Optimize_GP_parameters(Niterat = iterGP)
-            else:
-              # self.N_Dpoints = 10
-              self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-              self.Optimize_GP_parameters(Niterat=iterGP, optimize_penalty = False)
-              print("Current penalty parameters: ")
-              print(self.penalty)
+        if Plot:
+          fig = self.plotter.plotTraj(self)
+          fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, i + 1, self.expName))
+          fig2 = self.plotter.plotCompWithTrueParams(self)
+          fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, i + 1, self.expName))
 
-            if Plot:
-              fig = self.plotter.plotTraj(self)
-              fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, i + 1, self.expName))
-              fig2 = self.plotter.plotCompWithTrueParams(self)
-              fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, i + 1, self.expName))
+        # import pdb
+        # pdb.set_trace()
 
-            # import pdb
-            # pdb.set_trace()
+        if i<(N_global_iterations -1):
+          print("Optimizing time shift")
+          self.Optimize_time_shift_Raz_indiv()
 
-            if i<(N_global_iterations -1):
-                print("Optimizing time shift")
-                self.Optimize_time_shift_Raz_indiv()
-
-            if Plot:
-              fig = self.plotter.plotTraj(self)
-              fig.savefig('%s/allTraj%d1_%s.png' % (self.outFolder, i + 1, self.expName))
-              fig2 = self.plotter.plotCompWithTrueParams(self)
-              fig2.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i + 1, self.expName))
+        if Plot:
+          fig = self.plotter.plotTraj(self)
+          fig.savefig('%s/allTraj%d1_%s.png' % (self.outFolder, i + 1, self.expName))
+          fig2 = self.plotter.plotCompWithTrueParams(self)
+          fig2.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i + 1, self.expName))
 
 
     def Return_time_shift(self):
@@ -1088,42 +968,6 @@ class GP_progression_model(object):
 
         scaleX = self.max_X[0] * self.mean_std_X[0][1]
         return np.array(individual_time) *  scaleX + self.mean_std_X[0][0]
-
-    def ReturnTimeShiftLong(self):
-      for sub in range(self.unitModels[u].N_samples):
-        for b in range(self.unitModels[u].N_biom):
-          xDysfunSubjUCurrSubj = self.unitModels[u].X[b][sub]  # Xs in the unit model
-          xDysfunSubjU[u][sub] += list(xDysfunSubjUCurrSubj)
-
-          # dysfuncScoresCurrSubExtr = [XarraysScaledB[b][k][0] for k in range(int(np.sum(self.gpModels[
-          # u].N_obs_per_sub[b][:sub])), np.sum(self.gpModels[u].N_obs_per_sub[b][:sub + 1]))]
-          dysfuncScoresCurrSubExtr = [self.unitModels[u].X_array[b][k][0] for k in range(int(np.sum(
-            self.unitModels[u].N_obs_per_sub[b][:sub])), np.sum(self.unitModels[u].N_obs_per_sub[b][:sub + 1]))]
-
-          dysfuncScoresU[u][sub] += dysfuncScoresCurrSubExtr  # (Xs + timeShift) in the unit model
-
-          # xsNewGpTestCurrSub = [newGPTest.X_array[b][k][0] for k in range(int(np.sum(
-          #   newGPTest.N_obs_per_sub[b][:sub])), np.sum(newGPTest.N_obs_per_sub[b][:sub + 1]))]
-
-
-
-          #
-          # print('dysfuncScoresUCurrSubCalc', dysfuncScoresCurrSubCalc)
-          # print('xsNewGpTestCurrSub', xsNewGpTestCurrSub, np.array(xsNewGpTestCurrSub) + self.unitModels[u].params_time_shift[0][sub])
-          # print('dysfuncScoresCurrSubExtr', dysfuncScoresCurrSubExtr)
-          # print('params_time_shift[0][sub]',
-          #       self.unitModels[u].params_time_shift[0][sub])
-          # print('xDysfunSubjU[u][sub]', xDysfunSubjU[u][sub])
-          # print(adsa) they are indeed equal if you standardize them.
-
-        # apply the forward scaling transform
-
-
-        print('xDysfunSubjU[u][sub]', xDysfunSubjU[u][sub])
-        print('dysfuncScoresU[u][sub]', dysfuncScoresU[u][sub])
-
-        xDysfunSubjU[u][sub] = np.sort(np.unique(xDysfunSubjU[u][sub]))
-        dysfuncScoresU[u][sub] = np.sort(np.unique(dysfuncScoresU[u][sub]))
 
 
     def StageSubjects(self,X_test, Y_test, Xrange):
