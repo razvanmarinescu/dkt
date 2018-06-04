@@ -172,9 +172,13 @@ def main():
   params['nrBiomkDisModel'] = nrFuncUnits
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
-  params['iterParamsUnit'] = 60
+  params['iterParamsUnit'] = 50
   params['nrGlobIterDis'] = 10
   params['iterParamsDis'] = 50
+
+  params['priors'] = dict(prior_length_scale_mean_ratio=1/3, # mean_length_scale = (self.maxX-self.minX)/3
+      prior_length_scale_std=1e-4, prior_sigma_mean=2,prior_sigma_std = 1e-3,
+      prior_eps_mean = 1, prior_eps_sigma = 1e-2)
 
   ##### disease agnostic parameters ###########
   # params of individual biomarkers

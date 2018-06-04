@@ -97,7 +97,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
 
     disModelsFile = '%s/disModels.npz' % self.outFolder
-    nrSubj = self.unitModels[0].N_samples
+    nrSubj = self.unitModels[0].nrSubj
 
     if runPart[1] == 'R':
       nrGlobIterDis = self.params['nrGlobIterDis']
@@ -114,8 +114,8 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
         XshiftedUnitModel, XunitModel, YunitModel = self.unitModels[u].getData()
 
-        for sub in range(self.unitModels[u].N_samples):
-          for b in range(self.unitModels[u].N_biom):
+        for sub in range(self.unitModels[u].nrSubj):
+          for b in range(self.unitModels[u].nrBiomk):
             xDysfunSubjUCurrSubj = XunitModel[b][sub]  # Xs in the unit model
             xDysfunSubjU[u][sub] += list(xDysfunSubjUCurrSubj)
             dysfuncScoresU[u][sub] += list(XshiftedUnitModel[b][sub]) # (Xs + timeShift) in the unit model

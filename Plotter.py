@@ -194,7 +194,7 @@ class PlotterGP(ABC):
     self.plotTrajParams = plotTrajParams
 
   def plotTraj(self, gpModel, replaceFig=True, legendExtraPlot=False):
-    nrBiomk = gpModel.N_biom
+    nrBiomk = gpModel.nrBiomk
     # Plot method
 
     font = {'family': 'normal',
@@ -242,7 +242,7 @@ class PlotterGP(ABC):
 
       # plot subject data
       diagCounters = dict([(k,0) for k in self.plotTrajParams['diagLabels'].keys()])
-      for sub in range(gpModel.N_samples):
+      for sub in range(gpModel.nrSubj):
         diagCurrSubj = self.plotTrajParams['diag'][sub]
         currLabel = None
         if diagCounters[diagCurrSubj] == 0:
@@ -272,7 +272,7 @@ class PlotterGP(ABC):
 
       # plot subject data
       diagCounters = dict([(k,0) for k in self.plotTrajParams['diagLabels'].keys()])
-      for sub in range(gpModel.N_samples):
+      for sub in range(gpModel.nrSubj):
         diagCurrSubj = self.plotTrajParams['diag'][sub]
         currLabel = None
         if diagCounters[diagCurrSubj] == 0:
@@ -311,7 +311,7 @@ class PlotterGP(ABC):
 
   def plotCompWithTrueParams(self, gpModel, replaceFig=True):
 
-    nrBiomk = gpModel.N_biom
+    nrBiomk = gpModel.nrBiomk
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
     fig = pl.figure(2, figsize = figSizeInch)
     pl.clf()
@@ -351,7 +351,7 @@ class PlotterGP(ABC):
 
   def plotTrajSameSpace(self, gpModel, replaceFig=True, subjStagesEstim=None):
 
-    # nrBiomk = gpModel.N_biom
+    # nrBiomk = gpModel.nrBiomk
     nrBiomk = 6
     figSizeInch = (6, 4)
     fig = pl.figure(2, figsize = figSizeInch)
@@ -828,7 +828,7 @@ class PlotterGP(ABC):
       ax2 = pl.subplot(nrRows, nrCols, nrPlotsSoFar+1)
       pl.title('all trajectories')
       ax2.set_ylim([yMinAll, yMaxAll])
-      for b in range(gpModel.N_biom):
+      for b in range(gpModel.nrBiomk):
         ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-', lw=2
                  , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
         print('trueXsScaledZeroOne trueYsTrajXB', trueXsScaledZeroOne.shape, trueYsTrajXB.shape)
@@ -841,7 +841,7 @@ class PlotterGP(ABC):
       ax2 = pl.subplot(nrRows, nrCols, nrPlotsSoFar+1)
       pl.title('all estimated trajectories')
       ax2.set_ylim([yMinAll, yMaxAll])
-      for b in range(gpModel.N_biom):
+      for b in range(gpModel.nrBiomk):
         ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-', lw=2
                  , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
 
@@ -850,7 +850,7 @@ class PlotterGP(ABC):
       ax3 = pl.subplot(nrRows, nrCols, nrPlotsSoFar+2)
       pl.title('all true trajectories')
       ax3.set_ylim([yMinAll, yMaxAll])
-      for b in range(gpModel.N_biom):
+      for b in range(gpModel.nrBiomk):
         ax3.plot(trueXsScaledZeroOne, trueTrajScaledXB[:, b], '--', lw=2
                  , c=self.plotTrajParams['colorsTraj'][b])
 
@@ -874,7 +874,7 @@ class PlotterGP(ABC):
     nrRows = self.plotTrajParams['nrRows']
     nrCols = self.plotTrajParams['nrCols']
 
-    for b in range(gpModel.N_biom):
+    for b in range(gpModel.nrBiomk):
       ax4 = pl.subplot(nrRows, nrCols, b+nrPlotsSoFar+1)
       pl.title(self.plotTrajParams['labels'][b])
 
@@ -887,7 +887,7 @@ class PlotterGP(ABC):
       ax4.set_ylim([min_yB[b], max_yB[b]])
       ax4.legend(loc='lower right')
 
-    return nrPlotsSoFar + gpModel.N_biom
+    return nrPlotsSoFar + gpModel.nrBiomk
 
   def getTrajStruct(self, gpModel):
 
@@ -1037,10 +1037,10 @@ def rescaleTraj(predTrajXB, trueTrajXB, yNormMode, diag, nrBiomk, subjStagesEsti
     raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
 
   if yNormMode in ['zScoreTraj', 'zScoreEarlyStageTraj']:
-    meanCtlB = np.zeros(gpModel.N_biom)
-    stdCtlB = np.zeros(gpModel.N_biom)
+    meanCtlB = np.zeros(gpModel.nrBiomk)
+    stdCtlB = np.zeros(gpModel.nrBiomk)
 
-    for b in range(gpModel.N_biom):
+    for b in range(gpModel.nrBiomk):
       yValsOfCtl = [gpModel.Y[b][s] for s in idxZscore[b]]
       yValsOfCtl = [l2 for l in yValsOfCtl for l2 in l]
       meanCtlB[b] = np.mean(yValsOfCtl)
