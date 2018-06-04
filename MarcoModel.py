@@ -437,7 +437,7 @@ class GP_progression_model(object):
         # Modify the prior length scale according to current X range
         prior_length_scale_mean = (self.maxX-self.minX)/self.params
         # prior_length_scale_std = (self.maxX-self.minX)/3
-        prior_length_scale_std = 1e-4
+        prior_length_scale_std = self.prior[] 1e-4
 
         prior_sigma_mean = 2
         prior_sigma_std = 1e-3
