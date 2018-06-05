@@ -44,10 +44,11 @@ import scipy.optimize
 
 class GP_progression_model(object):
     plt.interactive(False)
-    def __init__(self, X,Y, N_rnd_features, outFolder, plotter, prior, names_biomarkers = [], group = []):
+    def __init__(self, X,Y, N_rnd_features, outFolder, plotter, priors, names_biomarkers = [], group = []):
 
         #Initializing variables
         self.plotter = plotter
+        self.priors = priors
         self.outFolder = outFolder
         self.expName = plotter.plotTrajParams['expName']
         self.names_biomarkers = names_biomarkers
@@ -435,28 +436,21 @@ class GP_progression_model(object):
         Kullback_Leibler = self.KL( s_omega, m_omega, s_w, m_w, l)
 
         # Modify the prior length scale according to current X range
-        prior_length_scale_mean = (self.maxX-self.minX)/self.params
-        # prior_length_scale_std = (self.maxX-self.minX)/3
-        prior_length_scale_std = self.prior[] 1e-4
+        prior_length_scale_mean = (self.maxX-self.minX)*self.priors['prior_length_scale_mean_ratio']
+        prior_length_scale_std = self.priors['prior_length_scale_std']
 
-        prior_sigma_mean = 2
-        prior_sigma_std = 1e-3
+        prior_sigma_mean = self.priors['prior_sigma_mean']
+        prior_sigma_std = self.priors['prior_sigma_std']
 
-        prior_eps_mean = 1
-        prior_eps_sigma = 1e-2
-
+        prior_eps_mean = self.priors['prior_eps_mean']
+        prior_eps_std = self.priors['prior_eps_std']
 
         Dterm = np.sum(penalty * np.dot(Doutput, W) - np.log(1 + np.exp(penalty * np.dot(Doutput, W))))
-        prior = (eps - prior_eps_mean) ** 2 / prior_eps_sigma + (sigma - prior_sigma_mean) ** 2 / prior_sigma_std + (l - prior_length_scale_mean)**2/prior_length_scale_std
-
-        # print(np.min(Y), np.max(Y), np.std(Y))
-        # print(ads)
+        prior = (eps - prior_eps_mean) ** 2 / prior_eps_std + (sigma - prior_sigma_mean) ** 2 / prior_sigma_std + (l - prior_length_scale_mean)**2/prior_length_scale_std
 
         if ~np.isfinite(Dterm):
           # import pdb
           # pdb.set_trace()
-
-
           return np.inf, np.repeat(0, len(params)).flatten(), 0
 
 
@@ -493,10 +487,10 @@ class GP_progression_model(object):
                   -  0.5* penalty  *  np.sum(np.dot(Doutput, W)) \
                   + np.sum(np.multiply( np.multiply(np.exp(penalty * np.dot(Doutput, W)), 1 / (1 + np.exp(penalty * np.dot(Doutput, W)))), \
                                         0.5 * penalty * (np.dot(Doutput, W))))\
-                  - 2* (sigma - prior_sigma)/prior_sigma_std * sigma
+                  - 2* (sigma - prior_sigma_mean)/prior_sigma_std * sigma
 
         # Derivative of noise term
-        d_eps = + 0.5 *  ( 1 + np.sum((Y - np.dot(output,W))**2)/eps) - 2* (eps - prior_eps_mean) / prior_eps_sigma * eps
+        d_eps = + 0.5 *  ( 1 + np.sum((Y - np.dot(output,W))**2)/eps) - 2* (eps - prior_eps_mean) / prior_eps_std * eps
 
         # # Derivative of penalization parameter
         # d_penalty = np.sum(np.dot(Doutput, W)) \
@@ -507,7 +501,7 @@ class GP_progression_model(object):
 
         return posterior, np.hstack([np.repeat(0,len(s_omega)).flatten(), np.repeat(0,len(m_omega)).flatten(), d_s_w.flatten(), d_m_w.flatten(),  np.array([d_sigma]), np.array(d_l), np.array([d_eps])]), d_penalty
 
-    def stochastic_grad_manual(self, params):
+    def stochastic_grad_manual(self, params, X_array, Y_array):
         # Stochastic gradient of log-posterior with respect ot given parameters
         # Default number of MC samples is 100
         output_MC_grad = []
@@ -515,8 +509,8 @@ class GP_progression_model(object):
         output_grad_penalty = []
         for b in range(self.nrBiomk):
             current_params = params[b]
-            current_X = self.X_array[b]
-            current_Y = self.Y_array[b]
+            current_X = X_array[b]
+            current_Y = Y_array[b]
             MC_grad = np.zeros(len(params[b]))
             output_grad_penalty.append(0)
             loglik = 0
@@ -537,48 +531,6 @@ class GP_progression_model(object):
 
         return output_loglik, output_MC_grad, output_grad_penalty
 
-
-    def stochastic_grad_manual_mini_batch(self, params, batch_size):
-        # Mini-batch implementation of stochastic gradient of log-posterior with respect ot given parameters
-        # Default number of MC samples is 100
-        sample_batch = np.random.choice(range(self.nrSubj), batch_size)
-        output_MC_grad = []
-        output_loglik = []
-        output_grad_penalty = []
-        for l in range(self.nrBiomk):
-            Xdata = np.array([[1e10]])
-            Ydata = np.array([[1e10]])
-            for sub in range(self.nrSubj):
-                if np.in1d(sub,sample_batch):
-                    temp = self.X_array[l][int(np.sum(self.N_obs_per_sub[l][:sub])):np.sum(self.N_obs_per_sub[l][:sub+1])]
-                    Xdata = np.hstack([Xdata,temp.T])
-                    tempY = self.Y_array[l][int(np.sum(self.N_obs_per_sub[l][:sub])):np.sum(self.N_obs_per_sub[l][:sub + 1])]
-                    Ydata = np.hstack([Ydata, tempY.T])
-
-            Xdata = Xdata[0][1:].reshape([len(Xdata[0][1:]), 1])
-            Ydata = Ydata[0][1:].reshape([len(Ydata[0][1:]), 1])
-
-            current_params = params[l]
-            current_X = Xdata
-            current_Y = Ydata
-            MC_grad = np.zeros(len(params[l]))
-            output_grad_penalty.append(0)
-            loglik = 0
-            for j in range(100):
-                perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(\
-                                                                            [ 2*self.N_rnd_features,1])
-                objective_cost_function = lambda params: \
-                    self.log_posterior_grad(current_X, current_Y,self.N_rnd_features, perturbation_W, params, self.penalty[l])
-
-                value, grad, grad_penalty = objective_cost_function(current_params)
-                MC_grad = MC_grad - grad
-                loglik = loglik - value
-                output_grad_penalty[l] = output_grad_penalty[l] - grad_penalty
-            output_MC_grad.append(float(len(Xdata)) / len(self.X_array[l]) * MC_grad / 100)
-            output_loglik.append(float(len(Xdata)) / len(self.X_array[l]) * loglik / 100)
-            output_grad_penalty[l] = float(len(Xdata)) / len(self.X_array[l]) * output_grad_penalty[l] / 100
-
-        return output_loglik, output_MC_grad, output_grad_penalty
 
 
     def Adadelta(self, Niterat, objective_grad, learning_rate, init_params, output_grad_penalty = False):
@@ -619,20 +571,30 @@ class GP_progression_model(object):
 
           for l in range(self.nrBiomk):
             self.parameters[l] = params[l]
-            # print('params[l]', params[l])
 
             if output_grad_penalty:
-                self.penalty [l]= param_penalty[l]
+              self.penalty [l]= param_penalty[l]
 
         print('final func value', fun_value)
+        for b in range(self.nrBiomk):
+          s_omega, m_omega, s_w, m_w, sigma, l, eps = self.unpack_parameters(np.array(self.parameters[b]))
+          s_omega = np.exp(s_omega)
+          s_w = np.exp(s_w)
+          l = np.exp(l)
+          sigma = np.exp(sigma)
+          eps= np.exp(eps)
+          print('b%d l sigma eps' % b, [l, sigma, eps])
+
+        # import pdb
+        # pdb.set_trace()
 
     def Optimize_GP_parameters(self, optimize_penalty = False, Niterat = 10):
         # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
         self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-        # self.Reset_parameters()
-        objective_grad = lambda params: self.stochastic_grad_manual(params)
-        self.Adadelta(Niterat, objective_grad, 0.05, self.parameters, output_grad_penalty = optimize_penalty)
-
+        self.Reset_parameters()
+        objective_grad = lambda params: self.stochastic_grad_manual(params, self.X_array, self.Y_array)
+        self.Adadelta(Niterat, objective_grad, 0.05, self.parameters,
+          output_grad_penalty = optimize_penalty)
 
     def Optimize_GP_parameters_Raz(self, optimize_penalty = False, Niterat = 10):
       # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)

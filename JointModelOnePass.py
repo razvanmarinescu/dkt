@@ -60,8 +60,6 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
       Xfilt, Yfilt = filterDataListFormat(self.params, self.dataIndices)
 
-      # print(adsa)
-
       self.unitModels = [_ for _ in range(self.nrFuncUnits)]
 
       # functional units
@@ -73,8 +71,8 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         YfiltCurrUnit = [Yfilt[b] for b in self.biomkInFuncUnit[u]]
         outFolderCurrUnit = '%s/unit%d' % (self.outFolder, u)
         os.system('mkdir -p %s' % outFolderCurrUnit)
-        self.unitModels[u] = MarcoModel.GP_progression_model(XfiltCurrUnit, YfiltCurrUnit, nrRandFeatures, outFolderCurrUnit,
-                                                             plotterObjCurrFuncUnit, plotTrajParamsFuncUnit['labels'])
+        self.unitModels[u] = MarcoModel.GP_progression_model(XfiltCurrUnit, YfiltCurrUnit, nrRandFeatures,
+          outFolderCurrUnit, plotterObjCurrFuncUnit, self.params['priors'], plotTrajParamsFuncUnit['labels'])
 
         self.unitModels[u].Set_penalty(self.params['penaltyUnits'])
         self.unitModels[u].Optimize(nrGlobIterUnit, iterParamsUnit, Plot=True)
@@ -170,11 +168,8 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
         outFolderCurDis = '%s/%s' % (self.outFolder, self.params['disLabels'][disNr])
         os.system('mkdir -p %s' % outFolderCurDis)
-        self.disModels[disNr] = MarcoModel.GP_progression_model(xDysfunSubjCurrDisU,
-          dysfuncScoresCurrDisU, nrRandFeatures, outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'])
-
-        print('X', [x[0] for x in self.disModels[disNr].X[0]])
-        # print(asda)
+        self.disModels[disNr] = MarcoModel.GP_progression_model(xDysfunSubjCurrDisU, dysfuncScoresCurrDisU,
+          nrRandFeatures, outFolderCurDis, plotterCurrDis, self.params['priors'], plotTrajParamsDis['labels'])
 
         self.disModels[disNr].Set_penalty(self.params['penaltyDis'])
         self.disModels[disNr].Optimize(nrGlobIterDis, iterParamsDis, Plot=True)

@@ -165,7 +165,7 @@ def main():
   params['cluster'] = args.cluster
   params['plotTrajParams'] = plotTrajParams
   params['penalty'] = args.penalty
-  params['penaltyUnits'] = args.penalty
+  params['penaltyUnits'] = 20
   params['penaltyDis'] = 1
   params['nrFuncUnits'] = nrFuncUnits
   params['biomkInFuncUnit'] = biomkInFuncUnit
@@ -174,17 +174,23 @@ def main():
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
   params['iterParamsUnit'] = 50
   params['nrGlobIterDis'] = 10
-  params['iterParamsDis'] = 50
+  params['iterParamsDis'] = 5070
 
-  params['priors'] = dict(prior_length_scale_mean_ratio=1/3, # mean_length_scale = (self.maxX-self.minX)/3
-      prior_length_scale_std=1e-4, prior_sigma_mean=2,prior_sigma_std = 1e-3,
-      prior_eps_mean = 1, prior_eps_sigma = 1e-2)
+  # params['priors'] = dict(prior_length_scale_mean_ratio=0.33, # mean_length_scale = (self.maxX-self.minX)/3
+  #     prior_length_scale_std=1e-4, prior_sigma_mean=2,prior_sigma_std = 1e-3,
+  #     prior_eps_mean = 1, prior_eps_std = 1e-2)
+  params['priors'] = dict(prior_length_scale_mean_ratio=0.9,  # mean_length_scale = (self.maxX-self.minX)/3
+                              prior_length_scale_std=1e-4, prior_sigma_mean=3, prior_sigma_std=1e-3,
+                              prior_eps_mean=0.1, prior_eps_std=1e-6)
+
+  params['priorsJMD'] = dict(prior_length_scale_mean_ratio=0.05,  # mean_length_scale = (self.maxX-self.minX)/3
+                              prior_length_scale_std=1e-6, prior_sigma_mean=0.5, prior_sigma_std=1e-3,
+                              prior_eps_mean=0.1, prior_eps_std=1e-6)
 
   ##### disease agnostic parameters ###########
   # params of individual biomarkers
   thetas = np.zeros((nrBiomk, 4), float)
   thetas[:, 0] = 1
-  # thetas[:, 1] = 10
   thetas[:, 3] = 0
   for f in range(nrFuncUnits):
     thetas[mapBiomkToFuncUnits == f, 2] = np.linspace(0.2, 0.9, num=nrBiomkInFuncUnits, endpoint=True)

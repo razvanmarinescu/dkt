@@ -74,7 +74,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     if runPart[1] == 'R':
 
       # if plotFigs:
-      #   fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=False)
+      #   fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
       #   fig.savefig('%s/compTrueParams00_%s.png' % (self.outFolder, self.expName))
 
       for i in range(nrIt):
@@ -82,12 +82,13 @@ class JointModel(DisProgBuilder.DPMInterface):
         self.estimBiomkTraj(self.unitModels, self.disModels)
 
         if plotFigs:
-          fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=False)
+          fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
           fig.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i, self.expName))
+          import pdb
+          pdb.set_trace()
 
         # estimate unit trajectories - disease specific
-        for d in range(self.nrDis):
-          self.disModels[d].estimUnitTraj()
+        self.estimUnitTraj(self.unitModels, self.disModels)
 
         # estimate  subject latent variables
         self.estimSubjShifts()
@@ -101,6 +102,12 @@ class JointModel(DisProgBuilder.DPMInterface):
     paramsCopy['nrGlobIterUnit'] = 4  # set only two iterations, quick initialisation
     paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
     paramsCopy['penaltyUnits'] = 1
+    # paramsCopy['priors'] = dict(prior_length_scale_mean_ratio=0.2,  # mean_length_scale = (self.maxX-self.minX)/3
+    #                         prior_length_scale_std=1e-4, prior_sigma_mean=0.005, prior_sigma_std=1e-9,
+    #                         prior_eps_mean=0.1, prior_eps_std=1e-6)
+    # paramsCopy['priors'] = dict(prior_length_scale_mean_ratio=0.9,  # mean_length_scale = (self.maxX-self.minX)/3
+    #                         prior_length_scale_std=1e-4, prior_sigma_mean=3, prior_sigma_std=1e-3,
+    #                         prior_eps_mean=0.1, prior_eps_std=1e-6)
     onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy)
 
     onePassModel.run(runPart = 'LL')
@@ -116,10 +123,11 @@ class JointModel(DisProgBuilder.DPMInterface):
     XshiftedScaledDBS = [0 for _ in range(self.nrDis)]
     XdisDBSX = [0 for _ in range(self.nrDis)]
     for d in range(self.nrDis):
-      XshiftedScaledDBS[d], XdisDBSX[d], _ = self.disModels[d].getData()
+      XshiftedScaledDBS[d], XdisDBSX[d], _ = disModels[d].getData()
+
 
     XdisSX = [0 for _ in range(self.unitModels[0].nrSubj)]
-    nrSubj = self.unitModels[0].nrSubj
+    nrSubj = unitModels[0].nrSubj
     predScoresCurrUSX = [[0 for s in range(nrSubj)] for u in range(self.nrFuncUnits)]
     for s in range(nrSubj):
       currDis = self.disIdxForEachSubjS[s]
@@ -138,30 +146,83 @@ class JointModel(DisProgBuilder.DPMInterface):
         predScoresCurrUSX[u][s] = predScoresCurrXU[:,u]
 
       assert currXdataShifted.shape[0] == XdisSX[s].shape[0]
-      # print('currXdataShifted', currXdataShifted)
-      # print('currRID', currRID)
-      # print('self.ridsPerDisD', self.ridsPerDisD)
-
-      # print('XshiftedScaledDBS[s] ', XshiftedScaledDBS[currDis][0])
-      # print('predScoresCurrXU[0,:]', predScoresCurrXU[:,0])
-      # print('XdisSX[s]', XdisSX[s])
       assert predScoresCurrXU[:,0].shape[0] == XdisSX[s].shape[0]
       assert predScoresCurrUSX[0][s].shape[0] == XdisSX[s].shape[0]
 
-    # print(adsa)
 
     for u in range(self.nrFuncUnits):
+    # for u in [1]:
       print('updating traj for func unit %d/%d' % (u+1, self.nrFuncUnits))
       # now update the X-values in each unitModel to the updated dysfunc scores
       # not that the X-vals are the same for every biomk within func units,
       # but initial missing values within each biomk are kept
       self.unitModels[u].updateXvals(predScoresCurrUSX[u], XdisSX)
-      self.unitModels[u].Optimize_GP_parameters(Niterat = self.params['iterParamsUnit'])
+      self.unitModels[u].priors = self.params['priorsJMD']
+      self.unitModels[u].Set_penalty(2)
+      self.unitModels[u].Optimize_GP_parameters(Niterat = 70)
 
-      fig = self.unitModels[u].plotter.plotTraj(self.unitModels[u])
-      fig2 = self.unitModels[u].plotter.plotCompWithTrueParams(self.unitModels[u], replaceFig=False)
+      # fig = self.unitModels[u].plotter.plotTraj(self.unitModels[u])
+      # fig2 = self.unitModels[u].plotter.plotCompWithTrueParams(self.unitModels[u], replaceFig=False)
 
       # fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, i + 1, self.expName))
+
+
+  def estimUnitTraj(self, unitModels, disModels):
+    """ estimates trajectory parameters within the disease specific models """
+
+
+    for d in range(self.nrDis):
+      X_array
+
+      # build function that takes a disModel, all unitModels, and predicts lik given traj params in disModel
+      likJDMCurr = lambda params: self.likJDM(disModels[d], unitModels, params)
+
+
+  def likJDM(self, disModel, unitModels, params):
+
+    ####### first predict dysScores in disModel ##########
+
+    # update the DPS scores of subjects
+    predScoresDS = [0 for _ in range(self.nrDis)]
+
+    XshiftedScaledDBS = [0 for _ in range(self.nrDis)]
+    XdisDBSX = [0 for _ in range(self.nrDis)]
+    for d in range(self.nrDis):
+      XshiftedScaledDBS[d], XdisDBSX[d], _ = disModels[d].getData()
+
+
+    XdisSX = [0 for _ in range(self.unitModels[0].nrSubj)]
+    nrSubj = unitModels[0].nrSubj
+    predScoresCurrUSX = [[0 for s in range(nrSubj)] for u in range(self.nrFuncUnits)]
+    for s in range(nrSubj):
+      currDis = self.disIdxForEachSubjS[s]
+      currRID = self.params['RID'][s]
+      # print('currDis', currDis)
+      idxCurrSubjInDisModel = np.where(self.ridsPerDisD[currDis] == currRID)[0][0]
+      # print('idxCurrSubjInDisModel', idxCurrSubjInDisModel)
+      XdisSX[s] = XdisDBSX[currDis][0][idxCurrSubjInDisModel]
+
+      # get shifts for curr subj from correct disModel
+      currXdataShifted = XshiftedScaledDBS[currDis][0][idxCurrSubjInDisModel]
+      # predict dysf scoresf for curr subj
+      predScoresCurrXU = disModels[currDis].predictBiomk(currXdataShifted)
+
+      for u in range(self.nrFuncUnits):
+        predScoresCurrUSX[u][s] = predScoresCurrXU[:,u]
+
+      assert currXdataShifted.shape[0] == XdisSX[s].shape[0]
+      assert predScoresCurrXU[:,0].shape[0] == XdisSX[s].shape[0]
+      assert predScoresCurrUSX[0][s].shape[0] == XdisSX[s].shape[0]
+
+
+    #### then sum log-liks of each func unit.
+
+    # turn predScoresCurrUSX[u] into predX_array
+
+    for u in range(self.nrFuncUnits):
+      lik += self.unitModels[u].stochastic_grad_manual(params, predX_array, self.unitModels[u].Y_array)[0]
+
+
 
 
   def predictBiomkSubjGivenXs(self, newXs, disNr):

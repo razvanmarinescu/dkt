@@ -20,7 +20,6 @@ from DisProgBuilder import *
 import JointModel
 import MarcoModelWrapper
 import Plotter
-import IncompleteModel
 
 from importlib.machinery import SourceFileLoader
 from sklearn import linear_model
