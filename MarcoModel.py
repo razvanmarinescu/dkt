@@ -36,23 +36,21 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-#from autograd import grad
-#import autograd.numpy as np
-#import autograd.numpy.random as npr
-#from autograd import value_and_grad
 import scipy.optimize
 
 class GP_progression_model(object):
     plt.interactive(False)
-    def __init__(self, X,Y, N_rnd_features, outFolder, plotter, priors, names_biomarkers = [], group = []):
+    def __init__(self, X,Y, outFolder, plotter, names_biomarkers, params):
 
+        priors = params['priors']
+        N_rnd_features = int(3) # Number of random features for kernel approximation
         #Initializing variables
         self.plotter = plotter
         self.priors = priors
         self.outFolder = outFolder
         self.expName = plotter.plotTrajParams['expName']
         self.names_biomarkers = names_biomarkers
-        self.group = group
+        self.group = []
         self.N_rnd_features = int(N_rnd_features)
         self.nrSubj = len(X[0])
         self.nrBiomk = len(X)
@@ -73,11 +71,16 @@ class GP_progression_model(object):
         # Estension of the model will include a time scaling factor (fixed to 1 so far)
         self.params_time_shift[1,:] = 1
 
-        for l in range(self.nrBiomk):
-            # Creating 1d arrays of individuals' time points and observations
-            self.X_array.append([np.float128(item) for sublist in X[l] for item in sublist])
-            self.Y_array.append([np.float128(item) for sublist in Y[l] for item in sublist])
-            self.N_obs_per_sub.append([len(X[l][j]) for j in range(len(X[l]))])
+        # for l in range(self.nrBiomk):
+        #   # Creating 1d arrays of individuals' time points and observations
+        #   self.X_array.append([np.float128(item) for sublist in X[l] for item in sublist])
+        #   self.Y_array.append([np.float128(item) for sublist in Y[l] for item in sublist])
+        #   self.N_obs_per_sub.append([len(X[l][j]) for j in range(len(X[l]))])
+
+        self.X_array, self.N_obs_per_sub = self.convertLongToArray(self.X)
+        self.Y_array, N_obs_per_sub2 = self.convertLongToArray(self.Y)
+        self.checkNobsMatch(N_obs_per_sub2)
+
 
         self.rescale()
 
@@ -118,9 +121,6 @@ class GP_progression_model(object):
         for l in range(self.nrBiomk):
             self.parameters.append(self.init_params_full[l])
 
-        # print('self.parameters', self.parameters)
-        # print(ads)
-
         # Initializing individuals random effects
         self.rand_parameters = []
         self.rand_parameter_type = []
@@ -143,6 +143,21 @@ class GP_progression_model(object):
                                                                np.sum(self.N_obs_per_sub[biom][:sub + 1]))])
 
 
+    def checkNobsMatch(self, N_obs_per_sub2):
+      for b in range(self.nrBiomk):
+        for s in range(self.nrSubj):
+          assert self.N_obs_per_sub[b][s] == N_obs_per_sub2[b][s]
+
+
+    def convertLongToArray(self, Z):
+      Z_array = [0 for b in range(self.nrBiomk)]
+      N_obs_per_sub = [0 for b in range(self.nrBiomk)]
+      for b in range(self.nrBiomk):
+        # Creating 1d arrays of individuals' time points and observations
+        Z_array = np.array([np.float128(item) for sublist in X[l] for item in sublist]).reshape(-1,1)
+        N_obs_per_sub[b] = [len(X[l][j]) for j in range(len(X[l]))]
+
+      return Z_array, N_obs_per_sub
 
     def applyScalingX(self, x_data, biomk=0):
       scaleX = self.max_X[biomk] * self.mean_std_X[biomk][1]
@@ -276,9 +291,9 @@ class GP_progression_model(object):
       # Standardizes X and Y axes and saves the rescaling parameters for future output
       # Raz modification - made the scaling of every X[l] the same for every biomarker l
 
-      for l in range(self.nrBiomk):
-        self.X_array[l] = np.array(self.X_array[l]).reshape([len(self.X_array[l]),1])
-        self.Y_array[l] = np.array(self.Y_array[l]).reshape([len(self.Y_array[l]), 1])
+      # for l in range(self.nrBiomk):
+      #   self.X_array[l] = np.array(self.X_array[l]).reshape([len(self.X_array[l]),1])
+      #   self.Y_array[l] = np.array(self.Y_array[l]).reshape([len(self.Y_array[l]), 1])
 
 
       XarrayAllBiomk = np.array([x2 for l in self.X_array for x2 in list(l)])
@@ -1005,7 +1020,7 @@ class GP_progression_model(object):
           expectation_sub[sub] = np.sum(final_pred[sub] * (Xrange.flatten() * scaling + self.mean_std_X[biomarker][0]))
       return final_pred, expectation_sub
 
-    def predictBiomk(self, newX):
+    def predictBiomkWithParams(self, newX, params):
 
       deltaX = 0.2 * (self.maxScX - self.minScX)
       if not (self.minScX - deltaX <= np.min(newX) <= self.maxScX + deltaX):
@@ -1018,7 +1033,7 @@ class GP_progression_model(object):
 
       predictedBiomksXB = np.zeros((xsScaled.shape[0], self.nrBiomk))
       for bio_pos, biomarker in enumerate(range(self.nrBiomk)):
-        s_omega, m_omega, s, m, sigma, l, eps = self.unpack_parameters(self.parameters[biomarker])
+        s_omega, m_omega, s, m, sigma, l, eps = self.unpack_parameters(params[biomarker])
 
         # scaleX = self.max_X[biomarker] * self.mean_std_X[biomarker][1]
         # scaleY = self.max_Y[biomarker] * self.mean_std_Y[biomarker][1]
@@ -1033,20 +1048,8 @@ class GP_progression_model(object):
 
       return self.applyScalingYAllBiomk(predictedBiomksXB)
 
-
-
-    # def predictBiomkAndScale(self, newX):
-    #   ''' predict biomarker values (MLE solution). also performs scaling before and after '''
-    #
-    #   xsScaled = self.applyScalingXForward(newX.reshape(-1, 1), biomk=0)
-    #
-    #   assert self.minX <= np.min(xsScaled)
-    #   assert self.maxX >= np.max(xsScaled)
-    #
-    #   ys = self.predictBiomk(xsScaled)
-    #   ysScaled = self.applyScalingYAllBiomk(ys)
-    #
-    #   return ysScaled
+    def predictBiomk(self, newX):
+      return self.predictBiomkWithParams(newX, self.parameters)
 
     def sampleTrajPost(self, newX, biomarker, nrSamples):
       '''

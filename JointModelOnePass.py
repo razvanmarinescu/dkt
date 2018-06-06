@@ -47,13 +47,16 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
     self.indxSubjForEachDisD = params['indxSubjForEachDisD']
 
+    self.unitModelObj = params['unitModelObj']
+    self.disModelObj = params['disModelObj']
+
 
   def runStd(self, runPart):
     self.run(runPart)
 
   def run(self, runPart):
     filePath = '%s/unitModels.npz' % self.outFolder
-    nrRandFeatures = int(3)  # Number of random features for kernel approximation
+
     if runPart[0] == 'R':
       nrGlobIterUnit = self.params['nrGlobIterUnit']
       iterParamsUnit = self.params['iterParamsUnit']
@@ -71,8 +74,8 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         YfiltCurrUnit = [Yfilt[b] for b in self.biomkInFuncUnit[u]]
         outFolderCurrUnit = '%s/unit%d' % (self.outFolder, u)
         os.system('mkdir -p %s' % outFolderCurrUnit)
-        self.unitModels[u] = MarcoModel.GP_progression_model(XfiltCurrUnit, YfiltCurrUnit, nrRandFeatures,
-          outFolderCurrUnit, plotterObjCurrFuncUnit, self.params['priors'], plotTrajParamsFuncUnit['labels'])
+        self.unitModels[u] = self.unitModelObj(XfiltCurrUnit, YfiltCurrUnit, outFolderCurrUnit,
+          plotterObjCurrFuncUnit, plotTrajParamsFuncUnit['labels'], self.params)
 
         self.unitModels[u].Set_penalty(self.params['penaltyUnits'])
         self.unitModels[u].Optimize(nrGlobIterUnit, iterParamsUnit, Plot=True)
@@ -168,11 +171,9 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
         outFolderCurDis = '%s/%s' % (self.outFolder, self.params['disLabels'][disNr])
         os.system('mkdir -p %s' % outFolderCurDis)
-        self.disModels[disNr] = MarcoModel.GP_progression_model(xDysfunSubjCurrDisU, dysfuncScoresCurrDisU,
-          nrRandFeatures, outFolderCurDis, plotterCurrDis, self.params['priors'], plotTrajParamsDis['labels'])
-
-        self.disModels[disNr].Set_penalty(self.params['penaltyDis'])
-        self.disModels[disNr].Optimize(nrGlobIterDis, iterParamsDis, Plot=True)
+        self.disModels[disNr] = self.disModelObj(xDysfunSubjCurrDisU, dysfuncScoresCurrDisU,
+          outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'], self.params)
+        self.disModels[disNr].Optimize(nrGlobIterDis, Plot=True)
 
         pickle.dump(self.disModels, open(disModelsFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
 
@@ -180,9 +181,6 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
       self.disModels = pickle.load(open(disModelsFile, 'rb'))
 
       for disNr in range(self.nrDis):
-        self.disModels[disNr].minScX = self.disModels[disNr].applyScalingX(self.disModels[disNr].minX)
-        self.disModels[disNr].maxScX = self.disModels[disNr].applyScalingX(self.disModels[disNr].maxX)
-
         plotTrajParamsDis = JDMOnePass.createPlotTrajParamsDis(self.params, disNr)
         plotterCurrDis = Plotter.PlotterDis(plotTrajParamsDis)  # set separate plotter for the
 

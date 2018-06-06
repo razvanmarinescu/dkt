@@ -9,6 +9,9 @@ import os
 import colorsys
 import copy
 
+import MarcoModel
+import SigmoidModel
+
 parser = argparse.ArgumentParser(description='Launches voxel-wise/point-wise DPM on ADNI'
                                              'using cortical thickness maps derived from MRI')
 
@@ -174,7 +177,10 @@ def main():
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
   params['iterParamsUnit'] = 50
   params['nrGlobIterDis'] = 10
-  params['iterParamsDis'] = 5070
+  params['iterParamsDis'] = 50
+
+  params['unitModelObj'] = MarcoModel.GP_progression_model
+  params['disModelObj'] = SigmoidModel.SigmoidModel
 
   # params['priors'] = dict(prior_length_scale_mean_ratio=0.33, # mean_length_scale = (self.maxX-self.minX)/3
   #     prior_length_scale_std=1e-4, prior_sigma_mean=2,prior_sigma_std = 1e-3,

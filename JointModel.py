@@ -79,7 +79,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
       for i in range(nrIt):
         # estimate biomk trajectories - disease agnostic
-        self.estimBiomkTraj(self.unitModels, self.disModels)
+        # self.estimBiomkTraj(self.unitModels, self.disModels)
 
         if plotFigs:
           fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
@@ -117,14 +117,10 @@ class JointModel(DisProgBuilder.DPMInterface):
 
   def estimBiomkTraj(self, unitModels, disModels):
 
-    # update the DPS scores of subjects
-    predScoresDS = [0 for _ in range(self.nrDis)]
-
     XshiftedScaledDBS = [0 for _ in range(self.nrDis)]
     XdisDBSX = [0 for _ in range(self.nrDis)]
     for d in range(self.nrDis):
       XshiftedScaledDBS[d], XdisDBSX[d], _ = disModels[d].getData()
-
 
     XdisSX = [0 for _ in range(self.unitModels[0].nrSubj)]
     nrSubj = unitModels[0].nrSubj
@@ -134,7 +130,6 @@ class JointModel(DisProgBuilder.DPMInterface):
       currRID = self.params['RID'][s]
       # print('currDis', currDis)
       idxCurrSubjInDisModel = np.where(self.ridsPerDisD[currDis] == currRID)[0][0]
-      # print('idxCurrSubjInDisModel', idxCurrSubjInDisModel)
       XdisSX[s] = XdisDBSX[currDis][0][idxCurrSubjInDisModel]
 
       # get shifts for curr subj from correct disModel
@@ -149,9 +144,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       assert predScoresCurrXU[:,0].shape[0] == XdisSX[s].shape[0]
       assert predScoresCurrUSX[0][s].shape[0] == XdisSX[s].shape[0]
 
-
     for u in range(self.nrFuncUnits):
-    # for u in [1]:
       print('updating traj for func unit %d/%d' % (u+1, self.nrFuncUnits))
       # now update the X-values in each unitModel to the updated dysfunc scores
       # not that the X-vals are the same for every biomk within func units,
@@ -170,26 +163,30 @@ class JointModel(DisProgBuilder.DPMInterface):
   def estimUnitTraj(self, unitModels, disModels):
     """ estimates trajectory parameters within the disease specific models """
 
-
     for d in range(self.nrDis):
-      X_array
 
-      # build function that takes a disModel, all unitModels, and predicts lik given traj params in disModel
-      likJDMCurr = lambda params: self.likJDM(disModels[d], unitModels, params)
+      # update each unit-traj independently
+      for u in range(self.nrFuncUnits):
+        # build function that takes a disModel, all unitModels, and predicts lik given traj params in disModel
+        likJDMobjFunc = lambda paramsCurrTraj: self.likJDM(disModels[d], unitModels, paramsCurrTraj, unitNr)
+        initParams = disModels[d].parameters[u]
+
+        print(likJDMobjFunc(initParams))
+
+        resStruct = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
+          options={'disp': True})
+
+        print()
 
 
-  def likJDM(self, disModel, unitModels, params):
+  def likJDM(self, disModel, unitModels, params, unitNr):
 
-    ####### first predict dysScores in disModel ##########
-
-    # update the DPS scores of subjects
-    predScoresDS = [0 for _ in range(self.nrDis)]
+    ####### first predict dysScores in disModel for curr functional unit ##########
 
     XshiftedScaledDBS = [0 for _ in range(self.nrDis)]
     XdisDBSX = [0 for _ in range(self.nrDis)]
     for d in range(self.nrDis):
       XshiftedScaledDBS[d], XdisDBSX[d], _ = disModels[d].getData()
-
 
     XdisSX = [0 for _ in range(self.unitModels[0].nrSubj)]
     nrSubj = unitModels[0].nrSubj
@@ -197,15 +194,15 @@ class JointModel(DisProgBuilder.DPMInterface):
     for s in range(nrSubj):
       currDis = self.disIdxForEachSubjS[s]
       currRID = self.params['RID'][s]
-      # print('currDis', currDis)
       idxCurrSubjInDisModel = np.where(self.ridsPerDisD[currDis] == currRID)[0][0]
-      # print('idxCurrSubjInDisModel', idxCurrSubjInDisModel)
       XdisSX[s] = XdisDBSX[currDis][0][idxCurrSubjInDisModel]
 
       # get shifts for curr subj from correct disModel
       currXdataShifted = XshiftedScaledDBS[currDis][0][idxCurrSubjInDisModel]
       # predict dysf scoresf for curr subj
-      predScoresCurrXU = disModels[currDis].predictBiomk(currXdataShifted)
+      paramsAllU = disModels[currDis]
+      paramsAllU[unitNr] = params
+      predScoresCurrXU = disModels[currDis].predictBiomk(currXdataShifted, paramsAllU)
 
       for u in range(self.nrFuncUnits):
         predScoresCurrUSX[u][s] = predScoresCurrXU[:,u]
@@ -214,15 +211,17 @@ class JointModel(DisProgBuilder.DPMInterface):
       assert predScoresCurrXU[:,0].shape[0] == XdisSX[s].shape[0]
       assert predScoresCurrUSX[0][s].shape[0] == XdisSX[s].shape[0]
 
-
     #### then sum log-liks of each func unit.
 
     # turn predScoresCurrUSX[u] into predX_array
+    predX_array, N_obs_per_subj = self.unitModels[unitNr].convertLongToArray(predScoresCurrUSX)
+    self.unitModels[unitNr].checkNobsMatch(N_obs_per_subj)
 
-    for u in range(self.nrFuncUnits):
-      lik += self.unitModels[u].stochastic_grad_manual(params, predX_array, self.unitModels[u].Y_array)[0]
 
+    lik = self.unitModels[unitNr].stochastic_grad_manual(self.unitModels[unitNr].parameters,
+      predX_array, self.unitModels[unitNr].Y_array)[0]
 
+    return lik
 
 
   def predictBiomkSubjGivenXs(self, newXs, disNr):
