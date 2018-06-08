@@ -305,7 +305,7 @@ def validateDRCBiomk(dpmObj, params):
 
   XshiftedDisModelBS = [[] for b in range(nrBiomk)]
   ysPredBS = [[] for b in range(nrBiomk)]
-  XshiftedDisModelUS, XdisModelUS, YdisModelUS = dpmObj.disModels[disNr].getData()
+  XshiftedDisModelUS, XdisModelUS, YdisModelUS, _ = dpmObj.disModels[disNr].getData()
   xsOrigPred1S = XdisModelUS[0] # all biomarkers should contain all timepoints in the disease model
 
 

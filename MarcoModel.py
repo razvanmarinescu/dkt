@@ -37,127 +37,85 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import scipy.optimize
+import DPMModelGeneric
 
-class GP_progression_model(object):
+class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
     plt.interactive(False)
-    def __init__(self, X,Y, outFolder, plotter, names_biomarkers, params):
+    def __init__(self, X,Y, visitIndices, outFolder, plotter, names_biomarkers, params):
+      super().__init__(X,Y, visitIndices, outFolder, plotter, names_biomarkers, params)
 
-        priors = params['priors']
-        N_rnd_features = int(3) # Number of random features for kernel approximation
-        #Initializing variables
-        self.plotter = plotter
-        self.priors = priors
-        self.outFolder = outFolder
-        self.expName = plotter.plotTrajParams['expName']
-        self.names_biomarkers = names_biomarkers
-        self.group = []
-        self.N_rnd_features = int(N_rnd_features)
-        self.nrSubj = len(X[0])
-        self.nrBiomk = len(X)
-        self.X_array = []
-        self.Y_array = []
-        self.X = X
-        self.Y = Y
-        self.mean_std_X = []
-        self.mean_std_Y = []
-        self.max_X = []
-        self.max_Y = []
-        self.N_obs_per_sub = []
-        self.params_time_shift = np.ndarray([2,len(X[0])])
+      self.mean_std_X = []
+      self.mean_std_Y = []
+      self.max_X = []
+      self.max_Y = []
 
-        # Time shift initialized to 0
-        self.params_time_shift[0, :] = 0
+      N_rnd_features = int(3) # Number of random features for kernel approximation
+      self.priors = params['priors']
+      self.group = []
+      self.N_rnd_features = int(N_rnd_features)
 
-        # Estension of the model will include a time scaling factor (fixed to 1 so far)
-        self.params_time_shift[1,:] = 1
-
-        # for l in range(self.nrBiomk):
-        #   # Creating 1d arrays of individuals' time points and observations
-        #   self.X_array.append([np.float128(item) for sublist in X[l] for item in sublist])
-        #   self.Y_array.append([np.float128(item) for sublist in Y[l] for item in sublist])
-        #   self.N_obs_per_sub.append([len(X[l][j]) for j in range(len(X[l]))])
-
-        self.X_array, self.N_obs_per_sub = self.convertLongToArray(self.X)
-        self.Y_array, N_obs_per_sub2 = self.convertLongToArray(self.Y)
-        self.checkNobsMatch(N_obs_per_sub2)
+      self.rescale()
 
 
-        self.rescale()
+      self.minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+      self.maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
 
-        self.minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-        self.maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+      self.minScX = self.applyScalingX(self.minX)
+      self.maxScX = self.applyScalingX(self.maxX)
 
-        self.minScX = self.applyScalingX(self.minX)
-        self.maxScX = self.applyScalingX(self.maxX)
+      nrBiomk = len(self.X)
+      scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(nrBiomk)]
+      self.min_yB = np.array([np.min(scaledYarrayB[b].reshape(-1)) for b in range(nrBiomk)])
+      self.max_yB = np.array([np.max(scaledYarrayB[b].reshape(-1)) for b in range(nrBiomk)])
 
-        nrBiomk = len(self.X)
-        scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(nrBiomk)]
-        self.min_yB = np.array([np.min(scaledYarrayB[b].reshape(-1)) for b in range(nrBiomk)])
-        self.max_yB = np.array([np.max(scaledYarrayB[b].reshape(-1)) for b in range(nrBiomk)])
+      # Number of derivative points uniformely distributed on the X axis
+      self.N_Dpoints = 10
+      self.DX = np.linspace(self.minX,self.maxX,self.N_Dpoints).reshape([self.N_Dpoints,1])
 
-        # Number of derivative points uniformely distributed on the X axis
-        self.N_Dpoints = 10
-        self.DX = np.linspace(self.minX,self.maxX,self.N_Dpoints).reshape([self.N_Dpoints,1])
+      # Initializing random features for kernel approximation
+      self.perturbation_Omega = np.random.randn(self.N_rnd_features)
 
-        # Initializing random features for kernel approximation
-        self.perturbation_Omega = np.random.randn(self.N_rnd_features)
+      self.init_params_var = []
+      self.init_params_full = []
 
-        self.init_params_var = []
-        self.init_params_full = []
+      # Monotonicity constraint (higher -> more monotonic)
+      self.penalty = []
 
-        # Monotonicity constraint (higher -> more monotonic)
-        self.penalty = []
+      # Initializing fixed effect parameters per biomarkers to default values
+      for l in range(self.nrBiomk):
+          self.init_params_var.append(np.concatenate([ np.zeros([ self.N_rnd_features]) - 1, np.zeros([ self.N_rnd_features]) - 1, np.zeros([ 2 * self.N_rnd_features]) , np.zeros([ 2 * self.N_rnd_features])]))
+          sigma = 0
+          length_scale = -3
+          eps = -4
+          self.init_params_full.append(np.concatenate([self.init_params_var[l], np.array([sigma]), np.array([length_scale]), np.array([eps])]))
+          self.penalty.append(1)
 
-        # Initializing fixed effect parameters per biomarkers to default values
-        for l in range(self.nrBiomk):
-            self.init_params_var.append(np.concatenate([ np.zeros([ self.N_rnd_features]) - 1, np.zeros([ self.N_rnd_features]) - 1, np.zeros([ 2 * self.N_rnd_features]) , np.zeros([ 2 * self.N_rnd_features])]))
-            sigma = 0
-            length_scale = -3
-            eps = -4
-            self.init_params_full.append(np.concatenate([self.init_params_var[l], np.array([sigma]), np.array([length_scale]), np.array([eps])]))
-            self.penalty.append(1)
+      self.parameters = []
+      for l in range(self.nrBiomk):
+          self.parameters.append(self.init_params_full[l])
 
-        self.parameters = []
-        for l in range(self.nrBiomk):
-            self.parameters.append(self.init_params_full[l])
+      # Initializing individuals random effects
+      self.rand_parameters = []
+      self.rand_parameter_type = []
 
-        # Initializing individuals random effects
-        self.rand_parameters = []
-        self.rand_parameter_type = []
+      for biom in range(self.nrBiomk):
+          self.rand_parameter_type.append([])
+          self.rand_parameters.append([])
+          for sub in range(self.nrSubj):
+              if self.N_obs_per_sub[biom][sub]==0:
+                  self.rand_parameter_type[biom].append(0)
+                  self.rand_parameters[biom].append(0)
+              elif self.N_obs_per_sub[biom][sub] < 3:
+                  self.rand_parameter_type[biom].append(1)
+                  self.rand_parameters[biom].append(0)
+              else:
+                  self.rand_parameter_type[biom].append(2)
+                  self.rand_parameters[biom].append([0,0])
 
-        for biom in range(self.nrBiomk):
-            self.rand_parameter_type.append([])
-            self.rand_parameters.append([])
-            for sub in range(self.nrSubj):
-                if self.N_obs_per_sub[biom][sub]==0:
-                    self.rand_parameter_type[biom].append(0)
-                    self.rand_parameters[biom].append(0)
-                elif self.N_obs_per_sub[biom][sub] < 3:
-                    self.rand_parameter_type[biom].append(1)
-                    self.rand_parameters[biom].append(0)
-                else:
-                    self.rand_parameter_type[biom].append(2)
-                    self.rand_parameters[biom].append([0,0])
-
-                obs = np.array([self.X_array[biom][k][0] for k in range(int(np.sum(self.N_obs_per_sub[biom][:sub])),
-                                                               np.sum(self.N_obs_per_sub[biom][:sub + 1]))])
+              obs = np.array([self.X_array[biom][k][0] for k in range(int(np.sum(self.N_obs_per_sub[biom][:sub])),
+                                                             np.sum(self.N_obs_per_sub[biom][:sub + 1]))])
 
 
-    def checkNobsMatch(self, N_obs_per_sub2):
-      for b in range(self.nrBiomk):
-        for s in range(self.nrSubj):
-          assert self.N_obs_per_sub[b][s] == N_obs_per_sub2[b][s]
-
-
-    def convertLongToArray(self, Z):
-      Z_array = [0 for b in range(self.nrBiomk)]
-      N_obs_per_sub = [0 for b in range(self.nrBiomk)]
-      for b in range(self.nrBiomk):
-        # Creating 1d arrays of individuals' time points and observations
-        Z_array = np.array([np.float128(item) for sublist in X[l] for item in sublist]).reshape(-1,1)
-        N_obs_per_sub[b] = [len(X[l][j]) for j in range(len(X[l]))]
-
-      return Z_array, N_obs_per_sub
 
     def applyScalingX(self, x_data, biomk=0):
       scaleX = self.max_X[biomk] * self.mean_std_X[biomk][1]
@@ -173,9 +131,6 @@ class GP_progression_model(object):
         biomksNewXB[:, b] = self.applyScalingY(biomksXB[:, b], b)
 
       return biomksNewXB
-
-    def getXsMinMaxRange(self, nrPoints=50):
-      return np.linspace(self.minScX, self.maxScX, nrPoints).reshape([-1, 1])
 
     def updateMinMax(self, minX, maxX):
       self.minX = minX
@@ -198,24 +153,6 @@ class GP_progression_model(object):
     def applyScalingXzeroOneInv(self, xs):
       return xs * (self.maxScX - self.minScX) + self.minScX
 
-    def getData(self):
-      nrBiomk = len(self.X)
-      nrSubj = len(self.X[0])
-      XshiftedScaled = [[] for b in range(nrBiomk)]
-
-      for b in range(nrBiomk):
-        for s in range(nrSubj):
-
-          XshiftedCurrSubj = np.array([self.X_array[b][k][0] for k in range(int(np.sum(
-            self.N_obs_per_sub[b][:s])), np.sum(self.N_obs_per_sub[b][:s + 1]))])
-
-          XshiftedScaled[b] += [self.applyScalingX(XshiftedCurrSubj)]
-
-          assert XshiftedScaled[b][s].shape[0] == self.X[b][s].shape[0]
-          assert XshiftedScaled[b][s].shape[0] == self.Y[b][s].shape[0]
-
-      return XshiftedScaled, self.X, self.Y
-
     def updateXvals(self, newXvalsSX, origXvalsSX):
       """ Update the X_array with the given values. Compare origXvalsSX (full) with self.X (containing missing vals)
       to be able to tell where there was missing data originally. """
@@ -237,9 +174,6 @@ class GP_progression_model(object):
 
           assert self.N_obs_per_sub[b][s] == len(newX_BSX[b][s])
 
-        # print('newX_BSX[b][:10]', newX_BSX[b][:10])
-        # print('newXvalsSX[:10]', newXvalsSX[:10])
-        # print(asda)
 
         newXarrayCurrBiomk = [np.float128(item) for sublist in newX_BSX[b] for item in sublist]
         assert len(self.X_array[b]) == len(newXarrayCurrBiomk)
@@ -262,29 +196,6 @@ class GP_progression_model(object):
       maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
       self.updateMinMax(minX, maxX)
       self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-
-
-      print('minX maxX', minX, maxX)
-      print('getXsMinMaxRange', self.getXsMinMaxRange())
-
-      # Xshifted, X, Y = self.getData()
-      # print('self.X_array[0][:10]', self.X_array[0][:10])
-      # print('Xshifted[0][0]', Xshifted[0][0], Xshifted[0][1], Xshifted[0][2])
-      # print(ads)
-
-      # print(len(self.X_array[0]), self.X_array[0][0].shape)
-      # print('self.X_array[0][0]', self.X_array[0][0])
-      # print('newX_BSX[0][0]', newX_BSX[0][0].shape,  newX_BSX[0][0])
-      # print(asa)
-
-    def getSubShiftsLong(self):
-      return self.applyScalingX(self.params_time_shift[0])
-
-    def getMinMaxY_B(self, extraDelta=0):
-      ''' get minimum and maximum of Ys per biomarker'''
-      deltaB = (self.max_yB - self.min_yB) * extraDelta
-
-      return self.min_yB - deltaB, self.max_yB + deltaB
 
 
     def rescale(self):

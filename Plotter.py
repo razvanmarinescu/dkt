@@ -227,7 +227,7 @@ class PlotterGP(ABC):
     newX = gpModel.getXsMinMaxRange()
     predBiomksYscaledXB = gpModel.predictBiomk(newX)
 
-    Xshifted, X, Y = gpModel.getData()
+    Xshifted, X, Y, _ = gpModel.getData()
 
     for b in range(nrBiomk):
       ax = pl.subplot(nrRows, nrCols, b + 1)

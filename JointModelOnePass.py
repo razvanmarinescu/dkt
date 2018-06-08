@@ -61,7 +61,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
       nrGlobIterUnit = self.params['nrGlobIterUnit']
       iterParamsUnit = self.params['iterParamsUnit']
 
-      Xfilt, Yfilt = filterDataListFormat(self.params, self.dataIndices)
+      Xfilt, Yfilt, visitIndicesFilt = filterDataListFormat(self.params, self.dataIndices)
 
       self.unitModels = [_ for _ in range(self.nrFuncUnits)]
 
@@ -72,9 +72,10 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
         XfiltCurrUnit = [Xfilt[b] for b in self.biomkInFuncUnit[u]]
         YfiltCurrUnit = [Yfilt[b] for b in self.biomkInFuncUnit[u]]
+        visitIndicesCurrUnit = [visitIndicesFilt[b] for b in self.biomkInFuncUnit[u]]
         outFolderCurrUnit = '%s/unit%d' % (self.outFolder, u)
         os.system('mkdir -p %s' % outFolderCurrUnit)
-        self.unitModels[u] = self.unitModelObj(XfiltCurrUnit, YfiltCurrUnit, outFolderCurrUnit,
+        self.unitModels[u] = self.unitModelObj(XfiltCurrUnit, YfiltCurrUnit, visitIndicesCurrUnit, outFolderCurrUnit,
           plotterObjCurrFuncUnit, plotTrajParamsFuncUnit['labels'], self.params)
 
         self.unitModels[u].Set_penalty(self.params['penaltyUnits'])
@@ -113,7 +114,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         dysfuncScoresU[u] = [[] for _ in range(nrSubj)]
         xDysfunSubjU[u] = [[] for _ in range(nrSubj)]
 
-        XshiftedUnitModel, XunitModel, YunitModel = self.unitModels[u].getData()
+        XshiftedUnitModel, XunitModel, YunitModel, _ = self.unitModels[u].getData()
 
         for sub in range(self.unitModels[u].nrSubj):
           for b in range(self.unitModels[u].nrBiomk):
@@ -164,14 +165,15 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
           dysfuncScoresCurrDisU[b] = [dysfuncScoresUCopy[b][s] for s in
             np.where(self.indxSubjForEachDisD[disNr])[0]]
 
+          for s in range(len(xDysfunSubjCurrDisU[b])):
+            visitIndicesCurrDis[b][s] = np.array(range(xDysfunSubjCurrDisU[b][s].shape[0]))
 
         plotTrajParamsDis = JDMOnePass.createPlotTrajParamsDis(self.params, disNr)
         plotterCurrDis = Plotter.PlotterDis(plotTrajParamsDis)  # set separate plotter for the
 
-
         outFolderCurDis = '%s/%s' % (self.outFolder, self.params['disLabels'][disNr])
         os.system('mkdir -p %s' % outFolderCurDis)
-        self.disModels[disNr] = self.disModelObj(xDysfunSubjCurrDisU, dysfuncScoresCurrDisU,
+        self.disModels[disNr] = self.disModelObj(xDysfunSubjCurrDisU, dysfuncScoresCurrDisU, visitIndicesCurrDis,
           outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'], self.params)
         self.disModels[disNr].Optimize(nrGlobIterDis, Plot=True)
 

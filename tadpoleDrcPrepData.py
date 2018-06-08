@@ -398,7 +398,7 @@ def prepareData(finalDataFile, tinyData):
 
   testValidDfConsist(validDf, dataDfAll)
 
-  X, Y, RID, list_biomarkers, diag = \
+  X, Y, RID, list_biomarkers, diag, visitIndices = \
     auxFunc.convert_table_marco(dataDfAll, list_biomarkers=selectedBiomk)
 
 
@@ -415,18 +415,18 @@ def prepareData(finalDataFile, tinyData):
   visValidDf(validDf, outFilePrefix)
   # print(ads)
 
-  Xvalid, Yvalid, RIDvalid, _, diagValid = \
+  Xvalid, Yvalid, RIDvalid, _, diagValid, visitIndicesValid = \
     auxFunc.convert_table_marco(validDf, list_biomarkers = selectedBiomk)
 
   print('validDf.RID', validDf.RID)
   print('RIDvalid', len(RIDvalid))
   # print(ads)
 
-  ds = dict(X=X, Y=Y, RID=RID, list_biomarkers=list_biomarkers,
+  ds = dict(X=X, Y=Y, RID=RID, list_biomarkers=list_biomarkers,visitIndices=visitIndices,
     dataDfAll=dataDfAll, regParamsICV=regParamsICV,
     regParamsAge=regParamsAge, regParamsGender=regParamsGender,
     regParamsDataset=regParamsDataset, diag=diag, Xvalid=Xvalid, Yvalid=Yvalid,
-    RIDvalid=RIDvalid, diagValid=diagValid)
+    RIDvalid=RIDvalid, diagValid=diagValid, visitIndicesValid=visitIndicesValid)
   pickle.dump(ds, open(finalDataFile, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
   # print('RID', RID)

@@ -2,40 +2,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import scipy.optimize
+import DPMModelGeneric
 
-class SigmoidModel(object):
+class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   plt.interactive(False)
 
-  def __init__(self, X, Y, outFolder, plotter, priors, names_biomarkers=[], group=[]):
-    # Initializing variables
-    self.plotter = plotter
-    self.priors = priors
-    self.outFolder = outFolder
-    self.expName = plotter.plotTrajParams['expName']
-    self.names_biomarkers = names_biomarkers
-    self.group = group
-    self.nrSubj = len(X[0])
-    self.nrBiomk = len(X)
-    self.X_array = []
-    self.Y_array = []
-    self.X = X
-    self.Y = Y
-    self.N_obs_per_sub = []
-    self.params_time_shift = np.ndarray([2, len(X[0])])
-
-    # Time shift initialized to 0
-    self.params_time_shift[0, :] = 0
-
-    # Estension of the model will include a time scaling factor (fixed to 1 so far)
-    self.params_time_shift[1, :] = 1
-
-    self.X_array = [0 for _ in range(self.nrBiomk)]
-    self.Y_array = [0 for _ in range(self.nrBiomk)]
-    for b in range(self.nrBiomk):
-      # Creating 1d arrays of individuals' time points and observations
-      self.X_array[b] = np.array([np.float128(item) for sublist in X[b] for item in sublist]).reshape(-1,1)
-      self.Y_array[b] = np.array([np.float128(item) for sublist in Y[b] for item in sublist]).reshape(-1,1)
-      self.N_obs_per_sub.append([len(X[b][j]) for j in range(len(X[b]))])
+  def __init__(self, X, Y, visitIndices, outFolder, plotter, names_biomarkers, params):
+    super().__init__(X, Y, visitIndices, outFolder, plotter, names_biomarkers, params)
 
     minX = np.min(self.X_array)
     maxX = np.max(self.X_array)
@@ -77,54 +50,11 @@ class SigmoidModel(object):
   def applyScalingYAllBiomk(self, biomksXB):
     return biomksXB
 
-  def getXsMinMaxRange(self, nrPoints=50):
-    return np.linspace(self.minScX, self.maxScX, nrPoints).reshape([-1, 1])
-
-  def updateMinMax(self, minX, maxX):
-    self.minX = minX
-    self.maxX = maxX
-    self.minScX = self.applyScalingX(self.minX)
-    self.maxScX = self.applyScalingX(self.maxX)
-
   def applyScalingXForward(self, x_data, biomk=0):
     return x_data
 
   def applyGivenScalingY(self, y_data, meanY, stdY):
     return (y_data - meanY) / stdY
-
-  def applyScalingXzeroOneFwd(self, xs):
-    return (xs - self.minScX) / \
-           (self.maxScX - self.minScX)
-
-  def applyScalingXzeroOneInv(self, xs):
-    return xs * (self.maxScX - self.minScX) + self.minScX
-
-  def getData(self):
-    nrBiomk = len(self.X)
-    nrSubj = len(self.X[0])
-    XshiftedScaled = [[] for b in range(nrBiomk)]
-
-    for b in range(nrBiomk):
-      for s in range(nrSubj):
-        XshiftedCurrSubj = np.array([self.X_array[b][k][0] for k in range(int(np.sum(
-          self.N_obs_per_sub[b][:s])), np.sum(self.N_obs_per_sub[b][:s + 1]))])
-
-        XshiftedScaled[b] += [self.applyScalingX(XshiftedCurrSubj)]
-
-        assert XshiftedScaled[b][s].shape[0] == self.X[b][s].shape[0]
-        assert XshiftedScaled[b][s].shape[0] == self.Y[b][s].shape[0]
-
-    return XshiftedScaled, self.X, self.Y
-
-
-  def getSubShiftsLong(self):
-    return self.applyScalingX(self.params_time_shift[0])
-
-  def getMinMaxY_B(self, extraDelta=0):
-    ''' get minimum and maximum of Ys per biomarker'''
-    deltaB = (self.max_yB - self.min_yB) * extraDelta
-
-    return self.min_yB - deltaB, self.max_yB + deltaB
 
 
   def sigFunc(self, xs, theta):

@@ -275,23 +275,30 @@ def main():
   paramsDisTwo['Ytrue'] = paramsDisTwo['Y']
 
 
+
   # for disease two, change the format of the X and Y arrays, add the missing biomarkers with empty lists
   XemptyListsAllBiomk = [0 for _ in range(nrBiomk)]
   YemptyListsAllBiomk = [0 for _ in range(nrBiomk)]
+  visitIndicesDisTwoMissing = [0 for _ in range(nrBiomk)]
   for b in range(nrBiomk):
     XemptyListsAllBiomk[b] = [0 for _ in range(nrSubjLongDisTwo)]
     YemptyListsAllBiomk[b] = [0 for _ in range(nrSubjLongDisTwo)]
+    visitIndicesDisTwoMissing[b] = [0 for _ in range(nrSubjLongDisTwo)]
 
     for s in range(nrSubjLongDisTwo):
       if b in indBiomkInDiseaseTwo:
         XemptyListsAllBiomk[b][s] = paramsDisTwo['Xtrue'][b][s]
         YemptyListsAllBiomk[b][s] = paramsDisTwo['Ytrue'][b][s]
+        visitIndicesDisTwoMissing[b][s] = paramsDisTwo['visitIndices'][b][s]
       else:
         XemptyListsAllBiomk[b][s] = np.array([])
         YemptyListsAllBiomk[b][s] = np.array([])
+        visitIndicesDisTwoMissing[b][s] = np.array([])
+
 
   paramsDisTwo['XemptyListsAllBiomk'] = XemptyListsAllBiomk
   paramsDisTwo['YemptyListsAllBiomk'] = YemptyListsAllBiomk
+  paramsDisTwo['visitIndicesMissing'] = visitIndicesDisTwoMissing
 
   if regenerateData:
     synthPlotter = Plotter.PlotterJDM(paramsDisTwo['plotTrajParams'])
@@ -315,6 +322,7 @@ def main():
   for b in range(nrBiomk):
     params['X'][b] += paramsDisTwo['XemptyListsAllBiomk'][b]
     params['Y'][b] += paramsDisTwo['YemptyListsAllBiomk'][b]
+    params['visitIndices'][b] += paramsDisTwo['visitIndicesMissing'][b]
 
   params['RID'] = np.concatenate((params['RID'],
   nrSubjLong + paramsDisTwo['RID']),axis=0) # RIDs must be different

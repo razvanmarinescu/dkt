@@ -129,12 +129,13 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
     # X - list of length NR_BIOMK.  X[b] - list of NR_SUBJ_LONG   X[b][s] - list of visit months for subject b and biomarker s
     # Y - list of length NR_BIOMK.  Y[b] - list of NR_SUBJ_LONG   Y[b][s] - list of biomarker values for subject b and biomarker s
     # RID - list of length NR_SUBJ_LONG
-    X, Y, RID = convertToMarcoFormat(dataCrossSB, labels, yearsSinceBlScanCross, partCodeCross, diagCross)
+    X, Y, RID, visitIndices = convertToMarcoFormat(dataCrossSB, labels, yearsSinceBlScanCross, partCodeCross, diagCross)
 
     localParams['X'] = X
     localParams['Y'] = Y
     localParams['RID'] = RID
     localParams['labels'] = labels
+    localParams['visitIndices'] = visitIndices
 
     print('RID', RID)
     print('X[0][1]', X[0][1])
@@ -201,9 +202,9 @@ def convertToMarcoFormat(data, labels, yearsSinceBlScan, partCode, diag):
   df.insert(0, 'RID', partCode)
   df.insert(0, 'SUB', np.array(range(data.shape[0])))
 
-  X,Y,RID,list_biomarkers, diag = auxFunc.convert_table_marco(df, list_biomarkers=labels)
+  X,Y,RID,list_biomarkers, diag, visitIndices = auxFunc.convert_table_marco(df, list_biomarkers=labels)
 
-  return X,Y,np.array(RID)
+  return X,Y,np.array(RID), visitIndices
 
 def generateDiag(dpsCross, ctlDiagNr, patDiagNr, diagPrecDef = 0.4, muScale = 1):
   nrSubjCross = dpsCross.shape[0]
