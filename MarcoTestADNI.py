@@ -10,11 +10,12 @@ import Plotter
 import os
 import pickle
 import colorsys
+import auxFunc
 
 # remember to change test_synthetic/test_ADNI/test_TADPOLE in GP_progression_model
 
 ### load the biomarkers
-X,Y,RID,list_biomarker = MarcoModel.convert_csv("./table_APOEpos.csv")
+X,Y,RID,list_biomarker, visitIndices = auxFunc.convert_csv("./table_APOEpos.csv")
 
 N=int(10)   # Number of random features for kernel approximation
 nrBiomk = len(list_biomarker)

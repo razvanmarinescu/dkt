@@ -9,6 +9,9 @@ import os
 import colorsys
 import copy
 
+import MarcoModel
+import SigmoidModel
+
 parser = argparse.ArgumentParser(description='Launches voxel-wise/point-wise DPM on ADNI'
                                              'using cortical thickness maps derived from MRI')
 
@@ -91,6 +94,7 @@ plotTrajParams['isSynth'] = True
 
 
 
+
 if args.agg:
   plotTrajParams['agg'] = True
 else:
@@ -125,7 +129,7 @@ def main():
 
   params = {}
 
-  nrFuncUnits = 3
+  nrFuncUnits = 2
   nrBiomkInFuncUnits = 3
 
   nrBiomk = nrBiomkInFuncUnits * nrFuncUnits
@@ -135,7 +139,7 @@ def main():
 
   biomkInFuncUnit = [0 for u in range(nrFuncUnits+1)]
   for u in range(nrFuncUnits):
-    biomkInFuncUnit[u] = list(np.where(mapBiomkToFuncUnits == u)[0])
+    biomkInFuncUnit[u] = np.where(mapBiomkToFuncUnits == u)[0]
 
   biomkInFuncUnit[nrFuncUnits] = [] # need to leave this as empty list
 
@@ -143,38 +147,56 @@ def main():
   plotTrajParams['labels'] = ['b%d' % n for n in range(nrBiomk)]
   plotTrajParams['nrRowsFuncUnit'] = 3
   plotTrajParams['nrColsFuncUnit'] = 4
-  plotTrajParams['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in np.linspace(0, 1, num=nrBiomk, endpoint=False)]
+  plotTrajParams['colorsTrajBiomkB'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
+    np.linspace(0, 1, num=nrBiomk, endpoint=False)]
+  plotTrajParams['colorsTrajUnitsU'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
+    np.linspace(0, 1, num=nrFuncUnits, endpoint=False)]
+
 
   # plotTrajParams['yNormMode'] = 'zScoreTraj'
-  plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
-  # plotTrajParams['yNormMode'] = 'unscaled'
+  # plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
+  plotTrajParams['yNormMode'] = 'unscaled'
+
 
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
 
-  plotTrajParams['unitNames'] = ['unit%d' % f for f in range(nrFuncUnits)]
+  params['unitNames'] = ['Unit%d' % f for f in range(nrFuncUnits)]
 
   params['runIndex'] = args.runIndex
   params['nrProc'] = args.nrProc
   params['cluster'] = args.cluster
   params['plotTrajParams'] = plotTrajParams
   params['penalty'] = args.penalty
-  params['penaltyUnits'] = args.penalty
+  params['penaltyUnits'] = 20
   params['penaltyDis'] = 1
   params['nrFuncUnits'] = nrFuncUnits
-  params['mapBiomkToFuncUnits'] = mapBiomkToFuncUnits
+  params['biomkInFuncUnit'] = biomkInFuncUnit
   params['nrBiomkDisModel'] = nrFuncUnits
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
-  params['iterParamsUnit'] = 60
+  params['iterParamsUnit'] = 50
   params['nrGlobIterDis'] = 10
   params['iterParamsDis'] = 50
+
+  params['unitModelObj'] = MarcoModel.GP_progression_model
+  params['disModelObj'] = SigmoidModel.SigmoidModel
+
+  # params['priors'] = dict(prior_length_scale_mean_ratio=0.33, # mean_length_scale = (self.maxX-self.minX)/3
+  #     prior_length_scale_std=1e-4, prior_sigma_mean=2,prior_sigma_std = 1e-3,
+  #     prior_eps_mean = 1, prior_eps_std = 1e-2)
+  params['priors'] = dict(prior_length_scale_mean_ratio=0.9,  # mean_length_scale = (self.maxX-self.minX)/3
+                              prior_length_scale_std=1e-4, prior_sigma_mean=3, prior_sigma_std=1e-3,
+                              prior_eps_mean=0.1, prior_eps_std=1e-6)
+
+  params['priorsJMD'] = dict(prior_length_scale_mean_ratio=0.05,  # mean_length_scale = (self.maxX-self.minX)/3
+                              prior_length_scale_std=1e-6, prior_sigma_mean=0.5, prior_sigma_std=1e-3,
+                              prior_eps_mean=0.1, prior_eps_std=1e-6)
 
   ##### disease agnostic parameters ###########
   # params of individual biomarkers
   thetas = np.zeros((nrBiomk, 4), float)
   thetas[:, 0] = 1
-  # thetas[:, 1] = 10
   thetas[:, 3] = 0
   for f in range(nrFuncUnits):
     thetas[mapBiomkToFuncUnits == f, 2] = np.linspace(0.2, 0.9, num=nrBiomkInFuncUnits, endpoint=True)
@@ -182,31 +204,30 @@ def main():
   # set first funtional unit to have traj with lower slopes
   thetas[mapBiomkToFuncUnits == 0, 1] = 5
   thetas[mapBiomkToFuncUnits == 1, 1] = 10
-  thetas[mapBiomkToFuncUnits == 2, 1] = 7
-
+  # thetas[mapBiomkToFuncUnits == 2, 1] = 7
 
   sigmaB = 0.05 * np.ones(nrBiomk)
 
+  # scale every biomarker with mean and std.
   scalingBiomk2B = np.zeros((2, nrBiomk))
-  scalingBiomk2B[:, 0] = [200, 100] # mean +/- std
-  scalingBiomk2B[:, 0] = [200, 100]  # mean +/- std
+  # scalingBiomk2B[:, 0] = [200, 100] # mean +/- std
+  # scalingBiomk2B[:, 0] = [200, 100]  # mean +/- std
+  #
+  # scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
+  # scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
+  #
+  # scalingBiomk2B[:, 2:4] = scalingBiomk2B[:, 0:2]
+  # scalingBiomk2B[:, 4:6] = scalingBiomk2B[:, 0:2]
 
-  scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
-  scalingBiomk2B[:, 1] = [-20, 3]  # mean +/- std
-
-  scalingBiomk2B[:, 2] = [20, 10]  # mean +/- std
-  scalingBiomk2B[:, 2] = [20, 10]  # mean +/- std
-
-  scalingBiomk2B[:, 3:6] = scalingBiomk2B[:, 0:3]
-  scalingBiomk2B[:, 6:9] = scalingBiomk2B[:, 0:3]
+  scalingBiomk2B[1,:] = 1
 
   ##### disease 1 - disease specific parameters ###########
 
   # params of the dysfunctional trajectories
   dysfuncParamsDisOne = np.zeros((nrFuncUnits, 4), float)
   dysfuncParamsDisOne[:, 0] = 1  # ak
-  dysfuncParamsDisOne[:, 1] = [0.3, 0.2, 0.3] # bk
-  dysfuncParamsDisOne[:, 2] = [-4, 2, 6]  # ck
+  dysfuncParamsDisOne[:, 1] = [0.3, 0.2] # bk
+  dysfuncParamsDisOne[:, 2] = [-4, 6]  # ck
   dysfuncParamsDisOne[:, 3] = 0  # dk
 
   synthModelDisOne = ParHierModel.ParHierModel(dysfuncParamsDisOne, thetas,
@@ -218,23 +239,23 @@ def main():
   shiftsLowerLim, shiftsUpperLim, synthModelDisOne, outFolder, fileName,
     regenerateData, paramsDisOne, scalingBiomk2B, ctlDiagNr=CTL, patDiagNr=AD)
 
-  paramsDisOne['plotTrajParams']['trueParams'] = paramsDisOne['trueParams']
+  # paramsDisOne['plotTrajParams']['trueParams'] = paramsDisOne['trueParams']
+
 
   replaceFigMode = True
 
   if regenerateData:
     synthPlotter = Plotter.PlotterJDM(paramsDisOne['plotTrajParams'])
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisOne['X'], paramsDisOne['Y'],
-      paramsDisOne['diag'], paramsDisOne['trueParams']['subShiftsTrueMarcoFormatS'],
-      synthModelDisOne, replaceFigMode=replaceFigMode)
+      paramsDisOne['diag'], synthModelDisOne, paramsDisOne['trueParamsDis'], replaceFigMode=replaceFigMode)
     fig.savefig('%s/synth1Dis1GenData.png' % outFolder)
 
   ##### disease 2 - disease specific parameters ###########
 
   # params of the dysfunctional trajectories
   dysfuncParamsDisTwo = copy.deepcopy(dysfuncParamsDisOne)
-  dysfuncParamsDisTwo[:, 1] = [0.3, 0.2, 0.3] # bk
-  dysfuncParamsDisTwo[:, 2] = [6, 2, -4]
+  dysfuncParamsDisTwo[:, 1] = [0.3, 0.2] # bk
+  dysfuncParamsDisTwo[:, 2] = [6, -4]
 
   synthModelDisTwo = ParHierModel.ParHierModel(dysfuncParamsDisTwo, thetas, mapBiomkToFuncUnits, sigmoidFunc, sigmaB)
 
@@ -258,37 +279,40 @@ def main():
   # for disease two, change the format of the X and Y arrays, add the missing biomarkers with empty lists
   XemptyListsAllBiomk = [0 for _ in range(nrBiomk)]
   YemptyListsAllBiomk = [0 for _ in range(nrBiomk)]
+  visitIndicesDisTwoMissing = [0 for _ in range(nrBiomk)]
   for b in range(nrBiomk):
     XemptyListsAllBiomk[b] = [0 for _ in range(nrSubjLongDisTwo)]
     YemptyListsAllBiomk[b] = [0 for _ in range(nrSubjLongDisTwo)]
+    visitIndicesDisTwoMissing[b] = [0 for _ in range(nrSubjLongDisTwo)]
 
     for s in range(nrSubjLongDisTwo):
       if b in indBiomkInDiseaseTwo:
         XemptyListsAllBiomk[b][s] = paramsDisTwo['Xtrue'][b][s]
         YemptyListsAllBiomk[b][s] = paramsDisTwo['Ytrue'][b][s]
+        visitIndicesDisTwoMissing[b][s] = paramsDisTwo['visitIndices'][b][s]
       else:
-        XemptyListsAllBiomk[b][s] = []
-        YemptyListsAllBiomk[b][s] = []
+        XemptyListsAllBiomk[b][s] = np.array([])
+        YemptyListsAllBiomk[b][s] = np.array([])
+        visitIndicesDisTwoMissing[b][s] = np.array([])
+
 
   paramsDisTwo['XemptyListsAllBiomk'] = XemptyListsAllBiomk
   paramsDisTwo['YemptyListsAllBiomk'] = YemptyListsAllBiomk
-
-  paramsDisTwo['plotTrajParams']['trueParams'] = paramsDisTwo['trueParams']
+  paramsDisTwo['visitIndicesMissing'] = visitIndicesDisTwoMissing
 
   if regenerateData:
     synthPlotter = Plotter.PlotterJDM(paramsDisTwo['plotTrajParams'])
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisTwo['Xtrue'],
-      paramsDisTwo['Ytrue'], paramsDisTwo['diag'], paramsDisTwo['trueParams']['subShiftsTrueMarcoFormatS'],
-      synthModelDisTwo, replaceFigMode=replaceFigMode)
+      paramsDisTwo['Ytrue'], paramsDisTwo['diag'],
+      synthModelDisTwo, paramsDisTwo['trueParamsDis'], replaceFigMode=replaceFigMode)
     fig.savefig('%s/synth1Dis2GenDataFull.png' % outFolder)
 
     synthPlotter = Plotter.PlotterJDM(paramsDisTwo['plotTrajParams'])
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisTwo['XemptyListsAllBiomk'],
-      paramsDisTwo['YemptyListsAllBiomk'], paramsDisTwo['diag'], paramsDisTwo['trueParams']['subShiftsTrueMarcoFormatS'],
-      synthModelDisTwo, replaceFigMode=replaceFigMode)
+      paramsDisTwo['YemptyListsAllBiomk'], paramsDisTwo['diag'],
+      synthModelDisTwo, paramsDisTwo['trueParamsDis'], replaceFigMode=replaceFigMode)
     fig.savefig('%s/synth1Dis2GenDataMissing.png' % outFolder)
 
-    # pl.pause(100)
 
   ############### now merge the two datasets ############
 
@@ -298,42 +322,35 @@ def main():
   for b in range(nrBiomk):
     params['X'][b] += paramsDisTwo['XemptyListsAllBiomk'][b]
     params['Y'][b] += paramsDisTwo['YemptyListsAllBiomk'][b]
+    params['visitIndices'][b] += paramsDisTwo['visitIndicesMissing'][b]
 
-  print(params['RID'].shape)
-  print(np.array(paramsDisTwo['RID']))
-  print(list(nrSubjLong + np.array(paramsDisTwo['RID'])))
   params['RID'] = np.concatenate((params['RID'],
   nrSubjLong + paramsDisTwo['RID']),axis=0) # RIDs must be different
 
-  print('paramsDisOne[diag]', paramsDisOne['diag'])
-  print(paramsDisTwo['diag'])
+  # this is the full vector of diagnoses for all diseases
   params['diag'] = np.concatenate((paramsDisOne['diag'], paramsDisTwo['diag']),axis=0)
-
-  params['trueParams']['subShiftsTrueMarcoFormatS'] = np.array(
-    list(params['trueParams']['subShiftsTrueMarcoFormatS']) +
-    list(paramsDisTwo['trueParams']['subShiftsTrueMarcoFormatS']))
-  params['trueParams']['trueSubjDysfuncScoresSU'] = np.concatenate(
-    (params['trueParams']['trueSubjDysfuncScoresSU'],
-    paramsDisTwo['trueParams']['trueSubjDysfuncScoresSU']),axis=0)
-
-  params['trueParams']['trueTrajPredXB'] = \
-    [paramsDisOne['trueParams']['trueTrajPredXB'], paramsDisTwo['trueParams']['trueTrajPredXB']]
-  params['trueParams']['trueDysTrajFromDpsXU'] = \
-    [paramsDisOne['trueParams']['trueDysTrajFromDpsXU'], paramsDisTwo['trueParams']['trueDysTrajFromDpsXU']]
-
   params['plotTrajParams']['diag'] = params['diag']
+
+  params['trueParamsDis'] = [params['trueParamsDis'], paramsDisTwo['trueParamsDis']]
+
+  for f in range(nrFuncUnits):
+    params['trueParamsFuncUnits'][f]['subShiftsS'] = np.concatenate(
+      (params['trueParamsFuncUnits'][f]['subShiftsS'],
+      paramsDisTwo['trueParamsFuncUnits'][f]['subShiftsS']),axis=0)
 
   # map which diagnoses belong to which disease
   # first disease has CTL+AD, second disease has CTL2+PCA
   params['diagsSetInDis'] = [np.array([CTL, AD]), np.array([CTL2, PCA])]
-  params['disLabels'] = ['dis0', 'dis1']
+  params['disLabels'] = ['Dis0', 'Dis1']
+  params['otherBiomkPerDisease'] = [[], []]
 
+  nrDis = len(params['disLabels'])
+  params['indxSubjForEachDisD'] = [np.in1d(params['diag'],
+                                      params['diagsSetInDis'][disNr]) for disNr in range(nrDis)]
 
-  print('diag', params['diag'].shape[0])
-  print('X[0]',len(params['X'][0]))
   assert params['diag'].shape[0] == len(params['X'][0])
-  assert params['diag'].shape[0] == len(params['trueParams']['subShiftsTrueMarcoFormatS'])
-  assert params['diag'].shape[0] == len(params['trueParams']['trueSubjDysfuncScoresSU'])
+  assert np.sum(params['indxSubjForEachDisD'][0]) == len(params['trueParamsDis'][0]['subShiftsS'])
+  assert params['diag'].shape[0] == len(params['trueParamsFuncUnits'][0]['subShiftsS'])
 
   if np.abs(args.penalty - int(args.penalty) < 0.00001):
     expName = '%sPen%d' % (expName, args.penalty)
@@ -349,13 +366,10 @@ def main():
     args.modelToRun, runAllExpSynth)
 
 
-
 def runAllExpSynth(params, expName, dpmBuilder, compareTrueParamsFunc = None):
   """ runs all experiments"""
 
   res = {}
-
-  dpmBuilder.plotterObj.plotTrajParams = params['plotTrajParams']
 
   params['patientID'] = AD
   params['excludeID'] = -1

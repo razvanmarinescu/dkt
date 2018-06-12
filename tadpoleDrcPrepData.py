@@ -398,34 +398,35 @@ def prepareData(finalDataFile, tinyData):
 
   testValidDfConsist(validDf, dataDfAll)
 
-  X, Y, RID, list_biomarkers, diag = \
+  X, Y, RID, list_biomarkers, diag, visitIndices = \
     auxFunc.convert_table_marco(dataDfAll, list_biomarkers=selectedBiomk)
-
 
 
   # now drop all the mri values, which were used for testing consistency
   # and only keep the DTI. Don't remove the MRI cols though, needs to be in
   # same format as dataDfAll
-  print('validDf', validDf.loc[:, mriCols])
-  validDf.loc[:,mriCols] = np.nan
-  print('validDf', validDf.loc[:,mriCols])
+  # UPDATE May 2018: No, don't drop MRI values. I need them for prediction of DTI vals
+  # from simpler linear model
+  # print('validDf', validDf.loc[:, mriCols])
+  # validDf.loc[:,mriCols] = np.nan
+  # print('validDf', validDf.loc[:,mriCols])
 
   outFilePrefix = 'afterReg'
   visValidDf(validDf, outFilePrefix)
   # print(ads)
 
-  Xvalid, Yvalid, RIDvalid, _, diagValid = \
+  Xvalid, Yvalid, RIDvalid, _, diagValid, visitIndicesValid = \
     auxFunc.convert_table_marco(validDf, list_biomarkers = selectedBiomk)
 
   print('validDf.RID', validDf.RID)
   print('RIDvalid', len(RIDvalid))
   # print(ads)
 
-  ds = dict(X=X, Y=Y, RID=RID, list_biomarkers=list_biomarkers,
+  ds = dict(X=X, Y=Y, RID=RID, list_biomarkers=list_biomarkers,visitIndices=visitIndices,
     dataDfAll=dataDfAll, regParamsICV=regParamsICV,
     regParamsAge=regParamsAge, regParamsGender=regParamsGender,
     regParamsDataset=regParamsDataset, diag=diag, Xvalid=Xvalid, Yvalid=Yvalid,
-    RIDvalid=RIDvalid, diagValid=diagValid)
+    RIDvalid=RIDvalid, diagValid=diagValid, visitIndicesValid=visitIndicesValid)
   pickle.dump(ds, open(finalDataFile, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
   # print('RID', RID)

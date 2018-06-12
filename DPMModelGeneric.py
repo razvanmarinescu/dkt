@@ -1,0 +1,148 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
+import scipy.optimize
+
+class DPMModelGeneric(object):
+  plt.interactive(False)
+
+  def __init__(self, X, Y, visitIndices, outFolder, plotter, names_biomarkers, group):
+    # Initializing variables
+    self.plotter = plotter
+    self.outFolder = outFolder
+    self.expName = plotter.plotTrajParams['expName']
+    self.names_biomarkers = names_biomarkers
+    self.group = group
+    self.nrSubj = len(X[0])
+    self.nrBiomk = len(X)
+    self.X_array = []
+    self.Y_array = []
+    self.X = X
+    self.Y = Y
+    self.N_obs_per_sub = []
+    self.params_time_shift = np.ndarray([2, len(X[0])])
+
+    # Time shift initialized to 0
+    self.params_time_shift[0, :] = 0
+
+    # Estension of the model will include a time scaling factor (fixed to 1 so far)
+    self.params_time_shift[1, :] = 1
+
+    self.visitIndices = visitIndices
+    self.X_array, self.N_obs_per_sub, self.indFullToMissingArrayB = self.convertLongToArray(self.X, self.visitIndices)
+    self.Y_array, N_obs_per_sub2, _ = self.convertLongToArray(self.Y, self.visitIndices)
+    self.checkNobsMatch(N_obs_per_sub2)
+
+
+  def checkNobsMatch(self, N_obs_per_sub2):
+    for b in range(self.nrBiomk):
+      for s in range(self.nrSubj):
+        assert self.N_obs_per_sub[b][s] == N_obs_per_sub2[b][s]
+
+  def convertLongToArray(self, Z, visitIndices):
+    """
+    takes a list Z of dimension [NR_BIOMK] x [NR_SUBJ] x array(NR_VISITS) and a similar list of
+    visit indices where data is available. For instance, if for biomarker 2 subject 3 had data
+    only in visits 0 and 2, then visitIndices[2][3] = array([0,2])
+    :param Z:
+    :param visitIndices:
+    :return:
+    Z_array - a biomarker-wise serialised version of Z, where len(Z[b]) = all possible elements
+              in Z_array[b] dimension is [NR_BIOMK] x array(all_values_linearised)
+    N_obs_per_sub - a list of dimensions [NR_BIOMKS] x array(NR_SUBJ), containing the number of
+                    observations for each sbuject in each biomarker
+    indFullToMissingArrayB - a list of indices which could map a potential array
+                             Z_full with no missing entries to Z_array.
+                             so Z_array = Z_full[indFullToMissingArrayB]
+    """
+    nrBiomk = len(Z)
+    Z_array = [0 for b in range(nrBiomk)]
+    N_obs_per_sub = [0 for b in range(nrBiomk)]
+
+    for b in range(nrBiomk):
+      # Creating 1d arrays of individuals' time points and observations
+      Z_array[b] = np.array([np.float128(item) for sublist in Z[b] for item in sublist]).reshape(-1,1)
+      N_obs_per_sub[b] = [len(Z[b][j]) for j in range(len(Z[b]))]
+
+      visitsSoFar = 0
+      indFullToMissingArrayS = [0 for s in range(len(Z[0]))]
+      for s in range(len(Z[0])):
+        indFullToMissingArrayS[s] = visitsSoFar + visitIndices[b][s]
+        visitsSoFar += visitIndices[b][s].shape[0]
+
+      indFullToMissingArrayB[b] = np.array([i for subIdx in indFullToMissingArrayS for i in subIdx])
+
+    return Z_array, N_obs_per_sub, indFullToMissingArrayB
+
+
+
+  def filterLongArray(self, Z_array, N_obs_per_sub, indSubj):
+    """
+    in longitudinal array (Z_array), filter ALL visits from SOME (indSubj) subjects.
+    :param Z_array:
+    :param N_obs_per_sub:
+    :param indSubj:
+    :return:
+    """
+    nrBiomk = len(Z_array)
+    filtZ = [0 for b in range(nrBiomk)]
+
+
+
+    for b in range(nrBiomk):
+      idxFiltArray = []
+      for s in range(indSubj.shape[0]):
+        idxFiltArray += list(range(int(np.sum(N_obs_per_sub[b][:s])), np.sum(N_obs_per_sub[b][:s + 1])))
+
+      filtZ[b] = Z_array[b][np.array(idxFiltArray)][0]
+
+    return filtZ, indFullToMissingFilteredSubj
+
+  def getXsMinMaxRange(self, nrPoints=50):
+    return np.linspace(self.minScX, self.maxScX, nrPoints).reshape([-1, 1])
+
+  def updateMinMax(self, minX, maxX):
+    self.minX = minX
+    self.maxX = maxX
+    self.minScX = self.applyScalingX(self.minX)
+    self.maxScX = self.applyScalingX(self.maxX)
+
+
+  def applyScalingXzeroOneFwd(self, xs):
+    return (xs - self.minScX) / \
+           (self.maxScX - self.minScX)
+
+  def applyScalingXzeroOneInv(self, xs):
+    return xs * (self.maxScX - self.minScX) + self.minScX
+
+  def getData(self):
+    nrBiomk = len(self.X)
+    nrSubj = len(self.X[0])
+    XshiftedScaled = [[] for b in range(nrBiomk)]
+    X_arrayScaled = [0 for b in range(nrBiomk)]
+
+    for b in range(nrBiomk):
+      for s in range(nrSubj):
+        XshiftedCurrSubj = np.array([self.X_array[b][k][0] for k in range(int(np.sum(
+          self.N_obs_per_sub[b][:s])), np.sum(self.N_obs_per_sub[b][:s + 1]))])
+
+        XshiftedScaled[b] += [self.applyScalingX(XshiftedCurrSubj)]
+
+        assert XshiftedScaled[b][s].shape[0] == self.X[b][s].shape[0]
+        assert XshiftedScaled[b][s].shape[0] == self.Y[b][s].shape[0]
+
+      X_arrayScaled[b] = self.applyScalingX(self.X_array[b])
+
+    return XshiftedScaled, self.X, self.Y, X_arrayScaled
+
+
+  def getSubShiftsLong(self):
+    return self.applyScalingX(self.params_time_shift[0])
+
+  def getMinMaxY_B(self, extraDelta=0):
+    ''' get minimum and maximum of Ys per biomarker'''
+    deltaB = (self.max_yB - self.min_yB) * extraDelta
+
+    return self.min_yB - deltaB, self.max_yB + deltaB
+
+

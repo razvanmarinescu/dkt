@@ -129,12 +129,13 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
     # X - list of length NR_BIOMK.  X[b] - list of NR_SUBJ_LONG   X[b][s] - list of visit months for subject b and biomarker s
     # Y - list of length NR_BIOMK.  Y[b] - list of NR_SUBJ_LONG   Y[b][s] - list of biomarker values for subject b and biomarker s
     # RID - list of length NR_SUBJ_LONG
-    X, Y, RID = convertToMarcoFormat(dataCrossSB, labels, yearsSinceBlScanCross, partCodeCross, diagCross)
+    X, Y, RID, visitIndices = convertToMarcoFormat(dataCrossSB, labels, yearsSinceBlScanCross, partCodeCross, diagCross)
 
     localParams['X'] = X
     localParams['Y'] = Y
     localParams['RID'] = RID
     localParams['labels'] = labels
+    localParams['visitIndices'] = visitIndices
 
     print('RID', RID)
     print('X[0][1]', X[0][1])
@@ -150,26 +151,41 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
 
     localParams['diag'] = diagMarcoFormat
 
+    biomkInFuncUnit = localParams['biomkInFuncUnit']
+    nrFuncUnits = localParams['nrFuncUnits']
+
     # disease agnostic
     trueDysfuncXsX = np.linspace(0, 1, num=50)
     trueTrajFromDysXB = model.predPopFromDysfunc(trueDysfuncXsX)
     trueTrajFromDysXB = auxFunc.applyScalingToBiomk(trueTrajFromDysXB, scalingBiomk2B)
-    trueLineSpacedDPSsX = np.linspace(np.min(dpsCross), np.max(dpsCross), num=50)
+    trueSubjDysfuncScoresSU = model.predPopDys(subShiftsTrueMarcoFormatS) # dysf scores over DPS
 
+    trueParamsFuncUnits = [0 for _ in range(nrFuncUnits)]
+    for f in range(nrFuncUnits):
+      trueParamsFuncUnits[f] = dict(xsX=trueDysfuncXsX, ysXB=trueTrajFromDysXB[:, biomkInFuncUnit[f]],
+      subShiftsS=trueSubjDysfuncScoresSU[:,f], scalingBiomk2B=scalingBiomk2B[:, biomkInFuncUnit[f]])
 
     # disease specific
-    trueTrajPredXB = model.predPop(trueLineSpacedDPSsX)
+    trueLineSpacedDPSsX = np.linspace(np.min(dpsCross), np.max(dpsCross), num=50) # DPS in disease space
+    trueTrajPredXB = model.predPop(trueLineSpacedDPSsX) # biomk trajectory over DPS
     trueTrajPredXB = auxFunc.applyScalingToBiomk(trueTrajPredXB, scalingBiomk2B)
-    trueDysTrajFromDpsXU = model.predPopDys(trueLineSpacedDPSsX)
-    trueSubjDysfuncScoresSU = model.predPopDys(subShiftsTrueMarcoFormatS)
+    trueDysTrajFromDpsXU = model.predPopDys(trueLineSpacedDPSsX) # dysf traj over DPS
 
+    trueParamsDis = dict(xsX=trueLineSpacedDPSsX, ysXU=trueDysTrajFromDpsXU, ysXB=trueTrajPredXB,
+       subShiftsS=subShiftsTrueMarcoFormatS, scalingBiomk2B=scalingBiomk2B)
 
-    trueParamsMarcoFormat = dict(subShiftsTrueMarcoFormatS=subShiftsTrueMarcoFormatS,
-    trueSubjDysfuncScoresSU=trueSubjDysfuncScoresSU, trueLineSpacedDPSsX=trueLineSpacedDPSsX,
-      trueTrajPredXB=trueTrajPredXB, trueDysTrajFromDpsXU=trueDysTrajFromDpsXU,
-      trueDysfuncXsX=trueDysfuncXsX,trueTrajFromDysXB=trueTrajFromDysXB,
-      scalingBiomk2B=scalingBiomk2B)
-    localParams['trueParams'] = trueParamsMarcoFormat
+    # trueParamsMarcoFormat = dict(subShiftsTrueMarcoFormatS=subShiftsTrueMarcoFormatS,
+    #   trueSubjDysfuncScoresSU=trueSubjDysfuncScoresSU, trueLineSpacedDPSsX=trueLineSpacedDPSsX,
+    #   trueTrajPredXB=trueTrajPredXB, trueDysTrajFromDpsXU=trueDysTrajFromDpsXU,
+    #   trueDysfuncXsX=trueDysfuncXsX,trueTrajFromDysXB=trueTrajFromDysXB,
+    #   scalingBiomk2B=scalingBiomk2B, trueParamsFuncUnits=trueParamsFuncUnits,
+    #   trueParamsDis=trueParamsDis)
+    # localParams['trueParams'] = trueParamsMarcoFormat
+
+    trueParamsMarcoFormat = dict(trueParamsFuncUnits=trueParamsFuncUnits,
+      trueParamsCurrDis=trueParamsDis)
+    localParams['trueParamsFuncUnits'] = trueParamsFuncUnits
+    localParams['trueParamsDis'] = trueParamsDis # add more diseases later
 
     os.system('mkdir -p %s' % outFolder)
     outFileFull = '%s/%s' % (outFolder, fileName)
@@ -186,9 +202,9 @@ def convertToMarcoFormat(data, labels, yearsSinceBlScan, partCode, diag):
   df.insert(0, 'RID', partCode)
   df.insert(0, 'SUB', np.array(range(data.shape[0])))
 
-  X,Y,RID,list_biomarkers, diag = auxFunc.convert_table_marco(df, list_biomarkers=labels)
+  X,Y,RID,list_biomarkers, diag, visitIndices = auxFunc.convert_table_marco(df, list_biomarkers=labels)
 
-  return X,Y,np.array(RID)
+  return X,Y,np.array(RID), visitIndices
 
 def generateDiag(dpsCross, ctlDiagNr, patDiagNr, diagPrecDef = 0.4, muScale = 1):
   nrSubjCross = dpsCross.shape[0]

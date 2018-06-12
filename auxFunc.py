@@ -3,17 +3,18 @@ from env import *
 import numpy as np
 import ParHierModel
 import sklearn.metrics
-
+import pandas as pd
 
 
 def convert_csv(file):
   table = pd.read_csv(file)
 
+  print('table', table)
+
   return convert_table_marco(table)
 
 def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
-    X = []
-    Y = []
+
 
     # list of individuals
     list_RID = np.unique(table[['RID']])
@@ -22,11 +23,10 @@ def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
     if list_biomarkers is None:
       list_biomarkers = table.columns[range(biomkStartCol, len(table.columns))]
 
-    RID = []
-
-    for id_biom, biomarker in enumerate(list_biomarkers):
-        X.append([])
-        Y.append([])
+    RID = [[] for _ in range(len(list_biomarkers))]
+    X = [[] for _ in range(len(list_biomarkers))]
+    Y = [[] for _ in range(len(list_biomarkers))]
+    visitIndices = [[0 for _ in range(len(list_RID))] for _ in range(len(list_biomarkers))]
 
     # Parsing every biomarker and assigning to the list
     print('list_RID', list_RID)
@@ -40,6 +40,7 @@ def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
             Y[id_biom].append(np.array(table[[biomarker]])[indices].flatten())
 
             idx_to_keep = ~np.isnan(Y[id_biom][id_sub])
+            visitIndices[id_biom][id_sub] = idx_to_keep
 
             Y[id_biom][id_sub] = Y[id_biom][id_sub][idx_to_keep]
             X[id_biom][id_sub] = X[id_biom][id_sub][idx_to_keep]
@@ -48,14 +49,11 @@ def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
                 flag_missing = flag_missing + 1
 
 
-        # print(sub, monthsSinceBlCurrSub)
         diagCurrSub = np.array(table['diag'][indices])
         diagNNind = np.logical_not(np.isnan(diagCurrSub))
         # print(diagCurrSub)
         monthsSinceBlCurrSub = np.array(table['Month_bl'])[indices][diagNNind]
 
-        # if flag_missing == 0:
-        #     print('missing data for sub: ', sub)
 
         diagExistsForAtLeastOneVisit = monthsSinceBlCurrSub.shape[0] > 0
         if diagExistsForAtLeastOneVisit:
@@ -65,19 +63,22 @@ def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
 
     Xtrain = []
     Ytrain = []
+    visitIndicesTrain = []
 
     for id_biom, biomarker in enumerate(list_biomarkers):
         Xtrain.append([])
         Ytrain.append([])
+        visitIndicesTrain.append([])
 
     for id_sub, sub in enumerate(list_RID):
         if np.in1d(sub, RID)[0]:
             for id_biom, biomarker in enumerate(list_biomarkers):
                 Xtrain[id_biom].append(X[id_biom][id_sub])
                 Ytrain[id_biom].append(Y[id_biom][id_sub])
+                visitIndicesTrain[id_biom].append(visitIndices[id_biom][id_sub])
     # print(len(RID), RID)
     # print(asdasd)
-    return Xtrain, Ytrain, np.array(RID), list_biomarkers, np.array(diagLong)
+    return Xtrain, Ytrain, np.array(RID), list_biomarkers, np.array(diagLong), visitIndicesTrain
 
 def makeShiftsIdentif(subShiftsCross, ageAtVisitCross, crossDiag, ctlDiagNr, patDiagNr):
   # set origin t=0 as best threshold that separates the two diagnostic histograms
@@ -164,12 +165,14 @@ def filterDataListFormat(params, dataIndices):
 
   Xfilt = [0 for x in range(nrBiomk)]
   Yfilt = [0 for x in range(nrBiomk)]
+  visitIndicesFilt = [0 for x in range(nrBiomk)]
 
   for b in range(nrBiomk):
     Xfilt[b] = [params['X'][b][i] for i in dataIndNonBinary]
     Yfilt[b] = [params['Y'][b][i] for i in dataIndNonBinary]
+    visitIndicesFilt[b] = [params['visitIndices'][b][i] for i in dataIndNonBinary]
 
-  return Xfilt, Yfilt
+  return Xfilt, Yfilt, visitIndicesFilt
 
 
 def applyScalingToBiomk(dataCrossSB, scalingBiomk2B):

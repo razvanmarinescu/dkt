@@ -5,13 +5,14 @@ import colorsys
 from env import *
 import copy
 import auxFunc
+from abc import ABC, ABCMeta, abstractmethod
 
 class PlotterJDM:
 
   def __init__(self, plotTrajParams):
     self.plotTrajParams = plotTrajParams
 
-  def plotTrajDataMarcoFormat(self, X, Y, diag, subShiftsMarcoFormat, model,
+  def plotTrajDataMarcoFormat(self, X, Y, diag, model, trueParamsDis,
     replaceFigMode=True, yLimUseData=False, showConfInt=False, adjustBottomHeight=0.1):
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
     fig = pl.figure(1, figsize=figSizeInch)
@@ -21,22 +22,19 @@ class PlotterJDM:
 
     nrBiomk = len(X)
 
+    xsX = trueParamsDis['xsX']
+    ysXU = trueParamsDis['ysXU']
+    ysXB = trueParamsDis['ysXB']
+    subShiftsMarcoFormat = trueParamsDis['subShiftsS']
+
     minX = np.min([np.min(dpsCurr) for dpsCurr in subShiftsMarcoFormat])
     maxX = np.max([np.max(dpsCurr) for dpsCurr in subShiftsMarcoFormat])
 
     diagNrs = np.unique(diag)
     nrSubjLong = len(X[0])
 
-    # xs = np.linspace(minX, maxX, 100)
-    # dysScoresSF = model.predPopDys(xs)
-    # modelPredSB = model.predPop(xs)
-
-    xs = self.plotTrajParams['trueParams']['trueLineSpacedDPSsX']
-    dysScoresSF = self.plotTrajParams['trueParams']['trueDysTrajFromDpsXU']
-    modelPredSB = self.plotTrajParams['trueParams']['trueTrajPredXB']
-
-    scalingBiomk2B = self.plotTrajParams['trueParams']['scalingBiomk2B']
-    modelPredSB = auxFunc.applyInverseScalingToBiomk(modelPredSB, scalingBiomk2B)
+    scalingBiomk2B = trueParamsDis['scalingBiomk2B']
+    ysXB = auxFunc.applyInverseScalingToBiomk(ysXB, scalingBiomk2B)
 
     YScaled = [[] for b in range(nrBiomk)]
     for b in range(nrBiomk):
@@ -46,11 +44,6 @@ class PlotterJDM:
       else:
         YScaled[b] = Y[b]
 
-    # print('xs', xs)
-    # print('dysScoresSF', dysScoresSF)
-    # print('modelPredSB[:,0]', modelPredSB[:, 0])
-    # print(ads)
-
     lw = 3.0
 
     # first plot the dysfunctionality biomarkers
@@ -58,57 +51,47 @@ class PlotterJDM:
     ax.set_title('dysfunc all')
     moveTicksInside(ax)
     for f in range(model.nrFuncUnits):
-      ax.plot(xs, dysScoresSF[:, f], 'k-', linewidth=lw)
+      ax.plot(xsX, ysXU[:, f], '-',color=self.plotTrajParams['colorsTrajUnitsU'][f],
+       linewidth=lw)
 
     # for each unit, plot all biomarkers against the dysfunctional scores
     for f in range(model.nrFuncUnits):
       ax2 = pl.subplot(nrRows, nrCols, f + 2)
       ax2.set_title('dysfunc %d' % f)
       moveTicksInside(ax2)
-      biomkInCurrUnit = np.where(self.plotTrajParams['mapBiomkToFuncUnits'] == f)[0]
+      biomkInCurrUnit = self.plotTrajParams['biomkInFuncUnit'][f]
       for b in range(len(biomkInCurrUnit)):
-        ax2.plot(dysScoresSF[:, f], modelPredSB[:, biomkInCurrUnit[b]], 'k-', linewidth=lw)
+        ax2.plot(ysXU[:, f], ysXB[:, biomkInCurrUnit[b]], '-',
+          color=self.plotTrajParams['colorsTrajBiomkB'][biomkInCurrUnit[b]],  linewidth=lw)
 
       ax2.set_xlim((0, 1))
 
     for b in range(nrBiomk):
       ax = pl.subplot(nrRows, nrCols, b + model.nrFuncUnits + 2)
-      ax.set_title('biomk %d func %d' % (b, self.plotTrajParams['mapBiomkToFuncUnits'][b]))
+      ax.set_title('biomk %d func %d' % (b, [f for f in range(model.nrFuncUnits) if b in self.plotTrajParams['biomkInFuncUnit'][f]][0]))
       moveTicksInside(ax)
-
-      pl.plot(xs, modelPredSB[:, b], 'k-', linewidth=lw)  # label='sigmoid traj %d' % b
-      if showConfInt:
-        pass
-        # pl.fill(np.concatenate([xs, xs[::-1]]), np.concatenate([fsCurr - 1.9600 * stdDevs[b],
-        #   (fsCurr + 1.9600 * stdDevs[b])[::-1]]), alpha=.3, fc='b', ec='None')
-        # label='conf interval (1.96*std)')
-
-      # print(xs[50:60], fsCurr[50:60], thetas[b,:])
-      # print(asda)
-
 
       ############# spagetti plot subjects ######################
       counterDiagLegend = dict(zip(diagNrs, [0 for x in range(diagNrs.shape[0])]))
       for s in range(nrSubjLong):
         labelCurr = None
-        # print(diag[s])
-        # print(counterDiagLegend[diag[s]])
-        # print(self.plotTrajParams['diagLabels'])
         if counterDiagLegend[diag[s]] == 0:
           labelCurr = self.plotTrajParams['diagLabels'][diag[s]]
           counterDiagLegend[diag[s]] += 1
 
-        # print('X[b][s]', X[b][s])
-        # print('X[b][s] + subShiftsMarcoFormat[s]', X[b][s] + subShiftsMarcoFormat[s])
-        # print('Y[b][s]', Y[b][s])
         pl.plot(X[b][s] + subShiftsMarcoFormat[s], YScaled[b][s],
           c=self.plotTrajParams['diagColors'][diag[s]],
           label=labelCurr, alpha=0.5)
 
+
+      pl.plot(xsX, ysXB[:, b], '-', color=self.plotTrajParams['colorsTrajBiomkB'][b], linewidth=lw)  # label='sigmoid traj %d' % b
+      if showConfInt:
+        pass
+
       pl.xlim(np.min(minX), np.max(maxX))
 
-      minY = np.min([np.min(modelPredSB[:, b])] + [np.min(dataCurr) for dataCurr in YScaled[b] if len(dataCurr) > 0])
-      maxY = np.max([np.max(modelPredSB[:, b])] + [np.max(dataCurr) for dataCurr in YScaled[b] if len(dataCurr) > 0])
+      minY = np.min([np.min(ysXB[:, b])] + [np.min(dataCurr) for dataCurr in YScaled[b] if len(dataCurr) > 0])
+      maxY = np.max([np.max(ysXB[:, b])] + [np.max(dataCurr) for dataCurr in YScaled[b] if len(dataCurr) > 0])
 
       delta = (maxY - minY) / 10
       pl.ylim(minY - delta, maxY + delta)
@@ -150,13 +133,68 @@ class PlotterJDM:
     return fig
 
 
-class PlotterGP:
+  def plotCompWithTrueParams(self, unitModels, disModels, replaceFig=True):
+
+    nrDis = len(disModels)
+    nrFuncUnits = len(unitModels)
+    figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
+    fig = pl.figure(2, figsize = figSizeInch)
+    pl.clf()
+
+    nrRows = self.plotTrajParams['nrRows']
+    nrCols = self.plotTrajParams['nrCols']
+
+    if (nrDis*2 + nrFuncUnits*2) > nrRows * nrCols:
+      print('nrRows', nrRows)
+      print('nrCols', nrCols)
+      print('nrDis', nrDis)
+      print('nrFuncUnits', nrFuncUnits)
+      print('labels', self.plotTrajParams['labels'])
+      raise ValueError('too few nrRows and nrCols')
+
+    # trueParamsDis = self.plotTrajParams['trueParamsDis']
+    # trueParamsFuncUnits = self.plotTrajParams['trueParamsFuncUnits']
+
+    ######### compare subject shifts ##########
+    nrPlotsSoFar = 0
+
+    for d in range(nrDis):
+      plotterDis = disModels[d].plotter
+      nrPlotsSoFar = plotterDis.scatterSubjShifts(disModels[d], nrPlotsSoFar)
+
+    ######### compare dysfunc traj within diseases ##########
+
+    for d in range(nrDis):
+      plotterDis = disModels[d].plotter
+      trajStruct = plotterDis.getTrajStruct(disModels[d])
+      nrPlotsSoFar = plotterDis.subplotAllTraj(disModels[d], trajStruct, nrPlotsSoFar)
+
+    ######### compare biomk traj within functional units ##########
+
+    for f in range(nrFuncUnits):
+      plotterFunc = unitModels[f].plotter
+      trajStruct = plotterFunc.getTrajStruct(unitModels[f])
+      nrPlotsSoFar = plotterFunc.subplotAllTraj(unitModels[f], trajStruct, nrPlotsSoFar)
+
+    pl.tight_layout(pad=1)
+
+    if replaceFig:
+      fig.show()
+    else:
+      pl.show()
+    pl.pause(0.05)
+
+    # print(ads)
+    return fig
+
+
+class PlotterGP(ABC):
 
   def __init__(self, plotTrajParams):
     self.plotTrajParams = plotTrajParams
 
   def plotTraj(self, gpModel, replaceFig=True, legendExtraPlot=False):
-    nrBiomk = gpModel.N_biom
+    nrBiomk = gpModel.nrBiomk
     # Plot method
 
     font = {'family': 'normal',
@@ -189,7 +227,7 @@ class PlotterGP:
     newX = gpModel.getXsMinMaxRange()
     predBiomksYscaledXB = gpModel.predictBiomk(newX)
 
-    Xshifted, X, Y = gpModel.getData()
+    Xshifted, X, Y, _ = gpModel.getData()
 
     for b in range(nrBiomk):
       ax = pl.subplot(nrRows, nrCols, b + 1)
@@ -204,7 +242,7 @@ class PlotterGP:
 
       # plot subject data
       diagCounters = dict([(k,0) for k in self.plotTrajParams['diagLabels'].keys()])
-      for sub in range(gpModel.N_samples):
+      for sub in range(gpModel.nrSubj):
         diagCurrSubj = self.plotTrajParams['diag'][sub]
         currLabel = None
         if diagCounters[diagCurrSubj] == 0:
@@ -228,15 +266,13 @@ class PlotterGP:
 
       ax.set_ylim([min_yB[b]-deltaB[b], max_yB[b]+deltaB[b]])
 
-      # ax.legend(ncol=1)
-
     if legendExtraPlot:
       ax = pl.subplot(nrRows, nrCols, nrBiomk+1)
       pl.axis('off')
 
       # plot subject data
       diagCounters = dict([(k,0) for k in self.plotTrajParams['diagLabels'].keys()])
-      for sub in range(gpModel.N_samples):
+      for sub in range(gpModel.nrSubj):
         diagCurrSubj = self.plotTrajParams['diag'][sub]
         currLabel = None
         if diagCounters[diagCurrSubj] == 0:
@@ -273,16 +309,15 @@ class PlotterGP:
 
     return fig
 
-  def plotCompWithTrueParams(self, gpModel, replaceFig=True, subjStagesEstim=None):
+  def plotCompWithTrueParams(self, gpModel, replaceFig=True):
 
-    nrBiomk = gpModel.N_biom
+    nrBiomk = gpModel.nrBiomk
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
     fig = pl.figure(2, figsize = figSizeInch)
     pl.clf()
 
     nrRows = self.plotTrajParams['nrRows']
     nrCols = self.plotTrajParams['nrCols']
-
 
     if (nrBiomk + 3) > nrRows * nrCols:
       print('nrRows', nrRows)
@@ -292,175 +327,18 @@ class PlotterGP:
       raise ValueError('too few nrRows and nrCols')
 
     ######### compare subject shifts ##########
-
-    subShiftsTrueMarcoFormatS = self.plotTrajParams['trueParams']['subShiftsTrueMarcoFormatS']
-    # estimShifts = gpModel.params_time_shift[0,:]
-
-    nrSubjLong = len(gpModel.X[0])
-
-
-    if subjStagesEstim is None:
-      subjStagesEstim = gpModel.getSubShiftsLong()
-
-    ax = pl.subplot(nrRows, nrCols, 1)
-
-    diagNrs = np.unique(self.plotTrajParams['diag'])
-    nrDiags = diagNrs.shape[0]
-    for d in range(nrDiags):
-      pl.scatter(subjStagesEstim[self.plotTrajParams['diag'] == diagNrs[d]],
-        subShiftsTrueMarcoFormatS[self.plotTrajParams['diag'] == diagNrs[d]],
-        c=self.plotTrajParams['diagColors'][diagNrs[d]],
-        label=self.plotTrajParams['diagLabels'][diagNrs[d]])
-
-
-    pl.title('Subject shifts')
-    pl.xlabel('estimated shifts')
-    pl.ylabel('true shifts')
-    ax.set_ylim([np.min(subShiftsTrueMarcoFormatS), np.max(subShiftsTrueMarcoFormatS)])
-    ax.legend(ncol=1)
+    nrPlotsSoFar = 0
+    nrPlotsSoFar = self.scatterSubjShifts(gpModel, nrPlotsSoFar)
 
     ######### compare all trajectories ##########
 
-    newXTraj = gpModel.getXsMinMaxRange()
-    newXTrajScaledZeroOne = (newXTraj - np.min(newXTraj)) / (np.max(newXTraj) - np.min(newXTraj))
-    trueXsTrajX = self.plotTrajParams['trueParams']['trueXsTrajX']
-    trueXsScaledZeroOne = (trueXsTrajX - np.min(trueXsTrajX)) / (np.max(trueXsTrajX) - np.min(trueXsTrajX))
+    trajStruct = self.getTrajStruct(gpModel)
 
-    predTrajScaledXB = gpModel.predictBiomk(newXTraj)
-    trueTrajXB = self.plotTrajParams['trueParams']['trueTrajXB']
-    trueTrajScaledXB = copy.deepcopy(trueTrajXB)
-
-    if self.plotTrajParams['yNormMode'] == 'zScoreTraj':
-      idxZscore = [np.where(np.in1d(self.plotTrajParams['diag'], [CTL, CTL2]))[0]
-        for b in range(nrBiomk)]
-    elif self.plotTrajParams['yNormMode'] == 'zScoreEarlyStageTraj':
-      # take only the first 10 percentile at earliest stages and set that
-      # as the true control group
-      idxZscore = [0 for b in range(nrBiomk)]
-      for b in range(nrBiomk):
-        sortedIndx = np.argsort(subjStagesEstim)
-        sortedIndx =np.array([i for i in sortedIndx if gpModel.Y[b][i].shape[0] > 0])
-        percPoint = 0.1
-        if sortedIndx.shape[0] < 50:
-          # increase percPoint due to not enough samples
-          # (with 10% of subj then at most 5 subj will be used to estimate the Z-scores)
-          percPoint = 0.2
-
-        idxZscore[b] = sortedIndx[:int(sortedIndx.shape[0] * percPoint)]
-
-        if len(idxZscore) == 0:
-          idxZscore[b] = list(range(int(subjStagesEstim.shape[0]/20)))
-    elif self.plotTrajParams['yNormMode'] == 'unscaled':
-      pass
-    else:
-      raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
-
-
-    if self.plotTrajParams['yNormMode'] in ['zScoreTraj', 'zScoreEarlyStageTraj']:
-      meanCtlB = np.zeros(gpModel.N_biom)
-      stdCtlB = np.zeros(gpModel.N_biom)
-
-      for b in range(gpModel.N_biom):
-        print('idxZscore', idxZscore)
-        yValsOfCtl = [gpModel.Y[b][s] for s in idxZscore[b]]
-        yValsOfCtl = [l2 for l in yValsOfCtl for l2 in l]
-        meanCtlB[b] = np.mean(yValsOfCtl)
-        stdCtlB[b] = np.std(yValsOfCtl)
-
-        predTrajScaledXB[:, b] = gpModel.applyGivenScalingY(predTrajScaledXB[:, b], meanCtlB[b], stdCtlB[b])
-        trueTrajScaledXB[:, b] = gpModel.applyGivenScalingY(trueTrajXB[:, b], meanCtlB[b], stdCtlB[b])
-
-      yMinPred = np.min(predTrajScaledXB, axis = (0, 1))
-      yMinTrue = np.min(trueTrajScaledXB, axis = (0, 1))
-      yMinAll = np.min([yMinPred, yMinTrue])
-
-      yMaxPred = np.max(predTrajScaledXB, axis = (0, 1))
-      yMaxTrue = np.max(trueTrajScaledXB, axis = (0, 1))
-      yMaxAll = np.max([yMaxPred, yMaxTrue])
-
-      min_yB = yMinAll * np.ones(nrBiomk)
-      max_yB = yMaxAll * np.ones(nrBiomk)
-
-      deltaB = deltaB = [(max_yB[b] - min_yB[b]) * 0.2 for b in range(nrBiomk)]
-      min_yB = min_yB - deltaB
-      max_yB = max_yB + deltaB
-
-    elif self.plotTrajParams['yNormMode'] == 'unscaled':
-      scaledYarrayB = [gpModel.applyScalingY(gpModel.Y_array[b], b) for b in range(nrBiomk)]
-      min_yB, max_yB = gpModel.getMinMaxY_B(extraDelta=0.2)
-
-      yMinAll = np.min(min_yB)
-      yMaxAll = np.max(max_yB)
-    else:
-      raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
-
-
-    # print('predTrajScaledXB[:, 0]', predTrajScaledXB[:, 0])
-    # print('trueTrajScaledXB[:, 0]', trueTrajScaledXB[:, 0])
-    # print('yMinAll', yMinAll)
-    # print('yMaxAll', yMaxAll)
-    # print('yMinPred', yMinPred)
-    # print('yMinTrue', yMinTrue)
-    # print('meanCtlB', meanCtlB)
-    # print('stdCtlB', stdCtlB)
-    # print('idxZscore', idxZscore)
-    # print('yValsOfCtl', yValsOfCtl)
-    # print('gpModel.Y', gpModel.Y[-1])
-    # print(asda)
-
-    if self.plotTrajParams['allTrajOverlap']:
-      ax2 = pl.subplot(nrRows, nrCols, 2)
-      pl.title('all trajectories')
-      ax2.set_ylim([yMinAll, yMaxAll])
-      for b in range(gpModel.N_biom):
-
-        ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-',lw=2
-          ,c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
-        print('trueXsScaledZeroOne trueTrajXB', trueXsScaledZeroOne.shape, trueTrajXB.shape)
-        ax2.plot(trueXsScaledZeroOne, trueTrajScaledXB[:,b], '--', lw=2
-          ,c=self.plotTrajParams['colorsTraj'][b])
-
-      # ax2.legend(loc='lower right',ncol=4)
-      nrPlotsSoFar = 2
-    else:
-      ax2 = pl.subplot(nrRows, nrCols, 2)
-      pl.title('all estimated trajectories')
-      ax2.set_ylim([yMinAll, yMaxAll])
-      for b in range(gpModel.N_biom):
-        print('colTraj', len(self.plotTrajParams['colorsTraj']))
-        print('labels', len(self.plotTrajParams['labels']))
-        print(b)
-        ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-',lw=2
-          ,c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
-
-      # ax2.legend(loc='lower right',ncol=4)
-
-      ax3 = pl.subplot(nrRows, nrCols, 3)
-      pl.title('all true trajectories')
-      ax3.set_ylim([yMinAll, yMaxAll])
-      for b in range(gpModel.N_biom):
-
-        ax3.plot(trueXsScaledZeroOne, trueTrajScaledXB[:,b], '--', lw=2
-          ,c=self.plotTrajParams['colorsTraj'][b])
-
-      # ax3.legend(loc='lower right',ncol=4)
-
-      nrPlotsSoFar = 3
+    nrPlotsSoFar = self.subplotAllTraj(gpModel, trajStruct, nrPlotsSoFar)
 
     ######### compare biomarker trajectories one by one ##########
 
-    for b in range(gpModel.N_biom):
-      ax4 = pl.subplot(nrRows, nrCols, b+nrPlotsSoFar+1)
-      pl.title(self.plotTrajParams['labels'][b])
-
-      ax4.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-',lw=2,
-        c=self.plotTrajParams['colorsTraj'][b], label='estimated')
-
-      ax4.plot(trueXsScaledZeroOne, trueTrajScaledXB[:,b], '--', lw=2,
-        c=self.plotTrajParams['colorsTraj'][b], label='true')
-
-      ax4.set_ylim([min_yB[b], max_yB[b]])
-      ax4.legend(loc='lower right')
+    nrPlotsSoFar = self.subplotTrajOneByOne(gpModel, trajStruct, nrPlotsSoFar)
 
     if replaceFig:
       fig.show()
@@ -473,7 +351,7 @@ class PlotterGP:
 
   def plotTrajSameSpace(self, gpModel, replaceFig=True, subjStagesEstim=None):
 
-    # nrBiomk = gpModel.N_biom
+    # nrBiomk = gpModel.nrBiomk
     nrBiomk = 6
     figSizeInch = (6, 4)
     fig = pl.figure(2, figsize = figSizeInch)
@@ -498,73 +376,12 @@ class PlotterGP:
     ######### compare all trajectories ##########
 
     newXTraj = gpModel.getXsMinMaxRange()
-    # newXTrajScaledZeroOne = (newXTraj - np.min(newXTraj)) / (np.max(newXTraj) - np.min(newXTraj))
+    predTrajXB = gpModel.predictBiomk(newXTraj)
 
-    # Xshifted, X, Y = gpModel.getData()
-    # XshiftedCtl = Xshifted[0][s] if s in np.where()
-
-    predTrajScaledXB = gpModel.predictBiomk(newXTraj)
-
-    if self.plotTrajParams['yNormMode'] == 'zScoreTraj':
-      idxZscore = [np.where(np.in1d(self.plotTrajParams['diag'], [CTL, CTL2]))[0]
-        for b in range(nrBiomk)]
-    elif self.plotTrajParams['yNormMode'] == 'zScoreEarlyStageTraj':
-      # take only the first 10 percentile at earliest stages and set that
-      # as the true control group
-      idxZscore = [0 for b in range(nrBiomk)]
-      for b in range(nrBiomk):
-        sortedIndx = np.argsort(subjStagesEstim)
-        sortedIndx =np.array([i for i in sortedIndx if gpModel.Y[b][i].shape[0] > 0])
-        percPoint = 0.1
-        if sortedIndx.shape[0] < 50:
-          # increase percPoint due to not enough samples
-          # (with 10% of subj then at most 5 subj will be used to estimate the Z-scores)
-          percPoint = 0.2
-
-        idxZscore[b] = sortedIndx[:int(sortedIndx.shape[0] * percPoint)]
-
-        if len(idxZscore) == 0:
-          idxZscore[b] = list(range(int(subjStagesEstim.shape[0]/20)))
-    elif self.plotTrajParams['yNormMode'] == 'unscaled':
-      pass
-    else:
-      raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
-
-
-    if self.plotTrajParams['yNormMode'] in ['zScoreTraj', 'zScoreEarlyStageTraj']:
-      meanCtlB = np.zeros(nrBiomk)
-      stdCtlB = np.zeros(nrBiomk)
-
-      for b in range(nrBiomk):
-        print('idxZscore', idxZscore)
-        yValsOfCtl = [gpModel.Y[b][s] for s in idxZscore[b]]
-        yValsOfCtl = [l2 for l in yValsOfCtl for l2 in l]
-        meanCtlB[b] = np.mean(yValsOfCtl)
-        stdCtlB[b] = np.std(yValsOfCtl)
-
-        predTrajScaledXB[:, b] = gpModel.applyGivenScalingY(predTrajScaledXB[:, b], meanCtlB[b], stdCtlB[b])
-
-      yMinPred = np.min(predTrajScaledXB, axis = (0, 1))
-      yMinAll = np.min([yMinPred])
-
-      yMaxPred = np.max(predTrajScaledXB, axis = (0, 1))
-      yMaxAll = np.max([yMaxPred])
-
-      min_yB = yMinAll * np.ones(nrBiomk)
-      max_yB = yMaxAll * np.ones(nrBiomk)
-
-      deltaB = deltaB = [(max_yB[b] - min_yB[b]) * 0.2 for b in range(nrBiomk)]
-      min_yB = min_yB - deltaB
-      max_yB = max_yB + deltaB
-
-    elif self.plotTrajParams['yNormMode'] == 'unscaled':
-      scaledYarrayB = [gpModel.applyScalingY(gpModel.Y_array[b], b) for b in range(nrBiomk)]
-      min_yB, max_yB = gpModel.getMinMaxY_B(extraDelta=0.2)
-
-      yMinAll = np.min(min_yB)
-      yMaxAll = np.max(max_yB)
-    else:
-      raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
+    #rescale all trajectories
+    predTrajScaledXB, _, yMinAll, yMaxAll, min_yB, max_yB = \
+      rescaleTraj(predTrajXB, predTrajXB, self.plotTrajParams['yNormMode'],
+      self.plotTrajParams['diag'], nrBiomk, subjStagesEstim, gpModel)
 
     # pl.gca().set_ylim([yMinAll, yMaxAll])
     for b in range(nrBiomk):
@@ -588,7 +405,8 @@ class PlotterGP:
     return fig
 
   def plotTrajInDisSpace(self, xsTrajX, predTrajXB, trajSamplesBXS,
-      XsubjBSX, YsubjBSX, diagS, XsubjValidBSX, YsubjValidBSX, diagValidS, labels, replaceFig=True):
+      XsubjBSX, YsubjBSX, diagS, XsubjValidBSX, YsubjValidBSX, diagValidS, labels,
+      ssdDKT=None, ssdNoDKT=None, replaceFig=True):
     """
     plot biomarker traj and subject data in disease space. function doesn't do any scaling of xs or ys
 
@@ -663,9 +481,16 @@ class PlotterGP:
       # ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
       #   color=(0.5,0.5,0.5), lw=2)
 
-      ax.set_ylim([min_yB[b]-deltaB[b], max_yB[b]+deltaB[b]])
+      minY = min_yB[b]-deltaB[b]
+      maxY = max_yB[b]+deltaB[b]
+      ax.set_ylim([minY, maxY])
+      minX, maxX = ax.get_xlim()
 
-      pl.legend(ncol=1,fontsize=12)
+      # pl.legend(ncol=1,fontsize=12)
+
+
+      ax.text(minX + 0.1*(maxX-minX), minY + 0.9*(maxY-minY), 'SSD DKT=%.3f' % ssdDKT[b])
+      ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD no-DKT=%.3f' % ssdNoDKT[b])
 
     # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
@@ -673,14 +498,147 @@ class PlotterGP:
     fig.text(0.5, 0.04, 'Disease Progression (months)', ha='center')
     fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
 
+    h, labels = ax.get_legend_handles_labels()
+    print(h, labels)
+    # legend =  pl.legend(handles=h, bbox_to_anchor=plotTrajParams['legendPos'], loc='upper center', ncol=plotTrajParams['legendCols'])
+
+    legend = pl.figlegend(h[:5], labels[:5], loc='upper center', ncol=5, labelspacing=0.)
+    # set the linewidth of each legend object
+    for legobj in legend.legendHandles:
+      legobj.set_linewidth(4.0)
+
 
     if replaceFig:
       fig.show()
     else:
       pl.show()
-    pl.pause(5)
+    # pl.pause(5)
 
     return fig
+
+
+  def plotTrajInBiomkSpace(self, xsTrajXB, predTrajXB, trajSamplesBXS,
+      XsubjData1BSX, YsubjData1BSX, diagData1S, XsubjData2BSX, YsubjData2BSX, diagData2S,
+      XsubjData3BSX, YsubjData3BSX, diagData3S, labels, ssdDKT=None, ssdNoDKT=None,
+      replaceFig=True):
+    """
+    plot biomarker traj and subject data over the space of other biomarkers.
+    assumes xsTrajXB.shape[1] == predTrajXB.shape[1], so each biomarker in predTrajXB
+    is plotted against another biomarkers in xsTrajXB
+
+    """
+
+    font = {'family': 'normal',
+      'size': 13}
+
+    import matplotlib
+    matplotlib.rc('font', **font)
+
+    # Plot method
+    figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
+    fig = pl.figure(10, figsize = figSizeInch)
+    pl.clf()
+    fig.show()
+
+    diagNrs = np.unique(self.plotTrajParams['diag'])
+    nrDiags = diagNrs.shape[0]
+
+    nrBiomk = len(XsubjData1BSX)
+    # nrBiomk = 18
+    nrRows, nrCols = auxFunc.findOptimalRowsCols(nrBiomk)
+
+    min_yB = np.zeros(nrBiomk)
+    max_yB = np.zeros(nrBiomk)
+    for b in range(nrBiomk):
+      # print([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0])
+      # print([np.min(predTrajXB[:,b])])
+      # print([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.min(predTrajXB[:,b])])
+      listsMin = []
+      listsMax = []
+
+      if predTrajXB is not None:
+        listsMin = [np.min(predTrajXB[:, b])]
+        listsMax = [np.max(predTrajXB[:, b])]
+      if YsubjData1BSX is not None:
+        listsMin = [np.min(yS) for yS in YsubjData1BSX[b] if len(yS) > 0]
+        listsMax = [np.max(yS) for yS in YsubjData1BSX[b] if len(yS) > 0]
+      if YsubjData2BSX is not None:
+        listsMin += [np.min(yS) for yS in YsubjData2BSX[b] if len(yS) > 0]
+        listsMax += [np.max(yS) for yS in YsubjData2BSX[b] if len(yS) > 0]
+
+      min_yB[b] = np.min(listsMin)
+      max_yB[b] = np.max(listsMax)
+
+    deltaB = (max_yB - min_yB)/5
+    legendEntries = 3
+
+    for b in range(nrBiomk):
+      ax = pl.subplot(nrRows, nrCols, b + 1)
+      pl.title(labels[b])
+      # print('--------------b', b)
+      # plot traj samples
+      if xsTrajXB is not None:
+        nrSamples = trajSamplesBXS.shape[2]
+        for i in range(nrSamples):
+          ax.plot(xsTrajXB[:,b], trajSamplesBXS[b, :, i], lw = 0.05,
+            color = 'red', alpha=1)
+
+      if XsubjData1BSX is not None:
+        self.plotSubjData(ax, XsubjData1BSX[b], YsubjData1BSX[b], diagData1S, labelExtra ='')
+
+      # print('-------------- validation data')
+      if XsubjData2BSX is not None:
+        self.plotSubjData(ax, XsubjData2BSX[b], YsubjData2BSX[b], diagData2S, labelExtra ='')
+        legendEntries += np.unique(diagData2S).shape[0]
+
+      if XsubjData3BSX is not None:
+        self.plotSubjData(ax, XsubjData3BSX[b], YsubjData3BSX[b], diagData3S, labelExtra ='')
+        legendEntries += np.unique(diagData3S).shape[0]
+
+      if xsTrajXB is not None:
+        ax.plot(xsTrajXB[:,b],predTrajXB[:, b],
+          lw=2, color='black', label='estim. traj.')
+
+      # ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
+      #   color=(0.5,0.5,0.5), lw=2)
+
+      minY = min_yB[b]-deltaB[b]
+      maxY = max_yB[b]+deltaB[b]
+      ax.set_ylim([minY, maxY])
+      minX, maxX = ax.get_xlim()
+
+      # pl.legend(ncol=1,fontsize=12)
+
+
+      ax.text(minX + 0.1*(maxX-minX), minY + 0.9*(maxY-minY), 'SSD DKT=%.3f' % ssdDKT[b])
+      ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD no-DKT=%.3f' % ssdNoDKT[b])
+
+    # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+
+
+    fig.text(0.5, 0.04, 'Disease Progression (months)', ha='center')
+    fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
+
+    h, labels = ax.get_legend_handles_labels()
+    print(h, labels)
+    # legend =  pl.legend(handles=h, bbox_to_anchor=plotTrajParams['legendPos'], loc='upper center', ncol=plotTrajParams['legendCols'])
+
+
+    legend = pl.figlegend(h[:legendEntries], labels[:legendEntries], loc='upper center', ncol=5, labelspacing=0.)
+    # set the linewidth of each legend object
+    for legobj in legend.legendHandles:
+      legobj.set_linewidth(4.0)
+
+
+    if replaceFig:
+      fig.show()
+    else:
+      pl.show()
+    # pl.pause(5)
+
+    return fig
+
+
 
 
   def plotTrajInDisSpaceOverlap(self, xsTrajX, predTrajXB, trajSamplesBXS,params,
@@ -819,37 +777,16 @@ class PlotterGP:
       # print('XsubjSX[sub]', XsubjSX[sub])
       # print('YsubjSX[sub]', YsubjSX[sub])
 
-      ax.plot(XsubjSX[sub], YsubjSX[sub],
-              color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=0.5)
+      if XsubjSX[sub].shape[0] > 0:
+        ax.plot(XsubjSX[sub], YsubjSX[sub],
+                color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=0.5)
 
-      ax.scatter(XsubjSX[sub], YsubjSX[sub],
-                 marker=self.plotTrajParams['diagScatterMarkers'][diagCurrSubj],
-                 color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=2.5,
-                 label=currLabel)
+        ax.scatter(XsubjSX[sub], YsubjSX[sub],
+                   marker=self.plotTrajParams['diagScatterMarkers'][diagCurrSubj],
+                   color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=2.5,
+                   label=currLabel)
 
-      diagCounters[diagCurrSubj] += 1
-
-
-  def scatterPlotShifts(self, gpModel, subjStagesEstim):
-
-    figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
-    fig = pl.figure(2, figsize = figSizeInch)
-    pl.clf()
-
-    ax = pl.gca()
-
-    subShiftsTrueMarcoFormatS = self.plotTrajParams['trueParams']['subShiftsTrueMarcoFormatS']
-    pl.scatter(subjStagesEstim, subShiftsTrueMarcoFormatS[::1], c='b')
-    # pl.scatter(meanStagesS, subjStagesEstim, c = 'r')
-    pl.title('Subject shifts)' )
-    pl.xlabel('estimated shifts')
-    pl.ylabel('true shifts')
-    ax.set_ylim([np.min(subShiftsTrueMarcoFormatS), np.max(subShiftsTrueMarcoFormatS)])
-
-    fig.show()
-
-
-    return fig
+        diagCounters[diagCurrSubj] += 1
 
 
 
@@ -872,6 +809,168 @@ class PlotterGP:
         max = np.int(np.where(final_predSX[i] == np.max(final_predSX[i]))[0])
         pl.annotate(names[i], xy=(Xrange[max] * scaling + gpModel.mean_std_X[0][0], final_predSX[i][max]))
     pl.show()
+
+  def subplotAllTraj(self, gpModel, trajStruct, nrPlotsSoFar):
+
+    newXTrajScaledZeroOne = trajStruct['newXTrajScaledZeroOne']
+    trueXsScaledZeroOne = trajStruct['trueXsScaledZeroOne']
+    predTrajScaledXB = trajStruct['predTrajScaledXB']
+    trueTrajScaledXB = trajStruct['trueTrajScaledXB']
+    yMinAll = trajStruct['yMinAll']
+    yMaxAll = trajStruct['yMaxAll']
+    min_yB = trajStruct['min_yB']
+    max_yB = trajStruct['max_yB']
+
+    nrRows = self.plotTrajParams['nrRows']
+    nrCols = self.plotTrajParams['nrCols']
+
+    if self.plotTrajParams['allTrajOverlap']:
+      ax2 = pl.subplot(nrRows, nrCols, nrPlotsSoFar+1)
+      pl.title('all trajectories')
+      ax2.set_ylim([yMinAll, yMaxAll])
+      for b in range(gpModel.nrBiomk):
+        ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-', lw=2
+                 , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
+        print('trueXsScaledZeroOne trueYsTrajXB', trueXsScaledZeroOne.shape, trueYsTrajXB.shape)
+        ax2.plot(trueXsScaledZeroOne, trueTrajScaledXB[:, b], '--', lw=2
+                 , c=self.plotTrajParams['colorsTraj'][b])
+
+      # ax2.legend(loc='lower right',ncol=4)
+      nrPlotsSoFar += 1
+    else:
+      ax2 = pl.subplot(nrRows, nrCols, nrPlotsSoFar+1)
+      pl.title('all estimated trajectories')
+      ax2.set_ylim([yMinAll, yMaxAll])
+      for b in range(gpModel.nrBiomk):
+        ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-', lw=2
+                 , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
+
+      # ax2.legend(loc='lower right',ncol=4)
+
+      ax3 = pl.subplot(nrRows, nrCols, nrPlotsSoFar+2)
+      pl.title('all true trajectories')
+      ax3.set_ylim([yMinAll, yMaxAll])
+      for b in range(gpModel.nrBiomk):
+        ax3.plot(trueXsScaledZeroOne, trueTrajScaledXB[:, b], '--', lw=2
+                 , c=self.plotTrajParams['colorsTraj'][b])
+
+      # ax3.legend(loc='lower right',ncol=4)
+
+      nrPlotsSoFar += 2
+
+    return nrPlotsSoFar
+
+  def subplotTrajOneByOne(self, gpModel, trajStruct, nrPlotsSoFar):
+
+    newXTrajScaledZeroOne = trajStruct['newXTrajScaledZeroOne']
+    trueXsScaledZeroOne = trajStruct['trueXsScaledZeroOne']
+    predTrajScaledXB = trajStruct['predTrajScaledXB']
+    trueTrajScaledXB = trajStruct['trueTrajScaledXB']
+    yMinAll = trajStruct['yMinAll']
+    yMaxAll = trajStruct['yMaxAll']
+    min_yB = trajStruct['min_yB']
+    max_yB = trajStruct['max_yB']
+
+    nrRows = self.plotTrajParams['nrRows']
+    nrCols = self.plotTrajParams['nrCols']
+
+    for b in range(gpModel.nrBiomk):
+      ax4 = pl.subplot(nrRows, nrCols, b+nrPlotsSoFar+1)
+      pl.title(self.plotTrajParams['labels'][b])
+
+      ax4.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-',lw=2,
+        c=self.plotTrajParams['colorsTraj'][b], label='estimated')
+
+      ax4.plot(trueXsScaledZeroOne, trueTrajScaledXB[:,b], '--', lw=2,
+        c=self.plotTrajParams['colorsTraj'][b], label='true')
+
+      ax4.set_ylim([min_yB[b], max_yB[b]])
+      ax4.legend(loc='lower right')
+
+    return nrPlotsSoFar + gpModel.nrBiomk
+
+  def getTrajStruct(self, gpModel):
+
+    newXTraj = gpModel.getXsMinMaxRange()
+    newXTrajScaledZeroOne = (newXTraj - np.min(newXTraj)) / (np.max(newXTraj) - np.min(newXTraj))
+    trueXsTrajX = self.getTrueXs()
+    trueXsScaledZeroOne = (trueXsTrajX - np.min(trueXsTrajX)) / (np.max(trueXsTrajX) - np.min(trueXsTrajX))
+
+    predTrajXB = gpModel.predictBiomk(newXTraj)
+    trueYsTrajXB = self.getTrueYs()  # either ysXB or ysXU
+    trueTrajCopyXB = copy.deepcopy(trueYsTrajXB)
+
+    nrBiomk = predTrajXB.shape[1]
+    subjShiftsEstimS = gpModel.getSubShiftsLong()
+
+    # rescale all trajectories
+    predTrajScaledXB, trueTrajScaledXB, yMinAll, yMaxAll, min_yB, max_yB = \
+      rescaleTraj(predTrajXB, trueTrajCopyXB, self.plotTrajParams['yNormMode'],
+                  self.plotTrajParams['diag'], nrBiomk, subjShiftsEstimS, gpModel)
+
+    trajStruct = dict(newXTrajScaledZeroOne=newXTrajScaledZeroOne, trueXsScaledZeroOne=trueXsScaledZeroOne,
+                      predTrajScaledXB=predTrajScaledXB, trueTrajScaledXB=trueTrajScaledXB,
+                      yMinAll=yMinAll, yMaxAll=yMaxAll, min_yB=min_yB, max_yB=max_yB)
+
+    return trajStruct
+
+  def scatterSubjShifts(self, gpModel, nrPlotsSoFar):
+
+    nrRows = self.plotTrajParams['nrRows']
+    nrCols = self.plotTrajParams['nrCols']
+
+    subShiftsTrueS = self.getTrueShifts()
+    # estimShifts = gpModel.params_time_shift[0,:]
+
+    nrSubjLong = len(gpModel.X[0])
+
+    subjShiftsEstimS = gpModel.getSubShiftsLong()
+
+    ax = pl.subplot(nrRows, nrCols, nrPlotsSoFar+1)
+
+    diagNrs = np.unique(self.plotTrajParams['diag'])
+    nrDiags = diagNrs.shape[0]
+    for d in range(nrDiags):
+      pl.scatter(subjShiftsEstimS[self.plotTrajParams['diag'] == diagNrs[d]],
+                 subShiftsTrueS[self.plotTrajParams['diag'] == diagNrs[d]],
+                 c=self.plotTrajParams['diagColors'][diagNrs[d]],
+                 label=self.plotTrajParams['diagLabels'][diagNrs[d]])
+
+    pl.title('Subject shifts')
+    pl.xlabel('estimated shifts')
+    pl.ylabel('true shifts')
+    ax.set_ylim([np.min(subShiftsTrueS), np.max(subShiftsTrueS)])
+    ax.legend(ncol=1)
+
+    return nrPlotsSoFar+1
+
+  @abstractmethod
+  def getTrueYs(self):
+    raise NotImplementedError('need to call plotter subclass')
+
+  def getTrueXs(self):
+    return self.plotTrajParams['trueParams']['xsX']
+
+  def getTrueShifts(self):
+    return self.plotTrajParams['trueParams']['subShiftsS']
+
+class PlotterFuncUnit(PlotterGP):
+
+  def __init__(self, plotTrajParams):
+    super(PlotterFuncUnit, self).__init__(plotTrajParams)
+
+  def getTrueYs(self):
+    return self.plotTrajParams['trueParams']['ysXB']
+
+class PlotterDis(PlotterGP):
+
+  def __init__(self, plotTrajParams):
+    super(PlotterDis, self).__init__(plotTrajParams)
+
+  def getTrueYs(self):
+    return self.plotTrajParams['trueParams']['ysXU']
+
+
 
 def adjustCurrFig(plotTrajParams):
   fig = pl.gcf()
@@ -897,3 +996,83 @@ def adjustCurrFig(plotTrajParams):
 def moveTicksInside(ax):
   ax.tick_params(axis='y', direction='in', pad=-30)
   ax.tick_params(axis='x', direction='in', pad=-15)
+
+
+def rescaleTraj(predTrajXB, trueTrajXB, yNormMode, diag, nrBiomk, subjStagesEstim, gpModel):
+  """
+  re-scales the trajectories both along the Y axis (DPS ~ N(0,1) or DPS_ealry ~ N(0,1) )
+  :param predTrajXB:
+  :param trueTrajXB:
+  :param yNormMode:
+  :param diag:
+  :param nrBiomk:
+  :param subjStagesEstim:
+  :param gpModel:
+  :return:
+  """
+
+  if yNormMode == 'zScoreTraj':
+    idxZscore = [np.where(np.in1d(diag, [CTL, CTL2]))[0]
+                 for b in range(nrBiomk)]
+  elif yNormMode == 'zScoreEarlyStageTraj':
+    # take only the first 10 percentile at earliest stages and set that
+    # as the true control group
+    idxZscore = [0 for b in range(nrBiomk)]
+    for b in range(nrBiomk):
+      sortedIndx = np.argsort(subjStagesEstim)
+      sortedIndx = np.array([i for i in sortedIndx if gpModel.Y[b][i].shape[0] > 0])
+      percPoint = 0.1
+      if sortedIndx.shape[0] < 50:
+        # increase percPoint due to not enough samples
+        # (with 10% of subj then at most 5 subj will be used to estimate the Z-scores)
+        percPoint = 0.2
+
+      idxZscore[b] = sortedIndx[:int(sortedIndx.shape[0] * percPoint)]
+
+      if len(idxZscore) == 0:
+        idxZscore[b] = list(range(int(subjStagesEstim.shape[0] / 20)))
+  elif yNormMode == 'unscaled':
+    pass
+  else:
+    raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
+
+  if yNormMode in ['zScoreTraj', 'zScoreEarlyStageTraj']:
+    meanCtlB = np.zeros(gpModel.nrBiomk)
+    stdCtlB = np.zeros(gpModel.nrBiomk)
+
+    for b in range(gpModel.nrBiomk):
+      yValsOfCtl = [gpModel.Y[b][s] for s in idxZscore[b]]
+      yValsOfCtl = [l2 for l in yValsOfCtl for l2 in l]
+      meanCtlB[b] = np.mean(yValsOfCtl)
+      stdCtlB[b] = np.std(yValsOfCtl)
+
+      predTrajXB[:, b] = gpModel.applyGivenScalingY(predTrajXB[:, b], meanCtlB[b], stdCtlB[b])
+      trueTrajXB[:, b] = gpModel.applyGivenScalingY(trueTrajXB[:, b], meanCtlB[b], stdCtlB[b])
+
+    yMinPred = np.min(predTrajXB, axis=(0, 1))
+    yMinTrue = np.min(trueTrajXB, axis=(0, 1))
+    yMinAll = np.min([yMinPred, yMinTrue])
+
+    yMaxPred = np.max(predTrajXB, axis=(0, 1))
+    yMaxTrue = np.max(trueTrajXB, axis=(0, 1))
+    yMaxAll = np.max([yMaxPred, yMaxTrue])
+
+    min_yB = yMinAll * np.ones(nrBiomk)
+    max_yB = yMaxAll * np.ones(nrBiomk)
+
+    deltaB = [(max_yB[b] - min_yB[b]) * 0.2 for b in range(nrBiomk)]
+    min_yB = min_yB - deltaB
+    max_yB = max_yB + deltaB
+
+
+  elif yNormMode == 'unscaled':
+    scaledYarrayB = [gpModel.applyScalingY(gpModel.Y_array[b], b) for b in range(nrBiomk)]
+    min_yB, max_yB = gpModel.getMinMaxY_B(extraDelta=0.2)
+
+    yMinAll = np.min(min_yB)
+    yMaxAll = np.max(max_yB)
+  else:
+    raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
+
+  return predTrajXB, trueTrajXB, yMinAll, yMaxAll, min_yB, max_yB
+

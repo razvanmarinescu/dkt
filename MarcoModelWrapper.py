@@ -37,12 +37,12 @@ class MarcoModelWrapper(DisProgBuilder.DPMInterface):
     self.params['plotTrajParams']['outFolder'] = self.outFolder
     self.plotterObj = plotterObj
 
-
     Xfilt, Yfilt = filterDataListFormat(params, dataIndices)
 
     #changed to 2 for testing!!
     N = int(10)  # Number of random features for kernel approximation
-    self.gpModel = MarcoModel.GP_progression_model(Xfilt,Yfilt, N, self.outFolder, plotterObj, self.params['labels'])
+    self.gpModel = MarcoModel.GP_progression_model(Xfilt,Yfilt, N, self.outFolder, plotterObj,
+      self.params['priors'],  self.params['labels'])
 
     # set penalty for decreasing trajectories
     self.gpModel.Set_penalty(self.params['penalty'])

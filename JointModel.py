@@ -11,26 +11,23 @@ from matplotlib import pyplot as pl
 import Plotter
 import copy
 import colorsys
-
 import MarcoModel
+import JointModelOnePass
 
 import DisProgBuilder
 
 class JMDBuilder(DisProgBuilder.DPMBuilder):
   # builds a Joint Disease model
 
-  def __init__(self, plotTrajParams):
-    self.plotterObj = Plotter.PlotterGP(plotTrajParams)
-
-  def setPlotter(self, plotterObj):
-    self.plotterObj = plotterObj
+  def __init__(self):
+    pass
 
   def generate(self, dataIndices, expName, params):
-    return JointModel(dataIndices, expName, params, self.plotterObj)
+    return JointModel(dataIndices, expName, params)
 
 class JointModel(DisProgBuilder.DPMInterface):
 
-  def __init__(self, dataIndices, expName, params, plotterObj):
+  def __init__(self, dataIndices, expName, params):
     self.dataIndices = dataIndices
     self.expName = expName
     self.params = params
@@ -38,7 +35,6 @@ class JointModel(DisProgBuilder.DPMInterface):
     os.system('mkdir -p %s' % self.outFolder)
     self.params['plotTrajParams']['outFolder'] = self.outFolder
     self.params['plotTrajParams']['expName'] = expName
-    self.plotterObj = plotterObj
     self.nrBiomk = len(params['X'])
     self.nrFuncUnits = params['nrFuncUnits']
     self.biomkInFuncUnit = params['biomkInFuncUnit']
@@ -52,8 +48,15 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.indxSubjForEachDisD = [np.in1d(self.params['plotTrajParams']['diag'],
       self.params['diagsSetInDis'][disNr]) for disNr in range(self.nrDis)]
 
+    self.plotter = Plotter.PlotterJDM(self.params['plotTrajParams'])
 
+    self.disIdxForEachSubjS = np.zeros(len(params['X'][0]), int)
+    for d in range(self.nrDis):
+      self.disIdxForEachSubjS[self.indxSubjForEachDisD[d]] = d
 
+    self.ridsPerDisD = [_ for _ in range(self.nrDis)]
+    for d in range(self.nrDis):
+      self.ridsPerDisD[d] = self.params['RID'][self.indxSubjForEachDisD[d]]
 
   def runStd(self, runPart):
     self.run(runPart)
@@ -61,178 +64,184 @@ class JointModel(DisProgBuilder.DPMInterface):
   def run(self, runPart):
     filePath = '%s/unitModels.npz' % self.outFolder
     nrRandFeatures = int(3)  # Number of random features for kernel approximation
+
+    plotFigs = True
+
     if runPart[0] == 'R':
-      nrGlobIterUnit = self.params['nrGlobIterUnit']
-      iterParamsUnit = self.params['iterParamsUnit']
+      self.initParams()
 
-      Xfilt, Yfilt = filterDataListFormat(self.params, self.dataIndices)
-
-      # print(adsa)
-
-      self.unitModels = [_ for _ in range(self.nrFuncUnits)]
-
-      # functional units
-      for u in range(self.nrFuncUnits):
-        plotTrajParamsFuncUnit = self.createPlotTrajParamsFuncUnit(nrCurrFuncUnit=u)
-        plotterObjCurrFuncUnit = Plotter.PlotterGP(plotTrajParamsFuncUnit)  # set separate plotter for the
-
-        XfiltCurrUnit = [Xfilt[b] for b in self.biomkInFuncUnit[u]]
-        YfiltCurrUnit = [Yfilt[b] for b in self.biomkInFuncUnit[u]]
-        outFolderCurrUnit = '%s/unit%d' % (self.outFolder, u)
-        os.system('mkdir -p %s' % outFolderCurrUnit)
-        self.unitModels[u] = MarcoModel.GP_progression_model(XfiltCurrUnit, YfiltCurrUnit, nrRandFeatures, outFolderCurrUnit,
-                                                             plotterObjCurrFuncUnit, plotTrajParamsFuncUnit['labels'])
-
-        self.unitModels[u].Set_penalty(self.params['penaltyUnits'])
-        self.unitModels[u].Optimize(nrGlobIterUnit, iterParamsUnit, Plot=True)
-
-      pickle.dump(self.unitModels, open(filePath, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
-    else:
-      self.unitModels = pickle.load(open(filePath, 'rb'))
-
-      # make sure the data you used has not been changed since fitting this model
-      for b in range(len(self.unitModels[0].X)):
-        # print('--------------- b', b)
-        idxInAllBiomk = self.biomkInFuncUnit[0][b]
-        for s in range(len(self.unitModels[0].X[b])):
-          # print(self.unitModels[0].X[b][s])
-          # print(self.params['X'][idxInAllBiomk][s])
-          assert np.all(self.unitModels[0].X[b][s] == self.params['X'][idxInAllBiomk][s])
-          assert np.all(self.unitModels[0].Y[b][s] == self.params['Y'][idxInAllBiomk][s])
-
-      for u in range(self.nrFuncUnits):
-        self.unitModels[u].minScX = self.unitModels[u].applyScalingX(self.unitModels[u].minX)
-        self.unitModels[u].maxScX = self.unitModels[u].applyScalingX(self.unitModels[u].maxX)
-
-        plotTrajParamsFuncUnit = self.createPlotTrajParamsFuncUnit(nrCurrFuncUnit=u)
-        plotterObjCurrFuncUnit = Plotter.PlotterGP(plotTrajParamsFuncUnit)  # set separate plotter for the
-
-        # fig = plotterObjCurrFuncUnit.plotTraj(self.unitModels[u], replaceFig=True, legendExtraPlot=True)
-        # fig.savefig('%s/unit%s_allTraj_%s.png' % (self.outFolder, u, self.expName))
-
-
-
-      # print(asda)
-
-    disModelsFile = '%s/disModels.npz' % self.outFolder
-    nrSubj = self.unitModels[0].N_samples
-
+    nrIt = 10
     if runPart[1] == 'R':
-      nrGlobIterDis = self.params['nrGlobIterDis']
-      iterParamsDis = self.params['iterParamsDis']
-      dysfuncScoresU = [0 for x in range(self.nrFuncUnits)]
-      xDysfunSubjU = [0 for x in range(self.nrFuncUnits)]
-      for u in range(self.nrFuncUnits):
-        dysfuncScoresU[u] = [[] for _ in range(nrSubj)]
-        xDysfunSubjU[u] = [[] for _ in range(nrSubj)]
 
-        XshiftedUnitModel, XunitModel, YunitModel = self.unitModels[u].getData()
+      # if plotFigs:
+      #   fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
+      #   fig.savefig('%s/compTrueParams00_%s.png' % (self.outFolder, self.expName))
 
-        for sub in range(self.unitModels[u].N_samples):
-          for b in range(self.unitModels[u].N_biom):
-            xDysfunSubjUCurrSubj = XunitModel[b][sub]  # Xs in the unit model
-            xDysfunSubjU[u][sub] += list(xDysfunSubjUCurrSubj)
+      for i in range(nrIt):
+        # estimate biomk trajectories - disease agnostic
+        # self.estimBiomkTraj(self.unitModels, self.disModels)
 
-            # dysfuncScoresCurrSubExtr = [self.unitModels[u].X_array[b][k][0] for k in range(int(np.sum(
-            #   self.unitModels[u].N_obs_per_sub[b][:sub])), np.sum(self.unitModels[u].N_obs_per_sub[b][:sub + 1]))]
-
-            dysfuncScoresU[u][sub] += list(XshiftedUnitModel[b][sub]) # (Xs + timeShift) in the unit model
-
-          xDysfunSubjU[u][sub] = np.sort(np.unique(xDysfunSubjU[u][sub]))
-          dysfuncScoresU[u][sub] = np.sort(np.unique(dysfuncScoresU[u][sub]))
+        # if plotFigs:
+        #   fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
+        #   fig.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i, self.expName))
 
 
-          assert len(dysfuncScoresU[u][sub]) == len(xDysfunSubjU[u][sub])
+        # estimate unit trajectories - disease specific
+        self.estimTrajWithinDisModel(self.unitModels, self.disModels)
 
-
-        dysfuncScoresSerial = [x2 for x in dysfuncScoresU[u] for x2 in x]
-        minDys = np.min(dysfuncScoresSerial)
-        maxDys = np.max(dysfuncScoresSerial)
-
-        # make the functional scores be between [0,1]
-        # 26/02/18: actually this is not needed, re-scaling will be done in the plotting
-        # dysfuncScoresU[u] = [ (x - minDys) / (maxDys - minDys) for x in  dysfuncScoresU[u]]
-
-
-
-      # now build separate model for each disease
-      disLabels = self.params['disLabels']
-      nrDis = len(disLabels)
-      self.disModels = [_ for _ in range(nrDis)]
-
-      for disNr in range(nrDis):
-        nrBiomkDisModel = len(xDysfunSubjU) + len(self.params['otherBiomkPerDisease'][disNr])
-
-        xDysfunSubjUCopy = copy.deepcopy(xDysfunSubjU)
-        dysfuncScoresUCopy = copy.deepcopy(dysfuncScoresU)
-
-        if 'otherBiomkPerDisease' in self.params.keys():
-          xDysfunSubjUCopy += [self.params['X'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
-          dysfuncScoresUCopy += [self.params['Y'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
-          # print(self.params['otherBiomkPerDisease'][disNr])
-          # print(asd)
-
-        # first filter the data .. keep only subj in current disease
-        xDysfunSubjCurrDisU = [_ for _ in range(nrBiomkDisModel)]
-        dysfuncScoresCurrDisU = [_ for _ in range(nrBiomkDisModel)]
-
-        for b in range(nrBiomkDisModel):
-          xDysfunSubjCurrDisU[b] = [xDysfunSubjUCopy[b][s] for s in
-            np.where(self.indxSubjForEachDisD[disNr])[0]]
-          dysfuncScoresCurrDisU[b] = [dysfuncScoresUCopy[b][s] for s in
-            np.where(self.indxSubjForEachDisD[disNr])[0]]
-
-        # print(len(xDysfunSubjCurrDisU))
-        # print(len(dysfuncScoresCurrDisU))
-        # print(asd)
-        # print('xDysfunSubjCurrDisU', xDysfunSubjCurrDisU)
-        # print('dysfuncScoresCurrDisU', dysfuncScoresCurrDisU)
-        # print(asds)
-        plotTrajParamsDis = self.createPlotTrajParamsDis(disNr)
-        plotterCurrDis = Plotter.PlotterGP(plotTrajParamsDis)  # set separate plotter for the
-
-        # print(plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'].shape[0])
-        # print(len(xDysfunSubjCurrDisU[0]))
-        # print(ad)
-
-        print('xDysfunSubjCurrDisU[0]', xDysfunSubjCurrDisU[0][:5])
-        print('dysfuncScoresCurrDisU[0]', dysfuncScoresCurrDisU[0][:5])
-        print('xDysfunSubjCurrDisU[1]', xDysfunSubjCurrDisU[1][:5])
-        print('dysfuncScoresCurrDisU[1]', dysfuncScoresCurrDisU[1][:5])
-
-        print('dysfuncScoresU[:][:5]', [xDysfunSubjCurrDisU[u][:5] for u in range(nrBiomkDisModel)])
-        print('dysfuncScoresU[:][:5]', [dysfuncScoresCurrDisU[u][:5] for u in range(nrBiomkDisModel)])
-        # print(ads)
-
-        outFolderCurDis = '%s/%s' % (self.outFolder, self.params['disLabels'][disNr])
-        os.system('mkdir -p %s' % outFolderCurDis)
-        self.disModels[disNr] = MarcoModel.GP_progression_model(xDysfunSubjCurrDisU,
-          dysfuncScoresCurrDisU, nrRandFeatures, outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'])
-
-        print('X', [x[0] for x in self.disModels[disNr].X[0]])
-        # print(asda)
-
-        self.disModels[disNr].Set_penalty(self.params['penaltyDis'])
-        self.disModels[disNr].Optimize(nrGlobIterDis, iterParamsDis, Plot=True)
-
-        pickle.dump(self.disModels, open(disModelsFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
-
-    elif runPart[1] == 'L':
-      self.disModels = pickle.load(open(disModelsFile, 'rb'))
-
-      for disNr in range(self.nrDis):
-        self.disModels[disNr].minScX = self.disModels[disNr].applyScalingX(self.disModels[disNr].minX)
-        self.disModels[disNr].maxScX = self.disModels[disNr].applyScalingX(self.disModels[disNr].maxX)
-
-        plotTrajParamsDis = self.createPlotTrajParamsDis(disNr)
-        plotterCurrDis = Plotter.PlotterGP(plotTrajParamsDis)  # set separate plotter for the
-
-        # fig = plotterCurrDis.plotTrajSameSpace(self.disModels[disNr])
-        # fig.savefig('%s/%s_trajSameSpace_%s.png' % (self.outFolder, self.params['disLabels'][disNr],
-        #   self.expName))
+        # estimate  subject latent variables
+        self.estimSubjShifts()
 
     res = None
     return res
+
+  def initParams(self):
+    paramsCopy = copy.deepcopy(self.params)
+    paramsCopy['nrGlobIterDis'] = 4 # set only two iterations, quick initialisation
+    paramsCopy['nrGlobIterUnit'] = 4  # set only two iterations, quick initialisation
+    paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
+    paramsCopy['penaltyUnits'] = 1
+    # paramsCopy['priors'] = dict(prior_length_scale_mean_ratio=0.2,  # mean_length_scale = (self.maxX-self.minX)/3
+    #                         prior_length_scale_std=1e-4, prior_sigma_mean=0.005, prior_sigma_std=1e-9,
+    #                         prior_eps_mean=0.1, prior_eps_std=1e-6)
+    # paramsCopy['priors'] = dict(prior_length_scale_mean_ratio=0.9,  # mean_length_scale = (self.maxX-self.minX)/3
+    #                         prior_length_scale_std=1e-4, prior_sigma_mean=3, prior_sigma_std=1e-3,
+    #                         prior_eps_mean=0.1, prior_eps_std=1e-6)
+    onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy)
+
+    onePassModel.run(runPart = 'LL')
+
+    self.unitModels = onePassModel.unitModels
+    self.disModels = onePassModel.disModels
+
+  def estimBiomkTraj(self, unitModels, disModels):
+
+    XshiftedScaledDBS = [0 for _ in range(self.nrDis)]
+    XdisDBSX = [0 for _ in range(self.nrDis)]
+    for d in range(self.nrDis):
+      XshiftedScaledDBS[d], XdisDBSX[d], _, _ = disModels[d].getData()
+
+    XdisSX = [0 for _ in range(self.unitModels[0].nrSubj)]
+    nrSubj = unitModels[0].nrSubj
+    predScoresCurrUSX = [[0 for s in range(nrSubj)] for u in range(self.nrFuncUnits)]
+    for s in range(nrSubj):
+      currDis = self.disIdxForEachSubjS[s]
+      currRID = self.params['RID'][s]
+      # print('currDis', currDis)
+      idxCurrSubjInDisModel = np.where(self.ridsPerDisD[currDis] == currRID)[0][0]
+      XdisSX[s] = XdisDBSX[currDis][0][idxCurrSubjInDisModel]
+
+      # get shifts for curr subj from correct disModel
+      currXdataShifted = XshiftedScaledDBS[currDis][0][idxCurrSubjInDisModel]
+      # predict dysf scoresf for curr subj
+      predScoresCurrXU = disModels[currDis].predictBiomk(currXdataShifted)
+
+      for u in range(self.nrFuncUnits):
+        predScoresCurrUSX[u][s] = predScoresCurrXU[:,u]
+
+      assert currXdataShifted.shape[0] == XdisSX[s].shape[0]
+      assert predScoresCurrXU[:,0].shape[0] == XdisSX[s].shape[0]
+      assert predScoresCurrUSX[0][s].shape[0] == XdisSX[s].shape[0]
+
+    for u in range(self.nrFuncUnits):
+      print('updating traj for func unit %d/%d' % (u+1, self.nrFuncUnits))
+      # now update the X-values in each unitModel to the updated dysfunc scores
+      # not that the X-vals are the same for every biomk within func units,
+      # but initial missing values within each biomk are kept
+      self.unitModels[u].updateXvals(predScoresCurrUSX[u], XdisSX)
+      self.unitModels[u].priors = self.params['priorsJMD']
+      self.unitModels[u].Set_penalty(2)
+      self.unitModels[u].Optimize_GP_parameters(Niterat = 70)
+
+      # fig = self.unitModels[u].plotter.plotTraj(self.unitModels[u])
+      # fig2 = self.unitModels[u].plotter.plotCompWithTrueParams(self.unitModels[u], replaceFig=False)
+
+      # fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, i + 1, self.expName))
+
+
+  def estimTrajWithinDisModel(self, unitModels, disModels):
+    """ estimates trajectory parameters within the disease specific models """
+
+    XshiftedScaledDBSX = [0 for _ in range(self.nrDis)]
+    XdisDBSX = [0 for _ in range(self.nrDis)]
+    X_arrayScaledDB = [0 for _ in range(self.nrDis)]
+    for d in range(self.nrDis):
+      XshiftedScaledDBSX[d], XdisDBSX[d], _, X_arrayScaledDB[d] = disModels[d].getData()
+
+      # update each unit-traj independently
+      for u in range(self.nrFuncUnits):
+        Y_arrayCurDis = unitModels[u].filterLongArray(unitModels[u].Y_array,
+          unitModels[u].N_obs_per_sub, self.indxSubjForEachDisD[d])
+
+        # build function that within a disease model takes a unit traj , and predicts lik of given
+        # unit-traj params in corresponding unitModel.
+        likJDMobjFunc = lambda paramsCurrTraj: self.likJDM(disModels[d], unitModels[u],
+          X_arrayScaledDB, XdisDBSX, paramsCurrTraj, u, d, Y_arrayCurDis)
+        initParams = disModels[d].parameters[u]
+
+        print(likJDMobjFunc(initParams))
+
+        resStruct = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
+          options={'disp': True})
+
+  def likJDM(self, disModel, unitModel, X_arrayScaledDB, XdisDBSX, params, unitNr, disNr, Y_arrayCurDis):
+    """
+    function computes the likelihood of params of one traj within one disModel.
+
+    :param disModel:
+    :param unitModel:
+    :param X_arrayScaledDB:
+    :param XdisDBSX:
+    :param params: parameters to optimise
+    :param unitNr:
+    :param disNr:
+    :param Y_arrayCurDis:
+
+    :return: log-likelihood
+    """
+
+    ####### first predict dysScores in disModel for curr functional unit ##########
+
+    XdisSX = [0 for _ in range(unitModel.nrSubj)]
+    nrSubjDisModel = disModel.nrSubj
+    predScoresCurrSX = [0 for s in range(nrSubjDisModel)]
+    # for s in range(nrSubjDisModel):
+      # currDis = self.ridsPerDisD[currDis][s]
+      # currRID = self.params['RID'][s]
+      # idxCurrSubjInDisModel = np.where(self.ridsPerDisD[currDis] == currRID)[0][0]
+      # idxSubjInBigArray = self.indxSubjForEachDisD[disNr][s]
+      # XdisSX[s] = XdisDBSX[disNr][0][idxSubjInBigArray]
+
+    # get shifts for curr subj from correct disModel
+    # currXdataShifted = XshiftedScaledDBSX[disNr][0][idxSubjInBigArray]
+    # predict dysf scoresf for curr subj
+    paramsAllU = disModel.parameters
+    paramsAllU[unitNr] = params
+    predScoresCurrXU = disModel.predictBiomkWithParams(X_arrayScaledDB[disNr][0], paramsAllU)
+
+    # predScoresCurrSX[s] = predScoresCurrXU[:,unitNr]
+
+    # assert currXdataShifted.shape[0] == XdisSX[s].shape[0]
+    # assert predScoresCurrXU[:,0].shape[0] == XdisSX[s].shape[0]
+    # assert predScoresCurrSX[0][s].shape[0] == XdisSX[s].shape[0]
+
+    #### then sum log-liks of each func unit.
+
+    # turn predScoresCurrSX[u] into predX_arrayUnitModel
+    # predX_arrayUnitModel, N_obs_per_subj = unitModel.convertLongToArray(predScoresCurrSX)
+
+    unitModel.indFullToMissingArrayB =
+
+    predX_arrayUnitModel = unitModel.findMapFromFullToMissingWithinDisease(predScoresCurrXU[:,unitNr])
+
+    unitModel.checkNobsMatch(N_obs_per_subj)
+
+
+    lik = unitModel.stochastic_grad_manual(unitModel.parameters,
+      predX_arrayUnitModel, Y_arrayCurDis)[0]
+
+    return lik
+
 
   def predictBiomkSubjGivenXs(self, newXs, disNr):
     """
@@ -246,7 +255,6 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     # first predict the dysfunctionality scores in the disease specific model
     dysfuncPredXU = self.disModels[disNr].predictBiomk(newXs)
-
 
 
     # then predict the inidividual biomarkers in the disease agnostic models
@@ -326,20 +334,12 @@ class JointModel(DisProgBuilder.DPMInterface):
       plotTrajParamsFuncUnit['trueParams']['subShiftsTrueMarcoFormatS'] = \
       plotTrajParamsFuncUnit['trueParams']['trueSubjDysfuncScoresSU'][:, nrCurrFuncUnit]
 
-      # print(self.params['plotTrajParams']['trueParams']['trueTrajFromDysXB'].shape)
-      # print(plotTrajParamsFuncUnit['trueParams']['trueTrajXB'].shape)
-      # print(asd)
-
-
 
     labels = [self.params['labels'][b] for b in self.biomkInFuncUnit[nrCurrFuncUnit]]
     plotTrajParamsFuncUnit['labels'] = labels
-    plotTrajParamsFuncUnit['colorsTraj'] =  [self.params['plotTrajParams']['colorsTraj'][b]
+    plotTrajParamsFuncUnit['colorsTraj'] =  [self.params['plotTrajParams']['colorsTrajBiomkB'][b]
       for b in self.biomkInFuncUnit[nrCurrFuncUnit]]
 
-
-    # print('plotTrajParamsFuncUnit', plotTrajParamsFuncUnit)
-    # print(adsa)
     return plotTrajParamsFuncUnit
 
   def createPlotTrajParamsDis(self, disNr):
@@ -358,22 +358,11 @@ class JointModel(DisProgBuilder.DPMInterface):
       plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'] = \
         plotTrajParamsDis['trueParams']['subShiftsTrueMarcoFormatS'][self.indxSubjForEachDisD[disNr]]
 
-      # print(plotTrajParamsDis['trueParams']['trueTrajXB'].shape)
-      # print(adsa)
-
-    print(self.params['nrBiomkDisModel'])
-    # print(adssa)
-
     plotTrajParamsDis['labels'] = self.params['plotTrajParams']['unitNames']
-    plotTrajParamsDis['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
-      np.linspace(0, 1, num = self.params['nrBiomkDisModel'], endpoint = False)]
+    plotTrajParamsDis['colorsTraj'] = plotTrajParamsDis['colorsTrajUnitsU']
     # if False, plot estimated traj. in separate plot from true traj. If True, use only one plot
     plotTrajParamsDis['allTrajOverlap'] = False
 
-    # plotTrajParamsDis['yNormMode'] = None
-
-    # print('plotTrajParamsFuncUnit', plotTrajParamsFuncUnit)
-    # print(adsa)
     return plotTrajParamsDis
 
 
