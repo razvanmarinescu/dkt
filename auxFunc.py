@@ -1,10 +1,8 @@
-
 from env import *
 import numpy as np
 import ParHierModel
 import sklearn.metrics
 import pandas as pd
-
 
 def convert_csv(file):
   table = pd.read_csv(file)
@@ -15,7 +13,6 @@ def convert_csv(file):
 
 def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
 
-
     # list of individuals
     list_RID = np.unique(table[['RID']])
     print(len(list_RID))
@@ -23,7 +20,7 @@ def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
     if list_biomarkers is None:
       list_biomarkers = table.columns[range(biomkStartCol, len(table.columns))]
 
-    RID = [[] for _ in range(len(list_biomarkers))]
+    RID = []
     X = [[] for _ in range(len(list_biomarkers))]
     Y = [[] for _ in range(len(list_biomarkers))]
     visitIndices = [[0 for _ in range(len(list_RID))] for _ in range(len(list_biomarkers))]
@@ -33,50 +30,48 @@ def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
     diagLong = []
     # print(adsas)
     for id_sub, sub in enumerate(list_RID):
-        flag_missing = 0
-        indices = np.where(np.in1d(table.loc[:, 'RID'], sub))[0]
-        for id_biom, biomarker in enumerate(list_biomarkers):
-            X[id_biom].append(np.array(table[['Month_bl']])[indices].flatten())
-            Y[id_biom].append(np.array(table[[biomarker]])[indices].flatten())
+      indices = np.where(np.in1d(table.loc[:, 'RID'], sub))[0]
+      for id_biom, biomarker in enumerate(list_biomarkers):
+        X[id_biom].append(np.array(table[['Month_bl']])[indices].flatten())
+        Y[id_biom].append(np.array(table[[biomarker]])[indices].flatten())
 
-            idx_to_keep = ~np.isnan(Y[id_biom][id_sub])
-            visitIndices[id_biom][id_sub] = idx_to_keep
+        idx_to_keep = ~np.isnan(Y[id_biom][id_sub])
+        visitIndices[id_biom][id_sub] = np.array(range(Y[id_biom][id_sub].shape[0]))[idx_to_keep]
 
-            Y[id_biom][id_sub] = Y[id_biom][id_sub][idx_to_keep]
-            X[id_biom][id_sub] = X[id_biom][id_sub][idx_to_keep]
-
-            if len(Y[id_biom][id_sub]) < 1:
-                flag_missing = flag_missing + 1
+        Y[id_biom][id_sub] = Y[id_biom][id_sub][idx_to_keep]
+        X[id_biom][id_sub] = X[id_biom][id_sub][idx_to_keep]
 
 
-        diagCurrSub = np.array(table['diag'][indices])
-        diagNNind = np.logical_not(np.isnan(diagCurrSub))
-        # print(diagCurrSub)
-        monthsSinceBlCurrSub = np.array(table['Month_bl'])[indices][diagNNind]
+      diagCurrSub = np.array(table['diag'][indices])
+      diagNNind = np.logical_not(np.isnan(diagCurrSub))
+      # print(diagCurrSub)
+      monthsSinceBlCurrSub = np.array(table['Month_bl'])[indices][diagNNind]
 
 
-        diagExistsForAtLeastOneVisit = monthsSinceBlCurrSub.shape[0] > 0
-        if diagExistsForAtLeastOneVisit:
-          RID.append(sub)
-          currDiag = diagCurrSub[diagNNind][np.argmin(monthsSinceBlCurrSub)]
-          diagLong.append(currDiag)
+      diagExistsForAtLeastOneVisit = monthsSinceBlCurrSub.shape[0] > 0
+      if diagExistsForAtLeastOneVisit:
+        RID.append(sub)
+        currDiag = diagCurrSub[diagNNind][np.argmin(monthsSinceBlCurrSub)]
+        diagLong.append(currDiag)
 
     Xtrain = []
     Ytrain = []
     visitIndicesTrain = []
 
     for id_biom, biomarker in enumerate(list_biomarkers):
-        Xtrain.append([])
-        Ytrain.append([])
-        visitIndicesTrain.append([])
+      Xtrain.append([])
+      Ytrain.append([])
+      visitIndicesTrain.append([])
 
     for id_sub, sub in enumerate(list_RID):
-        if np.in1d(sub, RID)[0]:
-            for id_biom, biomarker in enumerate(list_biomarkers):
-                Xtrain[id_biom].append(X[id_biom][id_sub])
-                Ytrain[id_biom].append(Y[id_biom][id_sub])
-                visitIndicesTrain[id_biom].append(visitIndices[id_biom][id_sub])
-    # print(len(RID), RID)
+      # print('sub', sub, 'RID', RID)
+      # print(asda)
+      if np.in1d(sub, RID)[0]:
+        for id_biom, biomarker in enumerate(list_biomarkers):
+          Xtrain[id_biom].append(X[id_biom][id_sub])
+          Ytrain[id_biom].append(Y[id_biom][id_sub])
+          visitIndicesTrain[id_biom].append(visitIndices[id_biom][id_sub])
+    # print('visitIndicesTrain', visitIndicesTrain)
     # print(asdasd)
     return Xtrain, Ytrain, np.array(RID), list_biomarkers, np.array(diagLong), visitIndicesTrain
 

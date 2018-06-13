@@ -131,6 +131,9 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
     # RID - list of length NR_SUBJ_LONG
     X, Y, RID, visitIndices = convertToMarcoFormat(dataCrossSB, labels, yearsSinceBlScanCross, partCodeCross, diagCross)
 
+    # print(len(X[0]), len(Y[0]), RID.shape, len(visitIndices[0]))
+    # print(adsa)
+
     localParams['X'] = X
     localParams['Y'] = Y
     localParams['RID'] = RID

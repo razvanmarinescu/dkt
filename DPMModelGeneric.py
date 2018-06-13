@@ -59,6 +59,9 @@ class DPMModelGeneric(object):
     Z_array = [0 for b in range(nrBiomk)]
     N_obs_per_sub = [0 for b in range(nrBiomk)]
 
+    indFullToMissingArrayB = [0 for b in range(nrBiomk)]
+
+
     for b in range(nrBiomk):
       # Creating 1d arrays of individuals' time points and observations
       Z_array[b] = np.array([np.float128(item) for sublist in Z[b] for item in sublist]).reshape(-1,1)
@@ -74,29 +77,76 @@ class DPMModelGeneric(object):
 
     return Z_array, N_obs_per_sub, indFullToMissingArrayB
 
-
-
-  def filterLongArray(self, Z_array, N_obs_per_sub, indSubj):
+  def filterLongArray(self, Z_array, N_obs_per_sub, indSubj, visitIndices):
     """
     in longitudinal array (Z_array), filter ALL visits from SOME (indSubj) subjects.
-    :param Z_array:
+    generally used to filter subjects with different disease
+
+    :param Z_array: [NR_BIOMK] x array(NR_ELEM, 1)
     :param N_obs_per_sub:
-    :param indSubj:
+    :param indSubj: boolean mask of indices to filter
     :return:
+    filtZ: filtered Z_array
+    indFullToMissingFilteredSubj: indices that map from Full Array to filtered array
     """
     nrBiomk = len(Z_array)
     filtZ = [0 for b in range(nrBiomk)]
+    indFiltToMissingArrayB  = [0 for b in range(nrBiomk)]
 
+    # print('visitIndices', visitIndices)
+    # print(ads)
 
+    # check that it's a boolean mask
+    assert indSubj.shape[0] == len(N_obs_per_sub[0])
 
     for b in range(nrBiomk):
       idxFiltArray = []
-      for s in range(indSubj.shape[0]):
-        idxFiltArray += list(range(int(np.sum(N_obs_per_sub[b][:s])), np.sum(N_obs_per_sub[b][:s + 1])))
+      visitsSoFar = 0
+      intIndicesSubj = np.where(indSubj)[0]
+      indFiltToMissingArrayS = [0 for s in range(intIndicesSubj.shape[0])]
 
-      filtZ[b] = Z_array[b][np.array(idxFiltArray)][0]
+      for s in range(intIndicesSubj.shape[0]):
+        # find array that can go from full to filtered Array
+        idxFiltArray += list(range(int(np.sum(N_obs_per_sub[b][:intIndicesSubj[s]])),
+          np.sum(N_obs_per_sub[b][:intIndicesSubj[s] + 1])))
 
-    return filtZ, indFullToMissingFilteredSubj
+        # find indices that can go from filtered- to filtered+missing_data Array
+        indFiltToMissingArrayS[s] = visitsSoFar + visitIndices[b][intIndicesSubj[s]]
+        visitsSoFar += visitIndices[b][intIndicesSubj[s]].shape[0]
+
+      # remember Z_Array[b] has shape array(NR_ELEM, 1). Call special filter function
+      print('b', b)
+      print('indSubj', indSubj)
+      print('np.array(idxFiltArray)', np.array(idxFiltArray))
+      print('Z_array[b]', Z_array[b].shape)
+      filtZ[b] = self.filterZarray(Z_array[b], np.array(idxFiltArray))
+
+      # print('indFiltToMissingArrayS', indFiltToMissingArrayS)
+
+      indFiltToMissingArrayB[b] = np.array([i for subIdx in
+        indFiltToMissingArrayS for i in subIdx])
+
+      # print('Z_array[b]', Z_array[b].shape)
+      # print('filtZ[b]', filtZ[b].shape)
+      # print('indFiltToMissingArrayB[b]', indFiltToMissingArrayB[b].shape)
+      # print('indSubj.shape', indSubj.shape)
+      # # print('indSubj', indSubj)
+      # assert filtZ[b].shape[0] == indFiltToMissingArrayB[b].shape[0]
+      # if b == 1:
+      #   # print('N_obs_per_sub[0], ', N_obs_per_sub[0])
+      #   # print('N_obs_per_sub[1], ', N_obs_per_sub[1])
+      #
+      #   print(ads)
+
+
+    return filtZ, indFiltToMissingArrayB
+
+  def filterZarray(self, Z_array, filterInd):
+    # remember Z_Array[b] has shape array(NR_ELEM, 1). Hence define special filter
+    if filterInd.shape[0] > 0:
+      return Z_array[filterInd, :]
+    else:
+      return np.array([])
 
   def getXsMinMaxRange(self, nrPoints=50):
     return np.linspace(self.minScX, self.maxScX, nrPoints).reshape([-1, 1])
@@ -106,7 +156,6 @@ class DPMModelGeneric(object):
     self.maxX = maxX
     self.minScX = self.applyScalingX(self.minX)
     self.maxScX = self.applyScalingX(self.maxX)
-
 
   def applyScalingXzeroOneFwd(self, xs):
     return (xs - self.minScX) / \

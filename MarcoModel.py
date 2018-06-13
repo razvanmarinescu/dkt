@@ -138,7 +138,6 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       self.minScX = self.applyScalingX(self.minX)
       self.maxScX = self.applyScalingX(self.maxX)
 
-
     def applyScalingXForward(self, x_data, biomk=0):
       scaleX = self.max_X[biomk] * self.mean_std_X[biomk][1]
       return (x_data - self.mean_std_X[biomk][0])/scaleX
@@ -427,9 +426,14 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
         return posterior, np.hstack([np.repeat(0,len(s_omega)).flatten(), np.repeat(0,len(m_omega)).flatten(), d_s_w.flatten(), d_m_w.flatten(),  np.array([d_sigma]), np.array(d_l), np.array([d_eps])]), d_penalty
 
-    def stochastic_grad_manual(self, params, X_array, Y_array):
+    def stochastic_grad_manual(self, params, X_array, Y_array, fixSeed=False):
         # Stochastic gradient of log-posterior with respect ot given parameters
         # Default number of MC samples is 100
+
+        if fixSeed:
+          np.random.seed(1)
+          # print(ads)
+
         output_MC_grad = []
         output_loglik = []
         output_grad_penalty = []
@@ -446,7 +450,6 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
                 objective_cost_function = lambda params: self.log_posterior_grad(
                   current_X, current_Y,self.N_rnd_features, perturbation_W, params,
                   self.penalty[b])
-
                 value, grad, grad_penalty = objective_cost_function(current_params)
                 MC_grad = MC_grad - grad
                 loglik = loglik - value
@@ -454,6 +457,7 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
             output_MC_grad.append(MC_grad/100)
             output_loglik.append(loglik/100)
             output_grad_penalty[b] = output_grad_penalty[b]/100
+
 
         return output_loglik, output_MC_grad, output_grad_penalty
 

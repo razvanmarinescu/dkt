@@ -58,6 +58,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
 
 
   def sigFunc(self, xs, theta):
+    # print('theta', theta)
     return theta[0] * np.power((1 + np.exp(-theta[1] * (xs - theta[2]))), -1) + theta[3]
 
   def trajObjFunc(self, params, X_arrayX, Y_arrayX):

@@ -156,24 +156,26 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
 
         # first filter the data .. keep only subj in current disease
-        xDysfunSubjCurrDisU = [_ for _ in range(nrBiomkDisModel)]
-        dysfuncScoresCurrDisU = [_ for _ in range(nrBiomkDisModel)]
+        xDysfunSubjCurrDisUSX = [_ for _ in range(nrBiomkDisModel)]
+        dysfuncScoresCurrDisUSX = [_ for _ in range(nrBiomkDisModel)]
+        visitIndicesCurrDisUSX = [[] for b in range(nrBiomkDisModel)]
 
         for b in range(nrBiomkDisModel):
-          xDysfunSubjCurrDisU[b] = [xDysfunSubjUCopy[b][s] for s in
+          xDysfunSubjCurrDisUSX[b] = [xDysfunSubjUCopy[b][s] for s in
             np.where(self.indxSubjForEachDisD[disNr])[0]]
-          dysfuncScoresCurrDisU[b] = [dysfuncScoresUCopy[b][s] for s in
+          dysfuncScoresCurrDisUSX[b] = [dysfuncScoresUCopy[b][s] for s in
             np.where(self.indxSubjForEachDisD[disNr])[0]]
 
-          for s in range(len(xDysfunSubjCurrDisU[b])):
-            visitIndicesCurrDis[b][s] = np.array(range(xDysfunSubjCurrDisU[b][s].shape[0]))
+          visitIndicesCurrDisUSX[b] = [_ for _ in range(len(xDysfunSubjCurrDisUSX[b]))]
+          for s in range(len(xDysfunSubjCurrDisUSX[b])):
+            visitIndicesCurrDisUSX[b][s] = np.array(range(xDysfunSubjCurrDisUSX[b][s].shape[0]))
 
         plotTrajParamsDis = JDMOnePass.createPlotTrajParamsDis(self.params, disNr)
         plotterCurrDis = Plotter.PlotterDis(plotTrajParamsDis)  # set separate plotter for the
 
         outFolderCurDis = '%s/%s' % (self.outFolder, self.params['disLabels'][disNr])
         os.system('mkdir -p %s' % outFolderCurDis)
-        self.disModels[disNr] = self.disModelObj(xDysfunSubjCurrDisU, dysfuncScoresCurrDisU, visitIndicesCurrDis,
+        self.disModels[disNr] = self.disModelObj(xDysfunSubjCurrDisUSX, dysfuncScoresCurrDisUSX, visitIndicesCurrDisUSX,
           outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'], self.params)
         self.disModels[disNr].Optimize(nrGlobIterDis, Plot=True)
 

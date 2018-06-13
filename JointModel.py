@@ -165,34 +165,56 @@ class JointModel(DisProgBuilder.DPMInterface):
     XshiftedScaledDBSX = [0 for _ in range(self.nrDis)]
     XdisDBSX = [0 for _ in range(self.nrDis)]
     X_arrayScaledDB = [0 for _ in range(self.nrDis)]
-    for d in range(self.nrDis):
+    for d in [1]:#range(self.nrDis):
       XshiftedScaledDBSX[d], XdisDBSX[d], _, X_arrayScaledDB[d] = disModels[d].getData()
 
       # update each unit-traj independently
       for u in range(self.nrFuncUnits):
-        Y_arrayCurDis = unitModels[u].filterLongArray(unitModels[u].Y_array,
-          unitModels[u].N_obs_per_sub, self.indxSubjForEachDisD[d])
+        Y_arrayCurDis, indFiltToMisCurDisB = unitModels[u].filterLongArray(unitModels[u].Y_array,
+          unitModels[u].N_obs_per_sub, self.indxSubjForEachDisD[d],unitModels[u].visitIndices)
+
+        for b in range(len(Y_arrayCurDis)):
+          assert Y_arrayCurDis[b].shape[0] == indFiltToMisCurDisB[b].shape[0]
+          print(Y_arrayCurDis[b].shape)
+
+        # print(adsa)
 
         # build function that within a disease model takes a unit traj , and predicts lik of given
         # unit-traj params in corresponding unitModel.
         likJDMobjFunc = lambda paramsCurrTraj: self.likJDM(disModels[d], unitModels[u],
-          X_arrayScaledDB, XdisDBSX, paramsCurrTraj, u, d, Y_arrayCurDis)
-        initParams = disModels[d].parameters[u]
+          X_arrayScaledDB[d], XdisDBSX, paramsCurrTraj, u, d, Y_arrayCurDis, indFiltToMisCurDisB)
+        initParams, initVariance = disModels[d].unpack_parameters(disModels[d].parameters[u])
 
-        print(likJDMobjFunc(initParams))
 
+        print('initLik', likJDMobjFunc(initParams))
+        # print(adsa)
+        print('initParams', initParams)
+        # print('10 evals', [likJDMobjFunc(initParams + perturb) for perturb in
+        #   np.random.normal(0,0.01,10)])
+        # print(adsa)
+        # print(ads)
         resStruct = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
-          options={'disp': True})
+          options={'disp': True, 'maxiter':50})
 
-  def likJDM(self, disModel, unitModel, X_arrayScaledDB, XdisDBSX, params, unitNr, disNr, Y_arrayCurDis):
+        print('resStruct', resStruct)
+        print('finalLik', likJDMobjFunc(resStruct.x), likJDMobjFunc(resStruct.x))
+
+        disModels[d].parameters[u] = [resStruct.x, initVariance]
+
+        # import pdb
+        # pdb.set_trace()
+
+
+  def likJDM(self, disModel, unitModel, X_arrayScaledDisB, XdisDBSX, params, unitNr, disNr, Y_arrayCurDis,
+             indFiltToMisCurDisB):
     """
     function computes the likelihood of params of one traj within one disModel.
 
     :param disModel:
     :param unitModel:
-    :param X_arrayScaledDB:
+    :param X_arrayScaledDisB: X_array values (scaled) for patients withing current disease
     :param XdisDBSX:
-    :param params: parameters to optimise
+    :param params: parameters for one unit-trajectory to optimise, within a diseModel
     :param unitNr:
     :param disNr:
     :param Y_arrayCurDis:
@@ -216,8 +238,9 @@ class JointModel(DisProgBuilder.DPMInterface):
     # currXdataShifted = XshiftedScaledDBSX[disNr][0][idxSubjInBigArray]
     # predict dysf scoresf for curr subj
     paramsAllU = disModel.parameters
-    paramsAllU[unitNr] = params
-    predScoresCurrXU = disModel.predictBiomkWithParams(X_arrayScaledDB[disNr][0], paramsAllU)
+    paramsAllU[unitNr] = [params, paramsAllU[unitNr][1]]
+    # print('paramsAllU', paramsAllU)
+    predScoresCurrXU = disModel.predictBiomkWithParams(X_arrayScaledDisB[0], paramsAllU)
 
     # predScoresCurrSX[s] = predScoresCurrXU[:,unitNr]
 
@@ -230,17 +253,30 @@ class JointModel(DisProgBuilder.DPMInterface):
     # turn predScoresCurrSX[u] into predX_arrayUnitModel
     # predX_arrayUnitModel, N_obs_per_subj = unitModel.convertLongToArray(predScoresCurrSX)
 
-    unitModel.indFullToMissingArrayB =
+    predX_arrayUnitModel = [0 for b in range(unitModel.nrBiomk)]
 
-    predX_arrayUnitModel = unitModel.findMapFromFullToMissingWithinDisease(predScoresCurrXU[:,unitNr])
+    # print('indFiltToMisCurDisB', indFiltToMisCurDisB)
+    # print(ads)
 
-    unitModel.checkNobsMatch(N_obs_per_subj)
+    for b in range(unitModel.nrBiomk):
+      predScoresCurrBiomk = predScoresCurrXU[:,unitNr].reshape(-1,1)
+      # print('b', b)
+      # print('predScoresCurrBiomk', predScoresCurrBiomk.shape)
+      # print('indFiltToMisCurDisB[b]', indFiltToMisCurDisB[b].shape)
+      # print('Y_arrayCurDis[b]', Y_arrayCurDis[b].shape)
+      predX_arrayUnitModel[b] = unitModel.filterZarray(predScoresCurrBiomk,
+        indFiltToMisCurDisB[b])
+      # print('predX_arrayUnitModel', predX_arrayUnitModel[0].shape)
+      print('Y_arrayCurDis', Y_arrayCurDis[0].shape)
+      assert predX_arrayUnitModel[b].shape[0] == Y_arrayCurDis[b].shape[0]
+
+      if len(Y_arrayCurDis[b]) > 0:
+        TODO: change to one biomk at a time
+        lik = unitModel.stochastic_grad_manual(unitModel.parameters,
+        predX_arrayUnitModel, Y_arrayCurDis, fixSeed=True)[0]
 
 
-    lik = unitModel.stochastic_grad_manual(unitModel.parameters,
-      predX_arrayUnitModel, Y_arrayCurDis)[0]
-
-    return lik
+    return np.sum(lik) # sum the likelihood from each trajectory
 
 
   def predictBiomkSubjGivenXs(self, newXs, disNr):
