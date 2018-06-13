@@ -89,6 +89,11 @@ class JointModel(DisProgBuilder.DPMInterface):
         # estimate unit trajectories - disease specific
         self.estimTrajWithinDisModel(self.unitModels, self.disModels)
 
+        if plotFigs:
+          fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=False)
+          fig.savefig('%s/compTrueParams%d2_%s.png' % (self.outFolder, i, self.expName))
+
+
         # estimate  subject latent variables
         self.estimSubjShifts()
 
@@ -165,7 +170,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     XshiftedScaledDBSX = [0 for _ in range(self.nrDis)]
     XdisDBSX = [0 for _ in range(self.nrDis)]
     X_arrayScaledDB = [0 for _ in range(self.nrDis)]
-    for d in [1]:#range(self.nrDis):
+    for d in range(self.nrDis):
       XshiftedScaledDBSX[d], XdisDBSX[d], _, X_arrayScaledDB[d] = disModels[d].getData()
 
       # update each unit-traj independently
@@ -258,6 +263,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     # print('indFiltToMisCurDisB', indFiltToMisCurDisB)
     # print(ads)
 
+    sumLik =0
     for b in range(unitModel.nrBiomk):
       predScoresCurrBiomk = predScoresCurrXU[:,unitNr].reshape(-1,1)
       # print('b', b)
@@ -271,12 +277,12 @@ class JointModel(DisProgBuilder.DPMInterface):
       assert predX_arrayUnitModel[b].shape[0] == Y_arrayCurDis[b].shape[0]
 
       if len(Y_arrayCurDis[b]) > 0:
-        TODO: change to one biomk at a time
-        lik = unitModel.stochastic_grad_manual(unitModel.parameters,
-        predX_arrayUnitModel, Y_arrayCurDis, fixSeed=True)[0]
+        #TODO: change to one biomk at a time
+        lik = unitModel.stochastic_grad_manual_onebiomk(unitModel.parameters[b],
+        predX_arrayUnitModel[b], Y_arrayCurDis[b], unitModel.penalty[b], fixSeed=True)[0]
+        sumLik += lik
 
-
-    return np.sum(lik) # sum the likelihood from each trajectory
+    return sumLik # sum the likelihood from each trajectory where there is data
 
 
   def predictBiomkSubjGivenXs(self, newXs, disNr):

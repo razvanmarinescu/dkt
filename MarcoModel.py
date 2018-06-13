@@ -426,7 +426,7 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
         return posterior, np.hstack([np.repeat(0,len(s_omega)).flatten(), np.repeat(0,len(m_omega)).flatten(), d_s_w.flatten(), d_m_w.flatten(),  np.array([d_sigma]), np.array(d_l), np.array([d_eps])]), d_penalty
 
-    def stochastic_grad_manual(self, params, X_array, Y_array, fixSeed=False):
+    def stochastic_grad_manual(self, paramsB, X_arrayB, Y_arrayB, fixSeed=False):
         # Stochastic gradient of log-posterior with respect ot given parameters
         # Default number of MC samples is 100
 
@@ -438,25 +438,60 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         output_loglik = []
         output_grad_penalty = []
         for b in range(self.nrBiomk):
-            current_params = params[b]
-            current_X = X_array[b]
-            current_Y = Y_array[b]
-            MC_grad = np.zeros(len(params[b]))
-            output_grad_penalty.append(0)
-            loglik = 0
-            for j in range(100):
-                perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(
-                  [ 2*self.N_rnd_features,1])
-                objective_cost_function = lambda params: self.log_posterior_grad(
-                  current_X, current_Y,self.N_rnd_features, perturbation_W, params,
-                  self.penalty[b])
-                value, grad, grad_penalty = objective_cost_function(current_params)
-                MC_grad = MC_grad - grad
-                loglik = loglik - value
-                output_grad_penalty[b] = output_grad_penalty[b] - grad_penalty
-            output_MC_grad.append(MC_grad/100)
-            output_loglik.append(loglik/100)
-            output_grad_penalty[b] = output_grad_penalty[b]/100
+            output_loglik, output_MC_grad, output_grad_penalty = \
+                self.stochastic_grad_manual_onebiomk(params[b], X_array[b], Y_array[b],
+                self.penalty[b], fixSeed=False)
+            # current_params = paramsB[b]
+            # current_X = X_arrayB[b]
+            # current_Y = Y_arrayB[b]
+            # MC_grad = np.zeros(len(paramsB[b]))
+            # output_grad_penalty.append(0)
+            # loglik = 0
+            # for j in range(100):
+            #     perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(
+            #       [ 2*self.N_rnd_features,1])
+            #     objective_cost_function = lambda params: self.log_posterior_grad(
+            #       current_X, current_Y,self.N_rnd_features, perturbation_W, params,
+            #       self.penalty[b])
+            #     value, grad, grad_penalty = objective_cost_function(current_params)
+            #     MC_grad = MC_grad - grad
+            #     loglik = loglik - value
+            #     output_grad_penalty[b] = output_grad_penalty[b] - grad_penalty
+
+            output_loglik.append(output_loglik)
+            output_MC_grad.append(output_MC_grad)
+            output_grad_penalty.append(output_grad_penalty)
+
+
+        return output_loglik, output_MC_grad, output_grad_penalty
+
+    def stochastic_grad_manual_onebiomk(self, params, X_array, Y_array, penalty, fixSeed=False):
+        # Stochastic gradient of log-posterior with respect ot given parameters
+        # Default number of MC samples is 100
+
+        if fixSeed:
+          np.random.seed(1)
+          # print(ads)
+
+        current_params = params
+        current_X = X_array
+        current_Y = Y_array
+        MC_grad = np.zeros(len(params))
+        output_grad_penalty = 0
+        loglik = 0
+        for j in range(100):
+            perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(
+              [ 2*self.N_rnd_features,1])
+            objective_cost_function = lambda params: self.log_posterior_grad(
+              current_X, current_Y,self.N_rnd_features, perturbation_W, params,
+              penalty)
+            value, grad, grad_penalty = objective_cost_function(current_params)
+            MC_grad = MC_grad - grad
+            loglik = loglik - value
+            output_grad_penalty = output_grad_penalty - grad_penalty
+        output_MC_grad = MC_grad/100
+        output_loglik = loglik/100
+        output_grad_penalty = output_grad_penalty/100
 
 
         return output_loglik, output_MC_grad, output_grad_penalty
@@ -496,7 +531,7 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
               diag_penalty[l] = 0.9 * diag_penalty[l] + 0.1 * fun_grad_penalty[l] ** 2
               param_penalty[l] = param_penalty[l] - learning_rate * fun_grad_penalty[l]/ np.sqrt(diag_penalty[l] + epsilon)
 
-          print(i,end=' ')
+          print(i, end=' ')
           sys.stdout.flush()
 
           for l in range(self.nrBiomk):

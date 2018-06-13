@@ -306,7 +306,7 @@ def prepareData(finalDataFile, tinyData):
   #   meanDRC = np.nanmean(validDf.loc[:, dtiCols[c]])
   #   stdDRC = np.nanstd(validDf.loc[:, dtiCols[c]])
   #
-  #   # print('ADNI mean', meanADNI)
+  #   # print('ADNI mean', meanADNI)&
   #   # print('ADNI std', stdADNI)
   #   # print('DRC mean', meanDRC)
   #   # print('DRC std', stdDRC)
