@@ -209,7 +209,6 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
     dysfuncPredXU = self.disModels[disNr].predictBiomk(newXs)
 
 
-
     # then predict the inidividual biomarkers in the disease agnostic models
     biomkPredXB = np.zeros((newXs.shape[0], self.nrBiomk))
     for u in range(self.nrFuncUnits):

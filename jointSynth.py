@@ -141,7 +141,7 @@ def main():
   for u in range(nrFuncUnits):
     biomkInFuncUnit[u] = np.where(mapBiomkToFuncUnits == u)[0]
 
-  biomkInFuncUnit[nrFuncUnits] = [] # need to leave this as empty list
+  biomkInFuncUnit[nrFuncUnits] = np.array([]) # need to leave this as empty list
 
   plotTrajParams['biomkInFuncUnit'] = biomkInFuncUnit
   plotTrajParams['labels'] = ['b%d' % n for n in range(nrBiomk)]

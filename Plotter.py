@@ -187,6 +187,69 @@ class PlotterJDM:
     # print(ads)
     return fig
 
+  def plotAllBiomkDisSpace(self, dpmObj, params, disNr):
+    # first predict subject DTI measures
+
+    diag = params['diag']
+    indxSubjToKeep = np.where(dpmObj.indxSubjForEachDisD[disNr])[0]
+
+    nrBiomk = len(params['X'])
+    print('nrBiomk', nrBiomk)
+    Xfilt = [[] for b in range(nrBiomk)]
+    Yfilt = [[] for b in range(nrBiomk)]
+    for b in range(nrBiomk):
+      Xfilt[b] = [params['X'][b][i] for i in indxSubjToKeep]
+      Yfilt[b] = [params['Y'][b][i] for i in indxSubjToKeep]
+
+    diagSubjCurrDis = diag[indxSubjToKeep]
+    ridCurrDis = params['RID'][indxSubjToKeep]
+    nrSubCurrDis = indxSubjToKeep.shape[0]
+
+    XshiftedDisModelBS = [[] for b in range(nrBiomk)]
+    ysPredBS = [[] for b in range(nrBiomk)]
+    XshiftedDisModelUS, XdisModelUS, YdisModelUS, _ = dpmObj.disModels[disNr].getData()
+    xsOrigPred1S = XdisModelUS[0]  # all biomarkers should contain all timepoints in the disease model
+
+    for s in range(nrSubCurrDis):
+      bTmp = 0  # some biomarker, doesn't matter which one
+      ysCurrSubXB = dpmObj.predictBiomkSubjGivenXs(XshiftedDisModelUS[bTmp][s], disNr)
+
+      for b in range(nrBiomk):
+        ysPredBS[b] += [ysCurrSubXB[:, b]]
+
+        if Xfilt[b][s].shape[0] > 0:
+          # fix problem when a subject has the same xs twice (bad input dataset with same visit twice)
+          while np.unique(Xfilt[b][s]).shape[0] < Xfilt[b][s].shape[0]:
+            for x in Xfilt[b][s]:
+              if np.sum(Xfilt[b][s] == x) > 1:
+                idxToRemove = np.where(Xfilt[b][s] == x)[0][0]
+                Yfilt[b][s] = np.concatenate((Yfilt[b][s][:idxToRemove], Yfilt[b][s][idxToRemove + 1:]))
+                Xfilt[b][s] = np.concatenate((Xfilt[b][s][:idxToRemove], Xfilt[b][s][idxToRemove + 1:]))
+
+                break
+
+          XshiftedDisModelBS[b] += [XshiftedDisModelUS[0][s]]
+        else:
+          XshiftedDisModelBS[b] += [[]]
+
+    for b in range(nrBiomk):
+      assert len(params['X'][b]) == len(params['Y'][b])
+      assert len(XshiftedDisModelBS[b]) == len(Yfilt[b])
+
+    # part 2. plot the inferred dynamics for DRC data:
+    # every biomarker against original DPS
+    # also plot extra validation data on top
+    xsTrajX = dpmObj.disModels[disNr].getXsMinMaxRange()
+    predTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajX, disNr)
+    trajSamplesBXS = dpmObj.sampleBiomkTrajGivenXs(xsTrajX, disNr, nrSamples=100)
+
+    gpPlotter = PlotterDis(self.plotTrajParams)
+    fig = gpPlotter.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
+       XshiftedDisModelBS, Yfilt, diagSubjCurrDis, XsubjValidBSX=None, YsubjValidBSX=None,
+       diagValidS=None,  labels=self.plotTrajParams['labels'], ssdDKT=None, ssdNoDKT=None,
+       replaceFig=True)
+    return fig
+
 
 class PlotterGP(ABC):
 
@@ -435,7 +498,7 @@ class PlotterGP(ABC):
     pl.clf()
     fig.show()
 
-    diagNrs = np.unique(self.plotTrajParams['diag'])
+    diagNrs = np.unique(diagS)
     nrDiags = diagNrs.shape[0]
 
     nrBiomk = len(XsubjBSX)
@@ -488,9 +551,9 @@ class PlotterGP(ABC):
 
       # pl.legend(ncol=1,fontsize=12)
 
-
-      ax.text(minX + 0.1*(maxX-minX), minY + 0.9*(maxY-minY), 'SSD DKT=%.3f' % ssdDKT[b])
-      ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD no-DKT=%.3f' % ssdNoDKT[b])
+      if ssdDKT is not None:
+        ax.text(minX + 0.1*(maxX-minX), minY + 0.9*(maxY-minY), 'SSD DKT=%.3f' % ssdDKT[b])
+        ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD no-DKT=%.3f' % ssdNoDKT[b])
 
     # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 

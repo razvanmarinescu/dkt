@@ -434,12 +434,12 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
           np.random.seed(1)
           # print(ads)
 
-        output_MC_grad = []
-        output_loglik = []
-        output_grad_penalty = []
+        loglik_list = []
+        MC_grad_list = []
+        grad_penalty_list = []
         for b in range(self.nrBiomk):
             output_loglik, output_MC_grad, output_grad_penalty = \
-                self.stochastic_grad_manual_onebiomk(params[b], X_array[b], Y_array[b],
+                self.stochastic_grad_manual_onebiomk(paramsB[b], X_arrayB[b], Y_arrayB[b],
                 self.penalty[b], fixSeed=False)
             # current_params = paramsB[b]
             # current_X = X_arrayB[b]
@@ -458,12 +458,12 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
             #     loglik = loglik - value
             #     output_grad_penalty[b] = output_grad_penalty[b] - grad_penalty
 
-            output_loglik.append(output_loglik)
-            output_MC_grad.append(output_MC_grad)
-            output_grad_penalty.append(output_grad_penalty)
+            loglik_list.append(output_loglik)
+            MC_grad_list.append(output_MC_grad)
+            grad_penalty_list.append(output_grad_penalty)
 
 
-        return output_loglik, output_MC_grad, output_grad_penalty
+        return loglik_list, MC_grad_list, grad_penalty_list
 
     def stochastic_grad_manual_onebiomk(self, params, X_array, Y_array, penalty, fixSeed=False):
         # Stochastic gradient of log-posterior with respect ot given parameters
