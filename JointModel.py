@@ -46,19 +46,21 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.nrDis = len(disLabels)
 
     # boolean masks
-    self.indxSubjForEachDisD = [np.in1d(self.params['plotTrajParams']['diag'],
+    self.binMaskSubjForEachDisD = [np.in1d(self.params['plotTrajParams']['diag'],
       self.params['diagsSetInDis'][disNr]) for disNr in range(self.nrDis)]
 
     self.plotter = Plotter.PlotterJDM(self.params['plotTrajParams'])
 
     # integer arrays
     self.disIdxForEachSubjS = np.zeros(len(params['X'][0]), int)
+    self.indSubjForEachDisD = [0 for _ in range(self.nrDis)]
     for d in range(self.nrDis):
-      self.disIdxForEachSubjS[self.indxSubjForEachDisD[d]] = d
+      self.disIdxForEachSubjS[self.binMaskSubjForEachDisD[d]] = d
+      self.indSubjForEachDisD[d] = np.where(self.binMaskSubjForEachDisD[d])[0][0]
 
     self.ridsPerDisD = [_ for _ in range(self.nrDis)]
     for d in range(self.nrDis):
-      self.ridsPerDisD[d] = self.params['RID'][self.indxSubjForEachDisD[d]]
+      self.ridsPerDisD[d] = self.params['RID'][self.binMaskSubjForEachDisD[d]]
 
   def runStd(self, runPart):
     self.run(runPart)
@@ -75,7 +77,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     nrIt = 10
     if runPart[1] == 'R':
 
-      self.makePlots(plotFigs, 0, 0)
+      # self.makePlots(plotFigs, 0, 0)
 
       for i in range(nrIt):
         # # estimate biomk trajectories - disease agnostic
@@ -125,26 +127,128 @@ class JointModel(DisProgBuilder.DPMInterface):
 
   def estimSubjShifts(self, unitModels, disModels):
 
+    YunitUBSX = [0 for _ in range(self.nrFuncUnits)]
+    sigmas = [0 for _ in range(self.nrFuncUnits)]
+    Ws = [0 for _ in range(self.nrFuncUnits)]
+    Omegas = [0 for _ in range(self.nrFuncUnits)]
+    epss = [0 for _ in range(self.nrFuncUnits)]
+
+    optimalShiftsDisModels = [0 for _ in range(self.nrDis)]
+
+    for u in range(self.nrFuncUnits):
+      _, _, YunitUBSX[u], _ = unitModels[u].getData()
+      sigmas[u], Ws[u], Omegas[u], epss[u] = unitModels[u].computeTrajParamsForTimeShifts()
+
+
     XshiftedScaledDBSX = [0 for _ in range(self.nrDis)]
     XdisDBSX = [0 for _ in range(self.nrDis)]
     X_arrayScaledDB = [0 for _ in range(self.nrDis)]
     for d in range(self.nrDis):
       XshiftedScaledDBSX[d], XdisDBSX[d], _, X_arrayScaledDB[d] = disModels[d].getData()
-      nrSubjCurr = len(XshiftedScaledDBSX[d][0])
-      for s in range(nrSubjCurr):
+      optimalShiftsDisModels[d] = np.zeros(self.binMaskSubjForEachDisD[d].shape[0])
 
-        TODO: add the subject shift optimisation
+    nrSubjAllDis = len(YunitUBSX[0][0])
+    optimalShiftsAll = np.zeros(nrSubjAllDis)
 
-        objectiveFun = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(
-          time_shift_one_sub, s)[0]
+    for s in range(nrSubjAllDis):
+      d = self.disIdxForEachSubjS[s]
+      print('self.binMaskSubjForEachDisD[d]', self.indSubjForEachDisD[d])
+       subjCurrIndInDisModel = np.where(self.indSubjForEachDisD[d] == s)[0][0]
 
-        print('initLik', likJDMobjFunc(initParams))
-        print('initParams', initParams)
-        resStruct = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
-          options={'disp': True, 'maxiter':50})
+      print('subjCurrIndInDisModel',subjCurrIndInDisModel)
+      print(XshiftedScaledDBSX[d][0][subjCurrIndInDisModel])
+      likJDMShiftsObjFunc = lambda time_shift_delta_one_sub: -self.log_posterior_time_shift_Raz(
+        time_shift_delta_one_sub, disModels[d], unitModels,
+        XshiftedScaledDBSX[d][0][subjCurrIndInDisModel], YunitUBSX,
+        s, sigmas, Omegas, epss, Ws)
+
+      initDeltaShift = 0 # this shift is added on top of the existing shift
+      print('initLik', likJDMShiftsObjFunc(initDeltaShift))
+      print('initShift', initDeltaShift)
+      resStruct = scipy.optimize.minimize(likJDMShiftsObjFunc, initDeltaShift, method='Nelder-Mead',
+        options={'disp': True})
+
+      optimalShiftsAll[s] = resStruct.x
 
 
-        disModels[d].parameters[u] = [resStruct.x, initVariance]
+      # now update the disease model and the unitModels with the optimal shift
+      optimalShiftsDisModels[d][subjCurrIndInDisModel] = optimalShiftsAll[s]
+
+    # update optimal time shifts in disease model
+    for d in range(self.nrDis):
+      disModels[d].updateTimeShifts(optimalShiftsDisModels[d])
+
+    # update optimal time shifts in all functional models
+    updateXvalsInFuncModels(self, optimalShiftsAll, disModels, unitModels,
+                            XshiftedScaledDBSX)
+
+
+  def log_posterior_time_shift_Raz(self, time_shift_delta_one_sub, disModel, unitModels,
+                                   XshiftedScaledX, YunitUBSX, s, sigmas, Omegas, epss, Ws):
+
+    timeShiftPriorSpread = 6
+    prior_time_shift = (time_shift_delta_one_sub - 0) ** 2 / timeShiftPriorSpread
+
+    predBiomksXU = disModel.predictBiomk(time_shift_delta_one_sub + XshiftedScaledX)
+
+    loglik = 0
+
+    for u in range(self.nrFuncUnits):
+
+      # Shifting data according to current time-shift estimate
+      for b in range(unitModels[u].nrBiomk):
+        Xdata = predBiomksXU[unitModels[u].visitIndices[b][s], u].reshape(-1,1)
+        # Xdata = Xdata # here need to apply scaling, if identity map was NOT used
+        Ydata = YunitUBSX[u][b][s]
+
+        print('Xdata, Ydata', Xdata, Ydata)
+        print('sigmas[u][b], Omegas[u][b], epss[u][b], Ws[u][b]', sigmas[u][b], Omegas[u][b], epss[u][b], Ws[u][b])
+
+
+        loglikCurr = unitModels[u].log_posterior_time_shift_onebiomk_given_arrays(
+          Xdata, Ydata, sigmas[u][b], Omegas[u][b], epss[u][b], Ws[u][b], prior_time_shift)
+
+        loglik += loglikCurr
+
+    return loglik
+
+  def updateXvalsInFuncModels(self, time_shift_delta_all, disModels, unitModels,
+                              XshiftedScaledDBSX):
+    """
+    after the correct time-shifts in the disease models have been estimated,
+    function updates the X_values within the function models with the predictions
+    from the disease models
+
+    :param time_shift_delta_all:
+    :param disModels:
+    :param unitModels:
+    :param XshiftedScaledDBSX:
+    :return:
+    """
+
+    for s in range(nrSubjAllDis):
+      d = self.disIdxForEachSubjS[s]
+      subjCurrIndInDisModel = np.where(self.indSubjForEachDisD[d] == s)[0][0]
+
+      predBiomksXU = disModel.predictBiomk(time_shift_delta_all[s] +
+        XshiftedScaledDBSX[d][0][subjCurrIndInDisModel])
+
+      for u in range(self.nrFuncUnits):
+
+        # Shifting data according to current time-shift estimate
+        for b in range(unitModels[u].nrBiomk):
+          XdataNewUBSX[u][b][s] = predBiomksXU[unitModels[u].visitIndices[b][s], u]
+          # XdataNewUBSX[u][b][s] = XdataNewUBSX[u][b][s] # here need to apply scaling, if identity map was NOT used
+
+    # update X_array for the current unitModel
+    for u in range(self.nrFuncUnits):
+      newXarray, _, _ = \
+        unitModels[u].convertLongToArray(XdataNewUBSX[u], unitModels[u].visitIndices)
+
+      # dimension check
+      assert newXarray[0].shape[0] == unitModels[u].X_array[0].shape[0]
+
+      unitModels[u].X_array = newXarray
 
 
   def estimBiomkTraj(self, unitModels, disModels):
@@ -204,7 +308,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       # update each unit-traj independently
       for u in range(self.nrFuncUnits):
         Y_arrayCurDis, indFiltToMisCurDisB = unitModels[u].filterLongArray(unitModels[u].Y_array,
-          unitModels[u].N_obs_per_sub, self.indxSubjForEachDisD[d],unitModels[u].visitIndices)
+          unitModels[u].N_obs_per_sub, self.binMaskSubjForEachDisD[d],unitModels[u].visitIndices)
 
         for b in range(len(Y_arrayCurDis)):
           assert Y_arrayCurDis[b].shape[0] == indFiltToMisCurDisB[b].shape[0]
@@ -272,7 +376,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       # currDis = self.ridsPerDisD[currDis][s]
       # currRID = self.params['RID'][s]
       # idxCurrSubjInDisModel = np.where(self.ridsPerDisD[currDis] == currRID)[0][0]
-      # idxSubjInBigArray = self.indxSubjForEachDisD[disNr][s]
+      # idxSubjInBigArray = self.binMaskSubjForEachDisD[disNr][s]
       # XdisSX[s] = XdisDBSX[disNr][0][idxSubjInBigArray]
 
     # get shifts for curr subj from correct disModel

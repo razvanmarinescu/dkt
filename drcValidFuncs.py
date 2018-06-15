@@ -289,7 +289,7 @@ def validateDRCBiomk(dpmObj, params):
 
   diag = params['diag']
   disNr = 1 # predict for DRC subjects
-  indxSubjToKeep = np.where(dpmObj.indxSubjForEachDisD[disNr])[0]
+  indxSubjToKeep = np.where(dpmObj.binMaskSubjForEachDisD[disNr])[0]
 
   nrBiomk = len(params['X'])
   print('nrBiomk', nrBiomk)

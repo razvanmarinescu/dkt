@@ -37,18 +37,34 @@ class DPMModelGeneric(object):
     for l in range(1):
       self.params_time_shift[l] = self.params_time_shift[l] + optimal_params[l]
 
-    for i in range(self.nrBiomk):
+    for b in range(self.nrBiomk):
       Xdata = np.array([[100]])
       for sub in range(self.nrSubj):
-        temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub + 1])]
+        temp = self.X_array[b][int(np.sum(self.N_obs_per_sub[b][:sub])):np.sum(self.N_obs_per_sub[b][:sub + 1])]
         shifted_temp = (temp + optimal_params[0][sub])
         Xdata = np.hstack([Xdata, shifted_temp.T])
 
-      self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]), 1])
+      self.X_array[b] = Xdata[0][1:].reshape([len(Xdata[0][1:]), 1])
 
     minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
     maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
     self.updateMinMax(minX, maxX)
+
+  # def updateTimeShiftOneSubj(self, optimal_shift, subjIndex):
+  #   self.params_time_shift[0] += optimal_shift[subjIndex]
+  #
+  #   for b in range(self.nrBiomk):
+  #     Xdata = np.array([[100]])
+  #     for subjIndex in range(self.nrSubj):
+  #       temp = self.X_array[b][int(np.sum(self.N_obs_per_sub[b][:subjIndex])):np.sum(self.N_obs_per_sub[b][:subjIndex + 1])]
+  #       shifted_temp = (temp + optimal_params[0][subjIndex])
+  #       Xdata = np.hstack([Xdata, shifted_temp.T])
+  #
+  #     self.X_array[b] = Xdata[0][1:].reshape([len(Xdata[0][1:]), 1])
+  #
+  #   minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+  #   maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+  #   self.updateMinMax(minX, maxX)
 
 
   def checkNobsMatch(self, N_obs_per_sub2):

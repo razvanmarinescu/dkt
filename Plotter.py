@@ -191,7 +191,7 @@ class PlotterJDM:
     # first predict subject DTI measures
 
     diag = params['diag']
-    indxSubjToKeep = np.where(dpmObj.indxSubjForEachDisD[disNr])[0]
+    indxSubjToKeep = np.where(dpmObj.binMaskSubjForEachDisD[disNr])[0]
 
     nrBiomk = len(params['X'])
     print('nrBiomk', nrBiomk)

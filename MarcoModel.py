@@ -271,6 +271,10 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
     def phi(self, X, omega, sigma):
         # Random feature expansion in cosine a sine basis
+        # print('sigma', sigma)
+        # print('omega', omega)
+        # print('X', X)
+        # print(adsa)
         return np.sqrt(sigma) / np.sqrt(len(omega)) * np.concatenate([np.cos(omega * X), np.sin(omega * X)], axis=1)
 
     def Dphi(self, X, omega, sigma):
@@ -292,6 +296,9 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         return np.sqrt(sigma) / np.sqrt(len(omega)) * np.concatenate([- np.sin(omega * X) , np.cos(omega * X) ], axis=1)
 
     def basis(self, X, sigma, random_weights):
+        if len(X.shape) == 1:
+          raise ValueError('shape of X needs to be array(NR_ELEM, 1). '
+                               'Make sure you apply X.reshape(-1,1)')
         return self.phi(X, random_weights, sigma)
 
     def Dbasis_omega(self, X, sigma, random_weights):
@@ -683,7 +690,10 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       # Input: X, Y and a biomarker's parameters, current time-shift estimates
       # Output: log-posterior and time-shift gradient
       loglik =  0
-      grad = 0
+      # grad = 0
+
+      timeShiftPriorSpread = 6
+      prior_time_shift = (time_shift_one_sub - 0) ** 2 / timeShiftPriorSpread
 
       # Shifting data according to current time-shift estimate
       for i in range(self.nrBiomk):
@@ -697,42 +707,31 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
           np.sum(self.N_obs_per_sub[i][:sub+1])]
         Ydata = self.Y_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub + 1])]
 
-        loglikCurr, gradCurr = self.log_posterior_time_shift_onebiomk_given_arrays(Xdata, Ydata, sub,
-        sigma, Omega, eps, W)
+        loglikCurr = self.log_posterior_time_shift_onebiomk_given_arrays(Xdata, Ydata,
+          sigma, Omega, eps, W, prior_time_shift)
 
         loglik += loglikCurr
-        grad += gradCurr
+        # grad += gradCurr
 
-      return loglik, grad
+      return loglik
 
-    def log_posterior_time_shift_onebiomk_given_arrays(self, Xdata, Ydata, sub, sigma, Omega,
-                                                       eps, W):
+    def log_posterior_time_shift_onebiomk_given_arrays(self, Xdata, Ydata, sigma, Omega,
+                                                       eps, W, prior_time_shift):
       # Input: X, Y and a biomarker's parameters, current time-shift estimates
       # Output: log-posterior and time-shift gradient
 
-      # subj specific
       output = self.basis(Xdata, sigma, Omega)
       Doutput_time_shift = self.Dbasis_time_shift(Xdata, sigma, Omega)
-      # end subj specific
 
-      # subj specific
-      timeShiftPriorSpread = 6
-      prior_time_shift = (time_shift_one_sub - 0) ** 2 / timeShiftPriorSpread
+
       loglik = - 0.5 * (np.sum((Ydata - np.dot(output, W)) ** 2) / eps) - prior_time_shift
-      # loglik = loglik - 0.5 * (np.sum((Ydata - np.dot(output, W)) ** 2) / eps)
 
-      temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega ]))
-      grad0 = ((Ydata - np.dot(output, W)) / eps * np.dot(temp, W)).flatten()
-      # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega * Xdata,Omega * Xdata],1))
-      # grad1 = (((Ydata - np.dot(output, W))) / eps *  np.dot(temp, W)).flatten()
-
-      Gradient = np.sum(grad0) - 2 * ((time_shift_one_sub - 0) / timeShiftPriorSpread)
-      # temp1 = np.sum([grad1[k] for k in range(int(np.sum(self.N_obs_per_sub[i][:sub])),np.sum(self.N_obs_per_sub[i][:sub+1]))])
-      # Gradient[1][sub] = Gradient[1][sub] + 0 #temp1
-      # end sub specific
+      # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega ]))
+      # grad0 = ((Ydata - np.dot(output, W)) / eps * np.dot(temp, W)).flatten()
+      # Gradient = np.sum(grad0) - 2 * ((time_shift_one_sub - 0) / timeShiftPriorSpread)
 
 
-      return loglik, Gradient
+      return loglik
 
 
     def grad_time_shift(self, params_time_shift):
@@ -782,14 +781,7 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         self.updateMinMax(minX, maxX)
         self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
-
-    def Optimize_time_shift_Raz_indiv(self):
-      # Adadelta for optimization of time shift parameters
-      init_params = self.params_time_shift.copy()
-      init_params[0] = np.zeros(len(init_params[0]))
-
-      init_params_time_only = init_params[0]
-
+    def computeTrajParamsForTimeShifts(self):
       ######## calculate subject-nonspecific terms
       sigmas = []
       Ws = []
@@ -814,6 +806,17 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
       #### end of subject non-specific part
 
+      return sigmas, Ws, Omegas, epss
+
+    def Optimize_time_shift_Raz_indiv(self):
+      # Adadelta for optimization of time shift parameters
+      init_params = self.params_time_shift.copy()
+      init_params[0] = np.zeros(len(init_params[0]))
+
+      init_params_time_only = init_params[0]
+
+      sigmas, Ws, Omegas, epss = self.computeTrajParamsForTimeShifts()
+
       optimal_params_time_only = np.zeros(init_params_time_only.shape)
 
       idxOfDRCSubj = 15
@@ -821,9 +824,9 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       nrSubj = self.nrSubj
       for s in range(nrSubj):
         objectiveFun = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(
-          time_shift_one_sub, s, sigmas, Omegas, epss, Ws)[0]
-        objectiveGrad = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(
-          time_shift_one_sub, s, sigmas, Omegas, epss, Ws)[1]
+          time_shift_one_sub, s, sigmas, Omegas, epss, Ws)
+        # objectiveGrad = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(
+        #   time_shift_one_sub, s, sigmas, Omegas, epss, Ws)[1]
 
         options = {'disp': True, 'gtol':1e-8}
         # resStruct = scipy.optimize.minimize(objectiveFun, init_params_time_only[s], method='BFGS', jac=objectiveGrad, options=options)

@@ -344,11 +344,11 @@ def main():
   params['otherBiomkPerDisease'] = [[], []]
 
   nrDis = len(params['disLabels'])
-  params['indxSubjForEachDisD'] = [np.in1d(params['diag'],
+  params['binMaskSubjForEachDisD'] = [np.in1d(params['diag'],
                                       params['diagsSetInDis'][disNr]) for disNr in range(nrDis)]
 
   assert params['diag'].shape[0] == len(params['X'][0])
-  assert np.sum(params['indxSubjForEachDisD'][0]) == len(params['trueParamsDis'][0]['subShiftsS'])
+  assert np.sum(params['binMaskSubjForEachDisD'][0]) == len(params['trueParamsDis'][0]['subShiftsS'])
   assert params['diag'].shape[0] == len(params['trueParamsFuncUnits'][0]['subShiftsS'])
 
   if np.abs(args.penalty - int(args.penalty) < 0.00001):

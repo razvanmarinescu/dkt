@@ -45,7 +45,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
     disLabels = self.params['disLabels']
     self.nrDis = len(disLabels)
 
-    self.indxSubjForEachDisD = params['indxSubjForEachDisD']
+    self.binMaskSubjForEachDisD = params['binMaskSubjForEachDisD']
 
     self.unitModelObj = params['unitModelObj']
     self.disModelObj = params['disModelObj']
@@ -162,9 +162,9 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
         for b in range(nrBiomkDisModel):
           xDysfunSubjCurrDisUSX[b] = [xDysfunSubjUCopy[b][s] for s in
-            np.where(self.indxSubjForEachDisD[disNr])[0]]
+            np.where(self.binMaskSubjForEachDisD[disNr])[0]]
           dysfuncScoresCurrDisUSX[b] = [dysfuncScoresUCopy[b][s] for s in
-            np.where(self.indxSubjForEachDisD[disNr])[0]]
+            np.where(self.binMaskSubjForEachDisD[disNr])[0]]
 
           visitIndicesCurrDisUSX[b] = [_ for _ in range(len(xDysfunSubjCurrDisUSX[b]))]
           for s in range(len(xDysfunSubjCurrDisUSX[b])):
@@ -293,7 +293,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
     plotTrajParamsDis = copy.deepcopy(params['plotTrajParams'])
 
-    plotTrajParamsDis['diag'] = plotTrajParamsDis['diag'][params['indxSubjForEachDisD'][disNr]]
+    plotTrajParamsDis['diag'] = plotTrajParamsDis['diag'][params['binMaskSubjForEachDisD'][disNr]]
 
     if 'trueParamsDis' in params.keys():
       plotTrajParamsDis['trueParams'] = params['trueParamsDis'][disNr]
