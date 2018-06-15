@@ -295,7 +295,6 @@ def main():
         YemptyListsAllBiomk[b][s] = np.array([])
         visitIndicesDisTwoMissing[b][s] = np.array([])
 
-
   paramsDisTwo['XemptyListsAllBiomk'] = XemptyListsAllBiomk
   paramsDisTwo['YemptyListsAllBiomk'] = YemptyListsAllBiomk
   paramsDisTwo['visitIndicesMissing'] = visitIndicesDisTwoMissing

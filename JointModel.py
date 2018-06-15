@@ -75,40 +75,34 @@ class JointModel(DisProgBuilder.DPMInterface):
     nrIt = 10
     if runPart[1] == 'R':
 
-      if plotFigs:
-        fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
-        fig.savefig('%s/compTrueParams00_%s.png' % (self.outFolder, self.expName))
+      self.makePlots(plotFigs, 0, 0)
 
       for i in range(nrIt):
-        # estimate biomk trajectories - disease agnostic
-        self.estimBiomkTraj(self.unitModels, self.disModels)
-
-        if plotFigs:
-          fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
-          fig.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i, self.expName))
-
-          for d in range(self.nrDis):
-            fig = self.plotter.plotAllBiomkDisSpace(self, self.params, d)
-            fig.savefig('%s/trajDisSpace%s_%d1_%s.png' % (self.outFolder, self.params['disLabels'][d], d,
-              self.expName))
-
-        # estimate unit trajectories - disease specific
-        self.estimTrajWithinDisModel(self.unitModels, self.disModels)
-
-        if plotFigs:
-          fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
-          fig.savefig('%s/compTrueParams%d2_%s.png' % (self.outFolder, i, self.expName))
-
-          for d in range(self.nrDis):
-            fig = self.plotter.plotAllBiomkDisSpace(self, self.params, d)
-            fig.savefig('%s/trajDisSpace%s_%d2_%s.png' % (self.outFolder, self.params['disLabels'][d], d,
-                                                          self.expName))
+        # # estimate biomk trajectories - disease agnostic
+        # self.estimBiomkTraj(self.unitModels, self.disModels)
+        # self.makePlots(plotFigs, i, 1)
+        #
+        # # estimate unit trajectories - disease specific
+        # self.estimTrajWithinDisModel(self.unitModels, self.disModels)
+        # self.makePlots(plotFigs, i, 2)
 
         # estimate subject latent variables
-        self.estimSubjShifts()
+        self.estimSubjShifts(self.unitModels, self.disModels)
+        self.makePlots(plotFigs, i, 3)
+
 
     res = None
     return res
+
+  def makePlots(self, plotFigs, iterNr, picNr):
+    if plotFigs:
+      fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
+      fig.savefig('%s/compTrueParams%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
+
+      for d in range(self.nrDis):
+        fig = self.plotter.plotAllBiomkDisSpace(self, self.params, d)
+        fig.savefig('%s/trajDisSpace%s_%d%d_%s.png' % (self.outFolder, self.params['disLabels'][d],
+          iterNr, picNr, self.expName))
 
   def initParams(self):
     paramsCopy = copy.deepcopy(self.params)
@@ -128,6 +122,30 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     self.unitModels = onePassModel.unitModels
     self.disModels = onePassModel.disModels
+
+  def estimSubjShifts(self, unitModels, disModels):
+
+    XshiftedScaledDBSX = [0 for _ in range(self.nrDis)]
+    XdisDBSX = [0 for _ in range(self.nrDis)]
+    X_arrayScaledDB = [0 for _ in range(self.nrDis)]
+    for d in range(self.nrDis):
+      XshiftedScaledDBSX[d], XdisDBSX[d], _, X_arrayScaledDB[d] = disModels[d].getData()
+      nrSubjCurr = len(XshiftedScaledDBSX[d][0])
+      for s in range(nrSubjCurr):
+
+        TODO: add the subject shift optimisation
+
+        objectiveFun = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(
+          time_shift_one_sub, s)[0]
+
+        print('initLik', likJDMobjFunc(initParams))
+        print('initParams', initParams)
+        resStruct = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
+          options={'disp': True, 'maxiter':50})
+
+
+        disModels[d].parameters[u] = [resStruct.x, initVariance]
+
 
   def estimBiomkTraj(self, unitModels, disModels):
 

@@ -33,6 +33,23 @@ class DPMModelGeneric(object):
     self.Y_array, N_obs_per_sub2, _ = self.convertLongToArray(self.Y, self.visitIndices)
     self.checkNobsMatch(N_obs_per_sub2)
 
+  def updateTimeShifts(self, optimal_params):
+    for l in range(1):
+      self.params_time_shift[l] = self.params_time_shift[l] + optimal_params[l]
+
+    for i in range(self.nrBiomk):
+      Xdata = np.array([[100]])
+      for sub in range(self.nrSubj):
+        temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub + 1])]
+        shifted_temp = (temp + optimal_params[0][sub])
+        Xdata = np.hstack([Xdata, shifted_temp.T])
+
+      self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]), 1])
+
+    minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+    maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+    self.updateMinMax(minX, maxX)
+
 
   def checkNobsMatch(self, N_obs_per_sub2):
     for b in range(self.nrBiomk):

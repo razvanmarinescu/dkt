@@ -617,76 +617,77 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       return loglik/nrPerturb, MC_grad/(nrPerturb)
 
 
-    def log_posterior_time_shift(self, params, params_time_shift):
-        # Input: X, Y and a biomarker's parameters, current time-shift estimates
-        # Output: log-posterior and time-shift gradient
-        loglik =  0
-        Gradient = []
-        for l2 in range(2):
-            Gradient.append(np.zeros(self.nrSubj, np.float128))
+    # def log_posterior_time_shift(self, params, params_time_shift):
+    #     # Input: X, Y and a biomarker's parameters, current time-shift estimates
+    #     # Output: log-posterior and time-shift gradient
+    #     loglik =  0
+    #     Gradient = []
+    #     for l2 in range(2):
+    #         Gradient.append(np.zeros(self.nrSubj, np.float128))
+    #
+    #     # Shifting data according to current time-shift estimate
+    #     for i in range(self.nrBiomk):
+    #         Xdata = np.array([[1e10]])
+    #         Ydata = np.array([[1e10]])
+    #         for sub in range(self.nrSubj):
+    #             temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub+1])]
+    #             shifted_temp = (temp * params_time_shift[1][sub] + params_time_shift[0][sub])
+    #             Xdata = np.hstack([Xdata,shifted_temp.T])
+    #             tempY = self.Y_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub + 1])]
+    #             Ydata = np.hstack([Ydata, tempY.T])
+    #
+    #         Xdata = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
+    #         Ydata = Ydata[0][1:].reshape([len(Ydata[0][1:]), 1])
+    #
+    #         s_omega, m_omega, s_w, m_w, sigma, l, eps = self.unpack_parameters(params[i])
+    #         s_omega = np.exp(s_omega)
+    #         s_w = np.exp(s_w)
+    #         l = np.exp(l)
+    #         sigma = np.exp(sigma)
+    #         eps = np.exp(eps)
+    #
+    #         perturbation_zero_W = np.zeros(int(2 * self.N_rnd_features)).reshape([2 * self.N_rnd_features, 1])
+    #         W = np.multiply(perturbation_zero_W, np.sqrt(np.exp(s_w))) + m_w
+    #         Omega = 1 / np.sqrt(l) * self.perturbation_Omega
+    #
+    #         output = self.basis(Xdata, sigma, Omega)
+    #         Doutput_time_shift = self.Dbasis_time_shift(Xdata, sigma, Omega)
+    #
+    #         Doutput = self.Dbasis(self.DX, sigma, Omega)
+    #         Kullback_Leibler = self.KL(s_omega, m_omega, s_w, m_w, l)
+    #         Dterm = np.sum(
+    #             np.log(2) - self.penalty[i] * np.dot(Doutput, W) / 2 + (self.penalty[i] * np.dot(Doutput, W)) ** 2 / 8)
+    #         prior = (eps - 0.3) ** 2 / 1e-2 + (sigma - 0.5) ** 2 / 1e-2   # + (l - np.log(0.2))**2/1e-0
+    #         prior_time_shift = np.sum((params_time_shift[0] - 0)**2/1e-0)
+    #
+    #         loglik = loglik - 0.5 * (
+    #         np.log(2 * np.pi * eps) + np.sum((self.Y_array[i] - np.dot(output, W)) ** 2) / eps) - prior - Dterm - Kullback_Leibler - prior_time_shift
+    #
+    #         temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega ]))
+    #         grad0 = (((Ydata - np.dot(output, W))) / eps * np.dot(temp, W)).flatten()
+    #         temp = np.multiply(Doutput_time_shift, np.concatenate([Omega * Xdata,Omega * Xdata],1))
+    #         grad1 = (((Ydata - np.dot(output, W))) / eps *  np.dot(temp, W)).flatten()
+    #
+    #         for sub in range(self.nrSubj):
+    #             temp0 = np.sum([grad0[k] for k in range(int(np.sum(self.N_obs_per_sub[i][:sub])),np.sum(self.N_obs_per_sub[i][:sub+1]))]) - 2 * ((params_time_shift[0] - 0) / 1e-0)[sub]
+    #             temp1 = np.sum([grad1[k] for k in range(int(np.sum(self.N_obs_per_sub[i][:sub])),np.sum(self.N_obs_per_sub[i][:sub+1]))])
+    #             Gradient[0][sub] = Gradient[0][sub] + temp0
+    #             Gradient[1][sub] = Gradient[1][sub] + 0 #temp1
+    #
+    #     return loglik, Gradient
 
-        # Shifting data according to current time-shift estimate
-        for i in range(self.nrBiomk):
-            Xdata = np.array([[1e10]])
-            Ydata = np.array([[1e10]])
-            for sub in range(self.nrSubj):
-                temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub+1])]
-                shifted_temp = (temp * params_time_shift[1][sub] + params_time_shift[0][sub])
-                Xdata = np.hstack([Xdata,shifted_temp.T])
-                tempY = self.Y_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub + 1])]
-                Ydata = np.hstack([Ydata, tempY.T])
-
-            Xdata = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
-            Ydata = Ydata[0][1:].reshape([len(Ydata[0][1:]), 1])
-
-            s_omega, m_omega, s_w, m_w, sigma, l, eps = self.unpack_parameters(params[i])
-            s_omega = np.exp(s_omega)
-            s_w = np.exp(s_w)
-            l = np.exp(l)
-            sigma = np.exp(sigma)
-            eps = np.exp(eps)
-
-            perturbation_zero_W = np.zeros(int(2 * self.N_rnd_features)).reshape([2 * self.N_rnd_features, 1])
-            W = np.multiply(perturbation_zero_W, np.sqrt(np.exp(s_w))) + m_w
-            Omega = 1 / np.sqrt(l) * self.perturbation_Omega
-
-            output = self.basis(Xdata, sigma, Omega)
-            Doutput_time_shift = self.Dbasis_time_shift(Xdata, sigma, Omega)
-
-            Doutput = self.Dbasis(self.DX, sigma, Omega)
-            Kullback_Leibler = self.KL(s_omega, m_omega, s_w, m_w, l)
-            Dterm = np.sum(
-                np.log(2) - self.penalty[i] * np.dot(Doutput, W) / 2 + (self.penalty[i] * np.dot(Doutput, W)) ** 2 / 8)
-            prior = (eps - 0.3) ** 2 / 1e-2 + (sigma - 0.5) ** 2 / 1e-2   # + (l - np.log(0.2))**2/1e-0
-            prior_time_shift = np.sum((params_time_shift[0] - 0)**2/1e-0)
-
-            loglik = loglik - 0.5 * (
-            np.log(2 * np.pi * eps) + np.sum((self.Y_array[i] - np.dot(output, W)) ** 2) / eps) - prior - Dterm - Kullback_Leibler - prior_time_shift
-
-            temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega ]))
-            grad0 = (((Ydata - np.dot(output, W))) / eps * np.dot(temp, W)).flatten()
-            temp = np.multiply(Doutput_time_shift, np.concatenate([Omega * Xdata,Omega * Xdata],1))
-            grad1 = (((Ydata - np.dot(output, W))) / eps *  np.dot(temp, W)).flatten()
-
-            for sub in range(self.nrSubj):
-                temp0 = np.sum([grad0[k] for k in range(int(np.sum(self.N_obs_per_sub[i][:sub])),np.sum(self.N_obs_per_sub[i][:sub+1]))]) - 2 * ((params_time_shift[0] - 0) / 1e-0)[sub]
-                temp1 = np.sum([grad1[k] for k in range(int(np.sum(self.N_obs_per_sub[i][:sub])),np.sum(self.N_obs_per_sub[i][:sub+1]))])
-                Gradient[0][sub] = Gradient[0][sub] + temp0
-                Gradient[1][sub] = Gradient[1][sub] + 0 #temp1
-
-        return loglik, Gradient
 
 
-
-    def log_posterior_time_shift_Raz(self, params, time_shift_one_sub, sub, sigmas, Omegas,
+    def log_posterior_time_shift_Raz(self, time_shift_one_sub, sub, sigmas, Omegas,
       epss, Ws):
       # Input: X, Y and a biomarker's parameters, current time-shift estimates
       # Output: log-posterior and time-shift gradient
       loglik =  0
-      Gradient = 0
+      grad = 0
 
       # Shifting data according to current time-shift estimate
       for i in range(self.nrBiomk):
+
         sigma = sigmas[i]
         Omega = Omegas[i]
         eps = epss[i]
@@ -696,30 +697,39 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
           np.sum(self.N_obs_per_sub[i][:sub+1])]
         Ydata = self.Y_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub + 1])]
 
+        loglikCurr, gradCurr = self.log_posterior_time_shift_onebiomk_given_arrays(Xdata, Ydata, sub,
+        sigma, Omega, eps, W)
 
-        # subj specific
-        output = self.basis(Xdata, sigma, Omega)
-        Doutput_time_shift = self.Dbasis_time_shift(Xdata, sigma, Omega)
-        # end subj specific
+        loglik += loglikCurr
+        grad += gradCurr
 
+      return loglik, grad
 
-        # subj specific
-        timeShiftPriorSpread = 6
-        prior_time_shift = (time_shift_one_sub - 0) ** 2 / timeShiftPriorSpread
-        loglik = loglik - 0.5 * (np.sum((Ydata - np.dot(output, W)) ** 2) / eps) - prior_time_shift
-        # loglik = loglik - 0.5 * (np.sum((Ydata - np.dot(output, W)) ** 2) / eps)
+    def log_posterior_time_shift_onebiomk_given_arrays(self, Xdata, Ydata, sub, sigma, Omega,
+                                                       eps, W):
+      # Input: X, Y and a biomarker's parameters, current time-shift estimates
+      # Output: log-posterior and time-shift gradient
 
-        temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega ]))
-        grad0 = (((Ydata - np.dot(output, W))) / eps * np.dot(temp, W)).flatten()
-        # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega * Xdata,Omega * Xdata],1))
-        # grad1 = (((Ydata - np.dot(output, W))) / eps *  np.dot(temp, W)).flatten()
+      # subj specific
+      output = self.basis(Xdata, sigma, Omega)
+      Doutput_time_shift = self.Dbasis_time_shift(Xdata, sigma, Omega)
+      # end subj specific
 
+      # subj specific
+      timeShiftPriorSpread = 6
+      prior_time_shift = (time_shift_one_sub - 0) ** 2 / timeShiftPriorSpread
+      loglik = - 0.5 * (np.sum((Ydata - np.dot(output, W)) ** 2) / eps) - prior_time_shift
+      # loglik = loglik - 0.5 * (np.sum((Ydata - np.dot(output, W)) ** 2) / eps)
 
-        temp0 = np.sum(grad0) - 2 * ((time_shift_one_sub - 0) / timeShiftPriorSpread)
-        # temp1 = np.sum([grad1[k] for k in range(int(np.sum(self.N_obs_per_sub[i][:sub])),np.sum(self.N_obs_per_sub[i][:sub+1]))])
-        Gradient += temp0
-        # Gradient[1][sub] = Gradient[1][sub] + 0 #temp1
-        # end sub specific
+      temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega ]))
+      grad0 = ((Ydata - np.dot(output, W)) / eps * np.dot(temp, W)).flatten()
+      # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega * Xdata,Omega * Xdata],1))
+      # grad1 = (((Ydata - np.dot(output, W))) / eps *  np.dot(temp, W)).flatten()
+
+      Gradient = np.sum(grad0) - 2 * ((time_shift_one_sub - 0) / timeShiftPriorSpread)
+      # temp1 = np.sum([grad1[k] for k in range(int(np.sum(self.N_obs_per_sub[i][:sub])),np.sum(self.N_obs_per_sub[i][:sub+1]))])
+      # Gradient[1][sub] = Gradient[1][sub] + 0 #temp1
+      # end sub specific
 
 
       return loglik, Gradient
@@ -733,14 +743,6 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         loglik, MC_grad = objective_cost_function(params_time_shift)
 
         return loglik, MC_grad
-
-    # def Optimize_time_shift(self):
-
-      # self.Optimize_time_shift_Marco(Niterat)
-
-
-      # objective_grad = lambda test_params_time_shift: self.grad_time_shift(test_params_time_shift)
-      # fun_value, fun_grad = objective_grad(params_time_shift)
 
 
     def addInitTimeShifts(self):
@@ -782,78 +784,63 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
 
     def Optimize_time_shift_Raz_indiv(self):
-        # Adadelta for optimization of time shift parameters
-        init_params = self.params_time_shift.copy()
-        init_params[0] = np.zeros(len(init_params[0]))
+      # Adadelta for optimization of time shift parameters
+      init_params = self.params_time_shift.copy()
+      init_params[0] = np.zeros(len(init_params[0]))
 
-        init_params_time_only = init_params[0]
+      init_params_time_only = init_params[0]
 
-        ######## calculate subject-nonspecific terms
-        sigmas = []
-        Ws = []
-        Omegas = []
-        epss = []
-        for i in range(self.nrBiomk):
-          s_omega, m_omega, s_w, m_w, sigma, l, eps = self.unpack_parameters(self.parameters[i])
-          s_omega = np.exp(s_omega)
-          s_w = np.exp(s_w)
-          l = np.exp(l)
-          sigma = np.exp(sigma)
-          eps = np.exp(eps)
+      ######## calculate subject-nonspecific terms
+      sigmas = []
+      Ws = []
+      Omegas = []
+      epss = []
+      for i in range(self.nrBiomk):
+        s_omega, m_omega, s_w, m_w, sigma, l, eps = self.unpack_parameters(self.parameters[i])
+        s_omega = np.exp(s_omega)
+        s_w = np.exp(s_w)
+        l = np.exp(l)
+        sigma = np.exp(sigma)
+        eps = np.exp(eps)
 
-          perturbation_zero_W = np.zeros(int(2 * self.N_rnd_features)).reshape([2 * self.N_rnd_features, 1])
-          W = np.multiply(perturbation_zero_W, np.sqrt(np.exp(s_w))) + m_w
-          Omega = 1 / np.sqrt(l) * self.perturbation_Omega
+        perturbation_zero_W = np.zeros(int(2 * self.N_rnd_features)).reshape([2 * self.N_rnd_features, 1])
+        W = np.multiply(perturbation_zero_W, np.sqrt(np.exp(s_w))) + m_w
+        Omega = 1 / np.sqrt(l) * self.perturbation_Omega
 
-          sigmas += [sigma]
-          Ws += [W]
-          Omegas += [Omega]
-          epss += [eps]
+        sigmas += [sigma]
+        Ws += [W]
+        Omegas += [Omega]
+        epss += [eps]
 
-        #### end of subject non-specific part
+      #### end of subject non-specific part
 
-        optimal_params_time_only = np.zeros(init_params_time_only.shape)
+      optimal_params_time_only = np.zeros(init_params_time_only.shape)
 
-        idxOfDRCSubj = 15
+      idxOfDRCSubj = 15
 
-        nrSubj = self.nrSubj
-        for s in range(nrSubj):
-          objectiveFun = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(self.parameters,
-            time_shift_one_sub, s, sigmas, Omegas, epss, Ws)[0]
-          objectiveGrad = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(self.parameters,
-            time_shift_one_sub, s, sigmas, Omegas, epss, Ws)[1]
+      nrSubj = self.nrSubj
+      for s in range(nrSubj):
+        objectiveFun = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(
+          time_shift_one_sub, s, sigmas, Omegas, epss, Ws)[0]
+        objectiveGrad = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(
+          time_shift_one_sub, s, sigmas, Omegas, epss, Ws)[1]
 
-          options = {'disp': True, 'gtol':1e-8}
-          # resStruct = scipy.optimize.minimize(objectiveFun, init_params_time_only[s], method='BFGS', jac=objectiveGrad, options=options)
-          resStruct = scipy.optimize.minimize(objectiveFun, init_params_time_only[s], method='Nelder-Mead', options={'disp': True})
+        options = {'disp': True, 'gtol':1e-8}
+        # resStruct = scipy.optimize.minimize(objectiveFun, init_params_time_only[s], method='BFGS', jac=objectiveGrad, options=options)
+        resStruct = scipy.optimize.minimize(objectiveFun, init_params_time_only[s], method='Nelder-Mead', options={'disp': True})
 
-          optimal_params_time_only[s] = resStruct.x
+        optimal_params_time_only[s] = resStruct.x
 
+      convTimeOnlyToTimePlusAcc = lambda params_time_shift_only_shift: \
+        np.concatenate((params_time_shift_only_shift.reshape(1,-1),
+        np.ones((1, params_time_shift_only_shift.shape[0]))),axis=0)
+      optimal_params = convTimeOnlyToTimePlusAcc(optimal_params_time_only)
 
-        convTimeOnlyToTimePlusAcc = lambda params_time_shift_only_shift: \
-          np.concatenate((params_time_shift_only_shift.reshape(1,-1),
-          np.ones((1, params_time_shift_only_shift.shape[0]))),axis=0)
-        optimal_params = convTimeOnlyToTimePlusAcc(optimal_params_time_only)
+      self.updateTimeShifts(optimal_params)
 
-
-        for l in range(1):
-            self.params_time_shift[l] = self.params_time_shift[l] + optimal_params[l]
-
-        for i in range(self.nrBiomk):
-            Xdata = np.array([[100]])
-            for sub in range(self.nrSubj):
-                temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub+1])]
-                shifted_temp = (temp + optimal_params[0][sub])
-                Xdata = np.hstack([Xdata,shifted_temp.T])
-
-            self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
-
-
-        minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-        maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-        self.updateMinMax(minX, maxX)
-        self.DX = np.linspace(minX, maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-
+    def updateTimeShifts(self, optimal_params):
+      self.super().updateTimeShifts(optimal_params)
+      self.DX = np.linspace(minX, maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
     def Optimize(self, N_global_iterations, iterGP, Plot = True):
       # Global optimizer (GP parameters + time shift)

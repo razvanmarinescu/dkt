@@ -195,8 +195,8 @@ class PlotterJDM:
 
     nrBiomk = len(params['X'])
     print('nrBiomk', nrBiomk)
-    Xfilt = [[] for b in range(nrBiomk)]
-    Yfilt = [[] for b in range(nrBiomk)]
+    Xfilt = [0 for b in range(nrBiomk)]
+    Yfilt = [0 for b in range(nrBiomk)]
     for b in range(nrBiomk):
       Xfilt[b] = [params['X'][b][i] for i in indxSubjToKeep]
       Yfilt[b] = [params['Y'][b][i] for i in indxSubjToKeep]
@@ -230,7 +230,7 @@ class PlotterJDM:
 
           XshiftedDisModelBS[b] += [XshiftedDisModelUS[0][s]]
         else:
-          XshiftedDisModelBS[b] += [[]]
+          XshiftedDisModelBS[b] += [np.array([])]
 
     for b in range(nrBiomk):
       assert len(params['X'][b]) == len(params['Y'][b])
