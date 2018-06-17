@@ -34,8 +34,8 @@ class DPMModelGeneric(object):
     self.checkNobsMatch(N_obs_per_sub2)
 
   def updateTimeShifts(self, optimal_params):
-    for l in range(1):
-      self.params_time_shift[l] = self.params_time_shift[l] + optimal_params[l]
+    # for l in range(1):
+    self.params_time_shift[0,:] = self.params_time_shift[0,:] + optimal_params[0,:]
 
     for b in range(self.nrBiomk):
       Xdata = np.array([[100]])

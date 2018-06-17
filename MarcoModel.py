@@ -723,16 +723,17 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       output = self.basis(Xdata, sigma, Omega)
       Doutput_time_shift = self.Dbasis_time_shift(Xdata, sigma, Omega)
 
+      Ypred = np.dot(output, W)
+      print('Ypred', Ypred)
+      print('Ydata', Ydata)
 
-      loglik = - 0.5 * (np.sum((Ydata - np.dot(output, W)) ** 2) / eps) - prior_time_shift
+      loglik = - 0.5 * (np.sum((Ydata - Ypred) ** 2) / eps) - prior_time_shift
 
-      # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega ]))
+      # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega]))
       # grad0 = ((Ydata - np.dot(output, W)) / eps * np.dot(temp, W)).flatten()
       # Gradient = np.sum(grad0) - 2 * ((time_shift_one_sub - 0) / timeShiftPriorSpread)
 
-
       return loglik
-
 
     def grad_time_shift(self, params_time_shift):
         output_loglik = []
@@ -742,7 +743,6 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         loglik, MC_grad = objective_cost_function(params_time_shift)
 
         return loglik, MC_grad
-
 
     def addInitTimeShifts(self):
 

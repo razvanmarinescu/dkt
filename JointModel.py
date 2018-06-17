@@ -56,7 +56,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.indSubjForEachDisD = [0 for _ in range(self.nrDis)]
     for d in range(self.nrDis):
       self.disIdxForEachSubjS[self.binMaskSubjForEachDisD[d]] = d
-      self.indSubjForEachDisD[d] = np.where(self.binMaskSubjForEachDisD[d])[0][0]
+      self.indSubjForEachDisD[d] = np.where(self.binMaskSubjForEachDisD[d])[0]
 
     self.ridsPerDisD = [_ for _ in range(self.nrDis)]
     for d in range(self.nrDis):
@@ -80,21 +80,43 @@ class JointModel(DisProgBuilder.DPMInterface):
       # self.makePlots(plotFigs, 0, 0)
 
       for i in range(nrIt):
-        # # estimate biomk trajectories - disease agnostic
+
+        # estimate biomk trajectories - disease agnostic
         # self.estimBiomkTraj(self.unitModels, self.disModels)
         # self.makePlots(plotFigs, i, 1)
-        #
-        # # estimate unit trajectories - disease specific
-        # self.estimTrajWithinDisModel(self.unitModels, self.disModels)
-        # self.makePlots(plotFigs, i, 2)
+        # self.saveCheckpoint(i, 1)
+
+        NEED to constrain unit-traj within dis-models for Dis1 to be between 0-1
+        self.loadCheckpoint(i, 1)
 
         # estimate subject latent variables
         self.estimSubjShifts(self.unitModels, self.disModels)
-        self.makePlots(plotFigs, i, 3)
+        self.makePlots(plotFigs, i, 2)
+        self.saveCheckpoint(i, 2)
 
+        # estimate unit trajectories - disease specific
+        self.estimTrajWithinDisModel(self.unitModels, self.disModels)
+        self.makePlots(plotFigs, i, 3)
+        self.saveCheckpoint(i, 3)
+
+        # estimate subject latent variables
+        self.estimSubjShifts(self.unitModels, self.disModels)
+        self.makePlots(plotFigs, i, 4)
+        self.saveCheckpoint(i, 4)
 
     res = None
     return res
+
+  def saveCheckpoint(self, iterNr, stepNr):
+    fileRes = '%s/fitRes%d%d.npz' % (self.outFolder, iterNr, stepNr)
+    pickle.dump(dict(unitModels=self.unitModels, disModels=self.disModels),
+                open(fileRes, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
+  def loadCheckpoint(self, iterNr, stepNr):
+    fileRes = '%s/fitRes%d%d.npz' % (self.outFolder, iterNr, stepNr)
+    ds = pickle.load(open(fileRes, 'rb'))
+    self.unitModels = ds['unitModels']
+    self.disModels = ds['disModels']
 
   def makePlots(self, plotFigs, iterNr, picNr):
     if plotFigs:
@@ -145,26 +167,34 @@ class JointModel(DisProgBuilder.DPMInterface):
     X_arrayScaledDB = [0 for _ in range(self.nrDis)]
     for d in range(self.nrDis):
       XshiftedScaledDBSX[d], XdisDBSX[d], _, X_arrayScaledDB[d] = disModels[d].getData()
-      optimalShiftsDisModels[d] = np.zeros(self.binMaskSubjForEachDisD[d].shape[0])
+      optimalShiftsDisModels[d] = np.zeros((2, self.indSubjForEachDisD[d].shape[0]))
 
     nrSubjAllDis = len(YunitUBSX[0][0])
     optimalShiftsAll = np.zeros(nrSubjAllDis)
 
+    # print('self.params[visitIndices][0]', self.params['visitIndices'][0])
+    # print('unitModels[0].visitIndices[0]', unitModels[0].visitIndices[0])
+    # print(asd)
+
     for s in range(nrSubjAllDis):
       d = self.disIdxForEachSubjS[s]
-      print('self.binMaskSubjForEachDisD[d]', self.indSubjForEachDisD[d])
-       subjCurrIndInDisModel = np.where(self.indSubjForEachDisD[d] == s)[0][0]
+      print('d', d)
+      print('self.indSubjForEachDisD[d]', self.indSubjForEachDisD[d])
+      subjCurrIndInDisModel = np.where(self.indSubjForEachDisD[d] == s)[0][0]
 
       print('subjCurrIndInDisModel',subjCurrIndInDisModel)
       print(XshiftedScaledDBSX[d][0][subjCurrIndInDisModel])
+      XshiftedScaledCurrX = XshiftedScaledDBSX[d][0][subjCurrIndInDisModel]
       likJDMShiftsObjFunc = lambda time_shift_delta_one_sub: -self.log_posterior_time_shift_Raz(
-        time_shift_delta_one_sub, disModels[d], unitModels,
-        XshiftedScaledDBSX[d][0][subjCurrIndInDisModel], YunitUBSX,
+        time_shift_delta_one_sub, disModels[d], unitModels, XshiftedScaledCurrX, YunitUBSX,
         s, sigmas, Omegas, epss, Ws)
 
       initDeltaShift = 0 # this shift is added on top of the existing shift
-      print('initLik', likJDMShiftsObjFunc(initDeltaShift))
-      print('initShift', initDeltaShift)
+      for tShift in [2.0879375, -2, 4]:
+        print('------------- tShift', tShift)
+        print('XshiftedScaledCurrX', XshiftedScaledCurrX)
+        print('LikSub1', likJDMShiftsObjFunc(tShift))
+      print(ads)
       resStruct = scipy.optimize.minimize(likJDMShiftsObjFunc, initDeltaShift, method='Nelder-Mead',
         options={'disp': True})
 
@@ -172,24 +202,33 @@ class JointModel(DisProgBuilder.DPMInterface):
 
 
       # now update the disease model and the unitModels with the optimal shift
-      optimalShiftsDisModels[d][subjCurrIndInDisModel] = optimalShiftsAll[s]
+      optimalShiftsDisModels[d][0, subjCurrIndInDisModel] = optimalShiftsAll[s]
 
     # update optimal time shifts in disease model
     for d in range(self.nrDis):
+      print('optimalShiftsDisModels', optimalShiftsDisModels)
+      print(adsd)
       disModels[d].updateTimeShifts(optimalShiftsDisModels[d])
 
-    # update optimal time shifts in all functional models
-    updateXvalsInFuncModels(self, optimalShiftsAll, disModels, unitModels,
-                            XshiftedScaledDBSX)
 
+    # update optimal time shifts in all functional models
+    # actually not needed because when I optimise the unit traj I automatically update the X-vals then
+    # self.updateXvalsInFuncModels(optimalShiftsAll, disModels, unitModels,
+    #                         XshiftedScaledDBSX)
+
+    # print('optimalShiftsAll', optimalShiftsAll)
+    # import pdb
+    # pdb.set_trace()
 
   def log_posterior_time_shift_Raz(self, time_shift_delta_one_sub, disModel, unitModels,
                                    XshiftedScaledX, YunitUBSX, s, sigmas, Omegas, epss, Ws):
 
     timeShiftPriorSpread = 6
-    prior_time_shift = (time_shift_delta_one_sub - 0) ** 2 / timeShiftPriorSpread
+    totalShift = time_shift_delta_one_sub + XshiftedScaledX[0]
+    prior_time_shift = (totalShift - 0) ** 2 / timeShiftPriorSpread
 
     predBiomksXU = disModel.predictBiomk(time_shift_delta_one_sub + XshiftedScaledX)
+    print('predBiomksXU', predBiomksXU)
 
     loglik = 0
 
@@ -197,18 +236,21 @@ class JointModel(DisProgBuilder.DPMInterface):
 
       # Shifting data according to current time-shift estimate
       for b in range(unitModels[u].nrBiomk):
-        Xdata = predBiomksXU[unitModels[u].visitIndices[b][s], u].reshape(-1,1)
-        # Xdata = Xdata # here need to apply scaling, if identity map was NOT used
-        Ydata = YunitUBSX[u][b][s]
+        # print('unitModels[u].visitIndices[b][s]', unitModels[u].visitIndices[b])
+        if unitModels[u].visitIndices[b][s].shape[0] > 0:
+          Xdata = predBiomksXU[unitModels[u].visitIndices[b][s], u].reshape(-1,1)
+          # Xdata = Xdata # here need to apply scaling, if identity map was NOT used
+          Ydata = YunitUBSX[u][b][s]
 
-        print('Xdata, Ydata', Xdata, Ydata)
-        print('sigmas[u][b], Omegas[u][b], epss[u][b], Ws[u][b]', sigmas[u][b], Omegas[u][b], epss[u][b], Ws[u][b])
+          # print('Xdata, Ydata', Xdata, Ydata)
+          # print('sigmas[u][b], Omegas[u][b], epss[u][b], Ws[u][b]', sigmas[u][b], Omegas[u][b], epss[u][b], Ws[u][b])
 
 
-        loglikCurr = unitModels[u].log_posterior_time_shift_onebiomk_given_arrays(
-          Xdata, Ydata, sigmas[u][b], Omegas[u][b], epss[u][b], Ws[u][b], prior_time_shift)
+          loglikCurr = unitModels[u].log_posterior_time_shift_onebiomk_given_arrays(
+            Xdata, Ydata, sigmas[u][b], Omegas[u][b], epss[u][b], Ws[u][b], prior_time_shift)
 
-        loglik += loglikCurr
+          loglik += loglikCurr
+
 
     return loglik
 
@@ -226,24 +268,38 @@ class JointModel(DisProgBuilder.DPMInterface):
     :return:
     """
 
+    XdataNewUBSX = [[[np.array([]) for s in range(unitModels[u].nrSubj)] for b in
+                     range(unitModels[u].nrBiomk)] for u in range(self.nrFuncUnits)]
+
+    nrSubjAllDis = self.disIdxForEachSubjS.shape[0]
     for s in range(nrSubjAllDis):
       d = self.disIdxForEachSubjS[s]
       subjCurrIndInDisModel = np.where(self.indSubjForEachDisD[d] == s)[0][0]
 
-      predBiomksXU = disModel.predictBiomk(time_shift_delta_all[s] +
+      predBiomksXU = disModels[d].predictBiomk(time_shift_delta_all[s] +
         XshiftedScaledDBSX[d][0][subjCurrIndInDisModel])
 
       for u in range(self.nrFuncUnits):
 
         # Shifting data according to current time-shift estimate
         for b in range(unitModels[u].nrBiomk):
-          XdataNewUBSX[u][b][s] = predBiomksXU[unitModels[u].visitIndices[b][s], u]
-          # XdataNewUBSX[u][b][s] = XdataNewUBSX[u][b][s] # here need to apply scaling, if identity map was NOT used
+          print('unitModels[u].visitIndices[b][s]', unitModels[u].visitIndices[b][0])
+          if unitModels[u].visitIndices[b][s].shape[0] > 0:
+            XdataNewUBSX[u][b][s] = predBiomksXU[unitModels[u].visitIndices[b][s], u]
+            # XdataNewUBSX[u][b][s] = XdataNewUBSX[u][b][s] # here need to apply scaling, if identity map was NOT used
 
     # update X_array for the current unitModel
     for u in range(self.nrFuncUnits):
       newXarray, _, _ = \
         unitModels[u].convertLongToArray(XdataNewUBSX[u], unitModels[u].visitIndices)
+
+      for b in range(unitModels[u].nrBiomk):
+        for s in range(unitModels[u].nrSubj):
+          if XdataNewUBSX[u][b][s].shape[0] != unitModels[u].X[b][s].shape[0]:
+            print('u b s', u, b, s)
+            print(XdataNewUBSX[u][b][s].shape[0])
+            print(unitModels[u].X[b][s].shape[0])
+            raise ValueError('Shape of new array doesnt match')
 
       # dimension check
       assert newXarray[0].shape[0] == unitModels[u].X_array[0].shape[0]

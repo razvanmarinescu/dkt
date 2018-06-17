@@ -199,7 +199,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
 
   def predictBiomkWithParams(self, newX, params):
 
-    deltaX = 0.2 * (self.maxScX - self.minScX)
+    deltaX = 1 * (self.maxScX - self.minScX)
     if not (self.minScX - deltaX <= np.min(newX) <= self.maxScX + deltaX):
       print('newX', newX)
       print('self.minScX', self.minScX)

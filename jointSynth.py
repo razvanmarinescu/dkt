@@ -323,6 +323,9 @@ def main():
     params['Y'][b] += paramsDisTwo['YemptyListsAllBiomk'][b]
     params['visitIndices'][b] += paramsDisTwo['visitIndicesMissing'][b]
 
+  # print('visitIndicesDisTwoMissing', visitIndicesDisTwoMissing)
+  # print(adssa)
+
   params['RID'] = np.concatenate((params['RID'],
   nrSubjLong + paramsDisTwo['RID']),axis=0) # RIDs must be different
 
