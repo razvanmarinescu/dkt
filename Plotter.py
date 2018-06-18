@@ -132,6 +132,112 @@ class PlotterJDM:
     pl.pause(0.05)
     return fig
 
+  def plotHierData(self, unitModels, disModels, replaceFig=True):
+
+    nrDis = len(disModels)
+    nrFuncUnits = len(unitModels)
+    figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
+    fig = pl.figure(1, figsize = figSizeInch)
+    pl.clf()
+
+    nrRows = self.plotTrajParams['nrRows']
+    nrCols = self.plotTrajParams['nrCols']
+
+    if (nrDis*2 + nrFuncUnits*2) > nrRows * nrCols:
+      print('nrRows', nrRows)
+      print('nrCols', nrCols)
+      print('nrDis', nrDis)
+      print('nrFuncUnits', nrFuncUnits)
+      print('labels', self.plotTrajParams['labels'])
+      raise ValueError('too few nrRows and nrCols')
+
+    # trueParamsDis = self.plotTrajParams['trueParamsDis']
+    # trueParamsFuncUnits = self.plotTrajParams['trueParamsFuncUnits']
+
+    ######### compare subject shifts ##########
+    nrPlotsSoFar = 0
+
+    for d in range(nrDis):
+      plotterDis = disModels[d].plotter
+      nrPlotsSoFar = plotterDis.scatterSubjShifts(disModels[d], nrPlotsSoFar)
+
+    ######### compare dysfunc traj within diseases ##########
+
+    for d in range(nrDis):
+      plotterDis = disModels[d].plotter
+      trajStruct = plotterDis.getTrajStruct(disModels[d])
+      nrPlotsSoFar = plotterDis.subplotAllTrajWithModelData(disModels[d], trajStruct, nrPlotsSoFar)
+
+    ######### compare biomk traj within functional units ##########
+
+    for f in range(nrFuncUnits):
+      plotterFunc = unitModels[f].plotter
+      trajStruct = plotterFunc.getTrajStruct(unitModels[f])
+      nrPlotsSoFar = plotterFunc.subplotAllTrajWithModelData(unitModels[f], trajStruct, nrPlotsSoFar)
+
+    pl.tight_layout(pad=1)
+
+    if replaceFig:
+      fig.show()
+    else:
+      pl.show()
+    pl.pause(0.05)
+
+    # print(ads)
+    return fig
+
+  def plotHierGivenData(self, unitModels, disModel,xsDisBSX,ysDisBSX,xsFuncUBSX,ysFuncUBSX, replaceFig=True):
+
+    nrDis = 1
+    nrFuncUnits = len(unitModels)
+    figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
+    fig = pl.figure(1, figsize = figSizeInch)
+    pl.clf()
+
+    nrRows = self.plotTrajParams['nrRows']
+    nrCols = self.plotTrajParams['nrCols']
+
+    if (nrDis*2 + nrFuncUnits*2) > nrRows * nrCols:
+      print('nrRows', nrRows)
+      print('nrCols', nrCols)
+      print('nrDis', nrDis)
+      print('nrFuncUnits', nrFuncUnits)
+      print('labels', self.plotTrajParams['labels'])
+      raise ValueError('too few nrRows and nrCols')
+
+    # trueParamsDis = self.plotTrajParams['trueParamsDis']
+    # trueParamsFuncUnits = self.plotTrajParams['trueParamsFuncUnits']
+
+    nrPlotsSoFar = 0
+
+    ######### compare dysfunc traj within diseases ##########
+
+
+    plotterDis = disModel.plotter
+    trajStruct = plotterDis.getTrajStruct(disModel)
+    nrPlotsSoFar = plotterDis.subplotAllTrajWithGivenData(xsDisBSX, ysDisBSX, trajStruct, nrPlotsSoFar)
+
+    ######### compare biomk traj within functional units ##########
+
+    for f in range(nrFuncUnits):
+      plotterFunc = unitModels[f].plotter
+      unitModels[f].plotter.plotTrajParams['labels'] = ['unit %d %s' % (f, x)
+        for x in unitModels[f].plotter.plotTrajParams['labels']]
+
+      trajStruct = plotterFunc.getTrajStruct(unitModels[f])
+      nrPlotsSoFar = plotterFunc.subplotAllTrajWithGivenData(xsFuncUBSX[f], ysFuncUBSX[f], trajStruct, nrPlotsSoFar)
+
+    pl.tight_layout(pad=1)
+
+    if replaceFig:
+      fig.show()
+    else:
+      pl.show()
+    pl.pause(0.05)
+
+    # print(ads)
+    return fig
+
 
   def plotCompWithTrueParams(self, unitModels, disModels, replaceFig=True):
 
@@ -166,14 +272,14 @@ class PlotterJDM:
 
     for d in range(nrDis):
       plotterDis = disModels[d].plotter
-      trajStruct = plotterDis.getTrajStruct(disModels[d])
+      trajStruct = plotterDis.getTrajStructWithTrueParams(disModels[d])
       nrPlotsSoFar = plotterDis.subplotAllTraj(disModels[d], trajStruct, nrPlotsSoFar)
 
     ######### compare biomk traj within functional units ##########
 
     for f in range(nrFuncUnits):
       plotterFunc = unitModels[f].plotter
-      trajStruct = plotterFunc.getTrajStruct(unitModels[f])
+      trajStruct = plotterFunc.getTrajStructWithTrueParams(unitModels[f])
       nrPlotsSoFar = plotterFunc.subplotAllTraj(unitModels[f], trajStruct, nrPlotsSoFar)
 
     pl.tight_layout(pad=1)
@@ -395,7 +501,7 @@ class PlotterGP(ABC):
 
     ######### compare all trajectories ##########
 
-    trajStruct = self.getTrajStruct(gpModel)
+    trajStruct = self.getTrajStructWithTrueParams(gpModel)
 
     nrPlotsSoFar = self.subplotAllTraj(gpModel, trajStruct, nrPlotsSoFar)
 
@@ -494,7 +600,7 @@ class PlotterGP(ABC):
 
     # Plot method
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
-    fig = pl.figure(10, figsize = figSizeInch)
+    fig = pl.figure(3, figsize = figSizeInch)
     pl.clf()
     fig.show()
 
@@ -837,13 +943,16 @@ class PlotterGP(ABC):
       currLabel = None
       if diagCounters[diagCurrSubj] == 0:
         currLabel = labelExtra + self.plotTrajParams['diagLabels'][diagCurrSubj]
-      # print('XsubjSX[sub]', XsubjSX[sub])
-      # print('YsubjSX[sub]', YsubjSX[sub])
+      print('XsubjSX[sub]', XsubjSX[sub])
+      print('YsubjSX[sub]', YsubjSX[sub])
+
 
       if XsubjSX[sub].shape[0] > 0:
         ax.plot(XsubjSX[sub], YsubjSX[sub],
                 color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=0.5)
-
+        print(XsubjSX[sub].shape)
+        print(YsubjSX[sub].shape)
+        # print(self.plotTrajParams['diagScatterMarkers'][diagCurrSubj].shape)
         ax.scatter(XsubjSX[sub], YsubjSX[sub],
                    marker=self.plotTrajParams['diagScatterMarkers'][diagCurrSubj],
                    color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=2.5,
@@ -923,6 +1032,61 @@ class PlotterGP(ABC):
 
     return nrPlotsSoFar
 
+  def subplotAllTrajWithModelData(self, gpModel, trajStruct, nrPlotsSoFar):
+
+    newXTraj = trajStruct['newXTraj']
+    predTrajXB = trajStruct['predTrajXB']
+    yMinAll = trajStruct['yMinAll']
+    yMaxAll = trajStruct['yMaxAll']
+    min_yB = trajStruct['min_yB']
+    max_yB = trajStruct['max_yB']
+
+    nrRows = self.plotTrajParams['nrRows']
+    nrCols = self.plotTrajParams['nrCols']
+
+    xsShiftedBSX, _, ysBSX, _ = gpModel.getData()
+
+    for b in range(gpModel.nrBiomk):
+      ax2 = pl.subplot(nrRows, nrCols, nrPlotsSoFar + 1)
+      pl.title(self.plotTrajParams['labels'][b])
+      ax2.set_ylim([yMinAll, yMaxAll])
+      ax2.plot(newXTraj, predTrajXB[:, b], '-', lw=2
+               , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
+
+      self.plotSubjData(ax2, xsShiftedBSX[b], ysBSX[b], self.plotTrajParams['diag'], labelExtra='')
+
+      nrPlotsSoFar += 1
+
+
+    return nrPlotsSoFar
+
+  def subplotAllTrajWithGivenData(self, xsShiftedBSX,ysBSX, trajStruct, nrPlotsSoFar):
+
+    newXTraj = trajStruct['newXTraj']
+    predTrajXB = trajStruct['predTrajXB']
+    yMinAll = trajStruct['yMinAll']
+    yMaxAll = trajStruct['yMaxAll']
+    min_yB = trajStruct['min_yB']
+    max_yB = trajStruct['max_yB']
+
+    nrRows = self.plotTrajParams['nrRows']
+    nrCols = self.plotTrajParams['nrCols']
+
+    nrBiomk = len(xsShiftedBSX)
+    for b in range(nrBiomk):
+      ax2 = pl.subplot(nrRows, nrCols, nrPlotsSoFar + 1)
+      pl.title(self.plotTrajParams['labels'][b])
+      ax2.set_ylim([yMinAll, yMaxAll])
+      ax2.plot(newXTraj, predTrajXB[:, b], '-', lw=2
+               , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
+
+      self.plotSubjData(ax2, xsShiftedBSX[b], ysBSX[b], self.plotTrajParams['diag'], labelExtra='')
+
+      nrPlotsSoFar += 1
+
+
+    return nrPlotsSoFar
+
   def subplotTrajOneByOne(self, gpModel, trajStruct, nrPlotsSoFar):
 
     newXTrajScaledZeroOne = trajStruct['newXTrajScaledZeroOne']
@@ -953,6 +1117,24 @@ class PlotterGP(ABC):
     return nrPlotsSoFar + gpModel.nrBiomk
 
   def getTrajStruct(self, gpModel):
+
+    newXTraj = gpModel.getXsMinMaxRange()
+    predTrajXB = gpModel.predictBiomk(newXTraj)
+
+    nrBiomk = predTrajXB.shape[1]
+    subjShiftsEstimS = gpModel.getSubShiftsLong()
+
+    # rescale all trajectories
+    _, _, yMinAll, yMaxAll, min_yB, max_yB = \
+      rescaleTraj(predTrajXB, predTrajXB, 'unscaled',
+                  self.plotTrajParams['diag'], nrBiomk, subjShiftsEstimS, gpModel)
+
+    trajStruct = dict(newXTraj=newXTraj, predTrajXB=predTrajXB, yMinAll=yMinAll, yMaxAll=yMaxAll,
+      min_yB=min_yB, max_yB=max_yB)
+
+    return trajStruct
+
+  def getTrajStructWithTrueParams(self, gpModel):
 
     newXTraj = gpModel.getXsMinMaxRange()
     newXTrajScaledZeroOne = (newXTraj - np.min(newXTraj)) / (np.max(newXTraj) - np.min(newXTraj))

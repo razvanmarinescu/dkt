@@ -7,7 +7,7 @@ import DPMModelGeneric
 class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   plt.interactive(False)
 
-  def __init__(self, X, Y, visitIndices, outFolder, plotter, names_biomarkers, params):
+  def __init__(self, X, Y, visitIndices, outFolder, plotter, names_biomarkers, params, informPriorTraj):
     super().__init__(X, Y, visitIndices, outFolder, plotter, names_biomarkers, params)
 
     minX = np.min(self.X_array)
@@ -27,6 +27,8 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(self.nrBiomk)]
     self.min_yB = np.array([np.min(scaledYarrayB[b].reshape(-1)) for b in range(self.nrBiomk)])
     self.max_yB = np.array([np.max(scaledYarrayB[b].reshape(-1)) for b in range(self.nrBiomk)])
+
+    self.informPriorTraj = informPriorTraj
 
 
   def transfTrajParams(self, minY, transitionTime, center, maxY):
@@ -70,8 +72,21 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     :return:
     """
 
+    prior_traj = 0
+    # if self.informPriorTraj:
+    #   '''
+    #   a = maxY - minY
+    #   b = 16 / (a * transitionTime)
+    #   c = center
+    #   d = minY
+    #   '''
+    #   prior_traj = (params[0] - 1)**2/1e-20 + (params[3] - 0)**2/1e-20
+    #
+    #   print(adsa)
+
     # SSD
-    logLik =  np.sum((Y_arrayX - self.sigFunc(X_arrayX, params)) ** 2)
+    logLik =  np.sum((Y_arrayX - self.sigFunc(X_arrayX, params)) ** 2) + prior_traj
+
 
     return logLik
 
@@ -175,7 +190,6 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     fig2 = self.plotter.plotCompWithTrueParams(self, replaceFig=True)
     fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
 
-
     for i in range(N_global_iterations):
 
       print("Optimizing time shift")
@@ -196,10 +210,9 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
         fig2 = self.plotter.plotCompWithTrueParams(self)
         fig2.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i + 1, self.expName))
 
-
   def predictBiomkWithParams(self, newX, params):
 
-    deltaX = 1 * (self.maxScX - self.minScX)
+    deltaX = 5 * (self.maxScX - self.minScX)
     if not (self.minScX - deltaX <= np.min(newX) <= self.maxScX + deltaX):
       print('newX', newX)
       print('self.minScX', self.minScX)

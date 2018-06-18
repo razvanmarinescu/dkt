@@ -143,7 +143,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
       nrDis = len(disLabels)
       self.disModels = [_ for _ in range(nrDis)]
 
-
+      informPriorTrajDisModels = [True, False] # make informed prior only for the first disease
       for disNr in range(nrDis):
         nrBiomkDisModel = len(xDysfunSubjU) + len(self.params['otherBiomkPerDisease'][disNr])
 
@@ -176,7 +176,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         outFolderCurDis = '%s/%s' % (self.outFolder, self.params['disLabels'][disNr])
         os.system('mkdir -p %s' % outFolderCurDis)
         self.disModels[disNr] = self.disModelObj(xDysfunSubjCurrDisUSX, dysfuncScoresCurrDisUSX, visitIndicesCurrDisUSX,
-          outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'], self.params)
+          outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'], self.params, informPriorTrajDisModels[disNr])
         self.disModels[disNr].Optimize(nrGlobIterDis, Plot=True)
 
         pickle.dump(self.disModels, open(disModelsFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)

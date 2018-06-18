@@ -125,10 +125,21 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       scaleY = self.max_Y[biomk] * self.mean_std_Y[biomk][1]
       return scaleY * y_data + self.mean_std_Y[biomk][0]
 
+    def applyScalingYInv(self, y_data, biomk):
+      scaleY = self.max_Y[biomk] * self.mean_std_Y[biomk][1]
+      return (y_data - self.mean_std_Y[biomk][0])/scaleY
+
     def applyScalingYAllBiomk(self, biomksXB):
       biomksNewXB = np.zeros(biomksXB.shape)
       for b in range(self.nrBiomk):
         biomksNewXB[:, b] = self.applyScalingY(biomksXB[:, b], b)
+
+      return biomksNewXB
+
+    def applyScalingYAllBiomkInv(self, biomksXB):
+      biomksNewXB = np.zeros(biomksXB.shape)
+      for b in range(self.nrBiomk):
+        biomksNewXB[:, b] = self.applyScalingYInv(biomksXB[:, b], b)
 
       return biomksNewXB
 
@@ -724,14 +735,20 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       Doutput_time_shift = self.Dbasis_time_shift(Xdata, sigma, Omega)
 
       Ypred = np.dot(output, W)
-      print('Ypred', Ypred)
-      print('Ydata', Ydata)
+      # print('inside sigma, Omega, eps, W', sigma, Omega, eps, W)
+      # print('Ypred inside', Ypred)
+      # print('Ydata', Ydata)
 
-      loglik = - 0.5 * (np.sum((Ydata - Ypred) ** 2) / eps) - prior_time_shift
+      # print('eps', eps)
+      loglik = 0.5 * (np.sum((Ydata - Ypred) ** 2) / eps) + prior_time_shift
 
       # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega]))
       # grad0 = ((Ydata - np.dot(output, W)) / eps * np.dot(temp, W)).flatten()
       # Gradient = np.sum(grad0) - 2 * ((time_shift_one_sub - 0) / timeShiftPriorSpread)
+
+      # print('prior_time_shift', prior_time_shift)
+      # print('loglik', loglik)
+      # print(adsa)
 
       return loglik
 
@@ -823,7 +840,7 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
       nrSubj = self.nrSubj
       for s in range(nrSubj):
-        objectiveFun = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(
+        objectiveFun = lambda time_shift_one_sub: self.log_posterior_time_shift_Raz(
           time_shift_one_sub, s, sigmas, Omegas, epss, Ws)
         # objectiveGrad = lambda time_shift_one_sub: -self.log_posterior_time_shift_Raz(
         #   time_shift_one_sub, s, sigmas, Omegas, epss, Ws)[1]
@@ -962,7 +979,7 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
     def predictBiomkWithParams(self, newX, params):
 
-      deltaX = 0.2 * (self.maxScX - self.minScX)
+      deltaX = 5 * (self.maxScX - self.minScX)
       if not (self.minScX - deltaX <= np.min(newX) <= self.maxScX + deltaX):
         print('newX', newX)
         print('self.minScX', self.minScX)
@@ -975,15 +992,21 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       for bio_pos, biomarker in enumerate(range(self.nrBiomk)):
         s_omega, m_omega, s, m, sigma, l, eps = self.unpack_parameters(params[biomarker])
 
+        sigma = np.exp(sigma)
+        eps = np.exp(eps)
         # scaleX = self.max_X[biomarker] * self.mean_std_X[biomarker][1]
         # scaleY = self.max_Y[biomarker] * self.mean_std_Y[biomarker][1]
         perturbation_zero_W = np.zeros(int(2 * self.N_rnd_features)).reshape([2 * self.N_rnd_features, 1])
         Omega = 1 / np.sqrt(np.exp(l)) * self.perturbation_Omega
         sys.stdout.flush()
         W = np.multiply(perturbation_zero_W, np.sqrt(np.exp(s))) + m
-        output = self.basis(xsScaled, np.exp(sigma), Omega)
+        output = self.basis(xsScaled, sigma, Omega)
         sys.stdout.flush()
         predictedBiomksXB[:,biomarker] = np.dot(output, W).reshape(-1)
+
+        # if bio_pos == 0:
+        #   print('outside sigma, Omega, eps, W', sigma, Omega, eps, W)
+        #   print('outside predictedBiomksXB[:,biomarker]', predictedBiomksXB[:,biomarker])
 
 
       return self.applyScalingYAllBiomk(predictedBiomksXB)

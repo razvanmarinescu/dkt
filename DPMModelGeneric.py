@@ -50,6 +50,20 @@ class DPMModelGeneric(object):
     maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
     self.updateMinMax(minX, maxX)
 
+  def updateYvals(self, optimal_params):
+    for b in range(self.nrBiomk):
+      Xdata = np.array([[100]])
+      for sub in range(self.nrSubj):
+        temp = self.X_array[b][int(np.sum(self.N_obs_per_sub[b][:sub])):np.sum(self.N_obs_per_sub[b][:sub + 1])]
+        shifted_temp = (temp + optimal_params[0][sub])
+        Xdata = np.hstack([Xdata, shifted_temp.T])
+
+      self.X_array[b] = Xdata[0][1:].reshape([len(Xdata[0][1:]), 1])
+
+    minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+    maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+    self.updateMinMax(minX, maxX)
+
   # def updateTimeShiftOneSubj(self, optimal_shift, subjIndex):
   #   self.params_time_shift[0] += optimal_shift[subjIndex]
   #
