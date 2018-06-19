@@ -50,12 +50,12 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
     self.unitModelObj = params['unitModelObj']
     self.disModelObj = params['disModelObj']
 
-
   def runStd(self, runPart):
     self.run(runPart)
 
   def run(self, runPart):
     filePath = '%s/unitModels.npz' % self.outFolder
+
 
     if runPart[0] == 'R':
       nrGlobIterUnit = self.params['nrGlobIterUnit']
@@ -78,8 +78,9 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         self.unitModels[u] = self.unitModelObj(XfiltCurrUnit, YfiltCurrUnit, visitIndicesCurrUnit, outFolderCurrUnit,
           plotterObjCurrFuncUnit, plotTrajParamsFuncUnit['labels'], self.params)
 
-        self.unitModels[u].Set_penalty(self.params['penaltyUnits'])
-        self.unitModels[u].Optimize(nrGlobIterUnit, iterParamsUnit, Plot=True)
+        # self.unitModels[u].Set_penalty(self.params['penaltyUnits'])
+        # self.unitModels[u].Optimize(nrGlobIterUnit, iterParamsUnit, Plot=True)
+        self.unitModels[u].Optimize(nrGlobIterUnit, Plot=True)
 
       pickle.dump(self.unitModels, open(filePath, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
     else:
@@ -176,7 +177,8 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         outFolderCurDis = '%s/%s' % (self.outFolder, self.params['disLabels'][disNr])
         os.system('mkdir -p %s' % outFolderCurDis)
         self.disModels[disNr] = self.disModelObj(xDysfunSubjCurrDisUSX, dysfuncScoresCurrDisUSX, visitIndicesCurrDisUSX,
-          outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'], self.params, informPriorTrajDisModels[disNr])
+          outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'], self.params)
+        self.disModels[disNr].priors = self.params['priorsDisModels'][disNr]
         self.disModels[disNr].Optimize(nrGlobIterDis, Plot=True)
 
         pickle.dump(self.disModels, open(disModelsFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)

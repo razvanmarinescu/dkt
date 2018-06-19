@@ -7,18 +7,18 @@ import DPMModelGeneric
 class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   plt.interactive(False)
 
-  def __init__(self, X, Y, visitIndices, outFolder, plotter, names_biomarkers, params, informPriorTraj):
+  def __init__(self, X, Y, visitIndices, outFolder, plotter, names_biomarkers, params):
     super().__init__(X, Y, visitIndices, outFolder, plotter, names_biomarkers, params)
 
-    minX = np.min(self.X_array)
-    maxX = np.max(self.X_array)
+    minX = np.float(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+    maxX = np.float(np.max([el for sublist in self.X_array for item in sublist for el in item]))
     self.updateMinMax(minX, maxX)
 
     self.parameters = [0 for b in range(self.nrBiomk)] # parameters of sigmoid trajectories
     for b in range(self.nrBiomk):
       minY = np.min(self.Y_array[b])
       maxY = np.max(self.Y_array[b])
-      transitionTime = 4 * np.std(self.X_array[b])
+      transitionTime = 20 * np.std(self.X_array[b])
       center = np.mean(self.X_array[b])
       trajParams = self.transfTrajParams(minY, transitionTime, center, maxY)
       variance = np.var(self.Y_array[b])
@@ -27,9 +27,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(self.nrBiomk)]
     self.min_yB = np.array([np.min(scaledYarrayB[b].reshape(-1)) for b in range(self.nrBiomk)])
     self.max_yB = np.array([np.max(scaledYarrayB[b].reshape(-1)) for b in range(self.nrBiomk)])
-
-    self.informPriorTraj = informPriorTraj
-
+    self.priors = params['priors']
 
   def transfTrajParams(self, minY, transitionTime, center, maxY):
     """
@@ -49,6 +47,9 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   def applyScalingY(self, y_data, biomk):
     return y_data
 
+  def applyScalingYInv(self, y_data, biomk):
+    return y_data
+
   def applyScalingYAllBiomk(self, biomksXB):
     return biomksXB
 
@@ -58,40 +59,47 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   def applyGivenScalingY(self, y_data, meanY, stdY):
     return (y_data - meanY) / stdY
 
-
   def sigFunc(self, xs, theta):
     # print('theta', theta)
     return theta[0] * np.power((1 + np.exp(-theta[1] * (xs - theta[2]))), -1) + theta[3]
 
-  def trajObjFunc(self, params, X_arrayX, Y_arrayX):
+  def computePriorTrajOneBiomk(self, params):
+    return (params[0][0] - self.priors['meanA']) ** 2 / self.priors['stdA'] + \
+                 (params[0][3] - self.priors['meanD']) ** 2 / self.priors['stdD']
+
+  def likTrajOneBiomk(self, params, X_arrayX, Y_arrayX, biomkIndex):
     """
     computes the log posterior for the current biomarker
     :param X_arrayX: linearised array of DPS scores for current biomarker
     :param Y_arrayX: linearised array of measurements for current biomarker
-    :param params: (4,) array of parameters for the sigmoid func
+    :param params: [trajParams, variance] where params[0] - (4,) array of parameters for the sigmoid func
+    :param biomkIndex:
     :return:
     """
 
     prior_traj = 0
-    # if self.informPriorTraj:
-    #   '''
-    #   a = maxY - minY
-    #   b = 16 / (a * transitionTime)
-    #   c = center
-    #   d = minY
-    #   '''
-    #   prior_traj = (params[0] - 1)**2/1e-20 + (params[3] - 0)**2/1e-20
-    #
-    #   print(adsa)
+    if self.priors is not None:
+      '''
+      a = maxY - minY
+      b = 16 / (a * transitionTime)
+      c = center
+      d = minY
+      '''
+      prior_traj = self.computePriorTrajOneBiomk(params)
+
+
 
     # SSD
-    logLik =  np.sum((Y_arrayX - self.sigFunc(X_arrayX, params)) ** 2) + prior_traj
+    logLik =  np.sum((Y_arrayX - self.sigFunc(X_arrayX, params[0])) ** 2) + prior_traj
+    grad = 0
 
-
-    return logLik
+    return logLik, grad
 
   def unpack_parameters(self, params):
     return params[0], params[1]
+
+  def computeTrajParamsForTimeShifts(self):
+    return self.parameters
 
   def estimVariance(self, params, X_arrayX, Y_arrayX):
     """
@@ -112,7 +120,8 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     for b in range(self.nrBiomk):
       initParams, initVariance = self.unpack_parameters(self.parameters[b])
 
-      objectiveFun = lambda params: self.trajObjFunc(params, self.X_array[b], self.Y_array[b])
+      objectiveFun = lambda params: self.likTrajOneBiomk([params, None], self.X_array[b],
+                                                         self.Y_array[b], b)[0]
       resStruct = scipy.optimize.minimize(objectiveFun, initParams, method='Nelder-Mead',
                                           options={'disp': True})
 
@@ -128,6 +137,9 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     loglik = 0
     timeShiftPriorStd = 6
     timeShiftPriorMean = 0
+    if self.priors is not None:
+      timeShiftPriorStd = self.priors['timeShiftStd']
+
     for b in range(self.nrBiomk):
       trajParams, variance = self.unpack_parameters(params[b])
 
@@ -181,6 +193,31 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
     maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
     self.updateMinMax(minX, maxX)
+
+  def log_posterior_time_shift_onebiomk_given_arrays(self, Xdata, Ydata, trajParams,
+    prior_time_shift):
+    # Input: X, Y and a biomarker's parameters, current time-shift estimates
+    # Output: log-posterior and time-shift gradient
+
+    trajParams, variance = self.unpack_parameters(trajParams)
+
+    Ypred = self.sigFunc(Xdata, trajParams)
+    # print('inside sigma, Omega, eps, W', sigma, Omega, eps, W)
+    # print('Ypred inside', Ypred)
+    # print('Ydata', Ydata)
+
+    # print('eps', eps)
+    loglik = 0.5 * (np.sum((Ydata - Ypred) ** 2) / variance) + prior_time_shift
+
+    # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega]))
+    # grad0 = ((Ydata - np.dot(output, W)) / eps * np.dot(temp, W)).flatten()
+    # Gradient = np.sum(grad0) - 2 * ((time_shift_one_sub - 0) / timeShiftPriorSpread)
+
+    # print('prior_time_shift', prior_time_shift)
+    # print('loglik', loglik)
+    # print(adsa)
+
+    return loglik
 
 
   def Optimize(self, N_global_iterations, Plot=True):

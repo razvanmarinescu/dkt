@@ -943,15 +943,15 @@ class PlotterGP(ABC):
       currLabel = None
       if diagCounters[diagCurrSubj] == 0:
         currLabel = labelExtra + self.plotTrajParams['diagLabels'][diagCurrSubj]
-      print('XsubjSX[sub]', XsubjSX[sub])
-      print('YsubjSX[sub]', YsubjSX[sub])
+      # print('XsubjSX[sub]', XsubjSX[sub])
+      # print('YsubjSX[sub]', YsubjSX[sub])
 
 
       if XsubjSX[sub].shape[0] > 0:
         ax.plot(XsubjSX[sub], YsubjSX[sub],
                 color=self.plotTrajParams['diagColors'][diagCurrSubj], lw=0.5)
-        print(XsubjSX[sub].shape)
-        print(YsubjSX[sub].shape)
+        # print(XsubjSX[sub].shape)
+        # print(YsubjSX[sub].shape)
         # print(self.plotTrajParams['diagScatterMarkers'][diagCurrSubj].shape)
         ax.scatter(XsubjSX[sub], YsubjSX[sub],
                    marker=self.plotTrajParams['diagScatterMarkers'][diagCurrSubj],

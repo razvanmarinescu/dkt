@@ -33,6 +33,13 @@ class DPMModelGeneric(object):
     self.Y_array, N_obs_per_sub2, _ = self.convertLongToArray(self.Y, self.visitIndices)
     self.checkNobsMatch(N_obs_per_sub2)
 
+    minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+    maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+    self.minX = minX
+    self.maxX = maxX
+    self.minScX = self.minX
+    self.maxScX = self.maxX
+
   def updateTimeShifts(self, optimal_params):
     # for l in range(1):
     self.params_time_shift[0,:] = self.params_time_shift[0,:] + optimal_params[0,:]
@@ -46,40 +53,52 @@ class DPMModelGeneric(object):
 
       self.X_array[b] = Xdata[0][1:].reshape([len(Xdata[0][1:]), 1])
 
-    minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-    maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-    self.updateMinMax(minX, maxX)
+    self.xsUpdateSetLimits()
 
-  def updateYvals(self, optimal_params):
+  def updateTimeShiftsAndData(self, optimalShiftsDisModels):
+    ysNewBSX = [[np.array([]) for s in range(self.nrSubj)] for b in range(self.nrBiomk)]
+    self.updateTimeShifts(optimalShiftsDisModels)
+    XshiftedBSX, _, _, _ = self.getData()
     for b in range(self.nrBiomk):
-      Xdata = np.array([[100]])
-      for sub in range(self.nrSubj):
-        temp = self.X_array[b][int(np.sum(self.N_obs_per_sub[b][:sub])):np.sum(self.N_obs_per_sub[b][:sub + 1])]
-        shifted_temp = (temp + optimal_params[0][sub])
-        Xdata = np.hstack([Xdata, shifted_temp.T])
+      self.Y_array[b] = self.predictBiomk(self.X_array[b])[b].reshape(-1, 1)
+      for s in range(self.nrSubj):
+        dysScoresXU = self.predictBiomk(XshiftedBSX[b][s])
+        ysNewBSX[b][s] = dysScoresXU[:, b]
+        assert ysNewBSX[b][s].shape[0] == self.Y[b][s].shape[0]
 
-      self.X_array[b] = Xdata[0][1:].reshape([len(Xdata[0][1:]), 1])
+    self.Y = ysNewBSX
 
+  def xsUpdateSetLimits(self):
     minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
     maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
     self.updateMinMax(minX, maxX)
 
-  # def updateTimeShiftOneSubj(self, optimal_shift, subjIndex):
-  #   self.params_time_shift[0] += optimal_shift[subjIndex]
-  #
-  #   for b in range(self.nrBiomk):
-  #     Xdata = np.array([[100]])
-  #     for subjIndex in range(self.nrSubj):
-  #       temp = self.X_array[b][int(np.sum(self.N_obs_per_sub[b][:subjIndex])):np.sum(self.N_obs_per_sub[b][:subjIndex + 1])]
-  #       shifted_temp = (temp + optimal_params[0][subjIndex])
-  #       Xdata = np.hstack([Xdata, shifted_temp.T])
-  #
-  #     self.X_array[b] = Xdata[0][1:].reshape([len(Xdata[0][1:]), 1])
-  #
-  #   minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-  #   maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-  #   self.updateMinMax(minX, maxX)
+  def updateXvals(self, newXvalsSX, origXvalsSX):
+    """ Update the X_array with the given values. Compare origXvalsSX (full) with self.X (containing missing vals)
+    to be able to tell where there was missing data originally. """
 
+    print('self.X_array[0][:10]', self.X_array[0][:10])
+
+    newX_BSX = [0 for b in range(self.nrBiomk)]
+    for b in range(self.nrBiomk):
+      newX_BSX[b] = [0 for b in range(self.nrSubj)]
+      for s in range(self.nrSubj):
+        # remove the entries that are meant to be missing for this biomarker
+        indToIncludeCurr = np.in1d(origXvalsSX[s], self.X[b][s])
+        newX_BSX[b][s] = newXvalsSX[s][indToIncludeCurr]
+
+        assert self.N_obs_per_sub[b][s] == len(newX_BSX[b][s])
+
+      newXarrayCurrBiomk = [np.float128(item) for sublist in newX_BSX[b] for item in sublist]
+      assert len(self.X_array[b]) == len(newXarrayCurrBiomk)
+      self.X_array[b] = np.array(newXarrayCurrBiomk).reshape([len(newXarrayCurrBiomk), 1])
+
+    # reset time-shifts to 0 (acceleration is left unchanged to 1. not currently used in this model)
+    self.params_time_shift[0, :] = 0
+    # print('self.X_array[0][:10]', self.X_array[0][:10])
+    # print(adsa)
+
+    self.xsUpdateSetLimits()
 
   def checkNobsMatch(self, N_obs_per_sub2):
     for b in range(self.nrBiomk):

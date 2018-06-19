@@ -56,12 +56,12 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
       self.rescale()
 
-
-      self.minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-      self.maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-
-      self.minScX = self.applyScalingX(self.minX)
-      self.maxScX = self.applyScalingX(self.maxX)
+      # self.minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
+      # self.maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
+      #
+      # self.minScX = self.applyScalingX(self.minX)
+      # self.maxScX = self.applyScalingX(self.maxX)
+      self.xsUpdateSetLimits()
 
       nrBiomk = len(self.X)
       scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(nrBiomk)]
@@ -115,7 +115,22 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
               obs = np.array([self.X_array[biom][k][0] for k in range(int(np.sum(self.N_obs_per_sub[biom][:sub])),
                                                              np.sum(self.N_obs_per_sub[biom][:sub + 1]))])
 
+    def xsUpdateSetLimits(self):
+      self.super()
+      self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
+
+    def updateXvals(self, newXvalsSX, origXvalsSX):
+      self.super().updateXvals(newXvalsSX, origXvalsSX)
+
+      # also remove the transformation of X. try to keep it standard
+      self.mean_std_X = []
+      self.max_X = []
+      for b in range(self.nrBiomk):
+        self.mean_std_X.append([0, 1])
+        self.max_X.append(1)
+
+      self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
 
     def applyScalingX(self, x_data, biomk=0):
       scaleX = self.max_X[biomk] * self.mean_std_X[biomk][1]
@@ -163,71 +178,13 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
     def applyScalingXzeroOneInv(self, xs):
       return xs * (self.maxScX - self.minScX) + self.minScX
 
-    def updateXvals(self, newXvalsSX, origXvalsSX):
-      """ Update the X_array with the given values. Compare origXvalsSX (full) with self.X (containing missing vals)
-      to be able to tell where there was missing data originally. """
-
-      print('self.X_array[0][:10]', self.X_array[0][:10])
-
-      newX_BSX = [0 for b in range(self.nrBiomk)]
-      for b in range(self.nrBiomk):
-        newX_BSX[b] = [0 for b in range(self.nrSubj)]
-        for s in range(self.nrSubj):
-          # remove the entries that are meant to be missing for this biomarker
-          indToIncludeCurr = np.in1d(origXvalsSX[s], self.X[b][s])
-          # print('self.X[b][s]', self.X[b][s])
-          # print('origXvalsSX[s]', origXvalsSX[s])
-          # print('indToIncludeCurr', indToIncludeCurr)
-          # print('newXvalsSX[s]', newXvalsSX[s])
-          # print(adsa)
-          newX_BSX[b][s] = newXvalsSX[s][indToIncludeCurr]
-
-          assert self.N_obs_per_sub[b][s] == len(newX_BSX[b][s])
-
-
-        newXarrayCurrBiomk = [np.float128(item) for sublist in newX_BSX[b] for item in sublist]
-        assert len(self.X_array[b]) == len(newXarrayCurrBiomk)
-        self.X_array[b] = np.array(newXarrayCurrBiomk).reshape([len(newXarrayCurrBiomk),1])
-
-
-      # reset time-shifts to 0 (acceleration is left unchanged to 1. not currently used in this model)
-      self.params_time_shift[0, :] = 0
-      # print('self.X_array[0][:10]', self.X_array[0][:10])
-      # print(adsa)
-
-      # also remove the transformation of X. try to keep it standard
-      self.mean_std_X = []
-      self.max_X = []
-      for b in range(self.nrBiomk):
-        self.mean_std_X.append([0, 1])
-        self.max_X.append(1)
-
-      minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-      maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-      self.updateMinMax(minX, maxX)
-      self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-
-
     def rescale(self):
       # Standardizes X and Y axes and saves the rescaling parameters for future output
       # Raz modification - made the scaling of every X[l] the same for every biomarker l
 
-      # for l in range(self.nrBiomk):
-      #   self.X_array[l] = np.array(self.X_array[l]).reshape([len(self.X_array[l]),1])
-      #   self.Y_array[l] = np.array(self.Y_array[l]).reshape([len(self.Y_array[l]), 1])
-
-
       XarrayAllBiomk = np.array([x2 for l in self.X_array for x2 in list(l)])
       meanAll = np.mean(XarrayAllBiomk)
       stdAll = np.std(XarrayAllBiomk)
-
-      print('self.Y_array', self.Y_array)
-      print('self.Y_array', self.Y_array)
-
-      # print('meanAll', meanAll)
-      # print('stdAll', stdAll)
-      # print('maxXAll', maxXAll)
-      # print(adsa)
 
       for l in range(self.nrBiomk):
         # sd = np.std(self.X_array[l])
@@ -362,6 +319,22 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
         return -0.5 *  ( np.log(2 * np.pi * eps) + np.sum((Y - np.dot(output,W))**2)/eps) - Kullback_Leibler  - prior + Dterm
 
+    def computePriorTrajOneBiomk(self, params):
+      # Modify the prior length scale according to current X range
+      prior_length_scale_mean = (self.maxX - self.minX) * self.priors['prior_length_scale_mean_ratio']
+      prior_length_scale_std = self.priors['prior_length_scale_std']
+
+      prior_sigma_mean = self.priors['prior_sigma_mean']
+      prior_sigma_std = self.priors['prior_sigma_std']
+
+      prior_eps_mean = self.priors['prior_eps_mean']
+      prior_eps_std = self.priors['prior_eps_std']
+
+      prior = -((eps - prior_eps_mean) ** 2 / prior_eps_std + (sigma - prior_sigma_mean) ** 2 / prior_sigma_std + (
+          l - prior_length_scale_mean) ** 2 / prior_length_scale_std)
+
+      return prior
+
     def log_posterior_grad(self, X,Y, N, perturbationW, params, penalty):
         # Input: X, Y and a biomarker's parameters, random perturbation of the weights W
         # Output: log-posterior and parameters gradient
@@ -374,12 +347,19 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
         W = np.multiply(perturbationW, np.sqrt(s_w)) + m_w
         Omega = 1/np.sqrt(l) * self.perturbation_Omega
+
         output = self.basis(X, sigma, Omega)
         Doutput = self.Dbasis(self.DX, sigma, Omega)
         Kullback_Leibler = self.KL( s_omega, m_omega, s_w, m_w, l)
 
-        # Modify the prior length scale according to current X range
-        prior_length_scale_mean = (self.maxX-self.minX)*self.priors['prior_length_scale_mean_ratio']
+        Dterm = np.sum(penalty * np.dot(Doutput, W) - np.log(1 + np.exp(penalty * np.dot(Doutput, W))))
+
+        if ~np.isfinite(Dterm):
+          # import pdb
+          # pdb.set_trace()
+          return np.inf, np.repeat(0, len(params)).flatten(), 0
+
+        prior_length_scale_mean = (self.maxX - self.minX) * self.priors['prior_length_scale_mean_ratio']
         prior_length_scale_std = self.priors['prior_length_scale_std']
 
         prior_sigma_mean = self.priors['prior_sigma_mean']
@@ -388,17 +368,10 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         prior_eps_mean = self.priors['prior_eps_mean']
         prior_eps_std = self.priors['prior_eps_std']
 
-        Dterm = np.sum(penalty * np.dot(Doutput, W) - np.log(1 + np.exp(penalty * np.dot(Doutput, W))))
-        prior = (eps - prior_eps_mean) ** 2 / prior_eps_std + (sigma - prior_sigma_mean) ** 2 / prior_sigma_std + (l - prior_length_scale_mean)**2/prior_length_scale_std
-
-        if ~np.isfinite(Dterm):
-          # import pdb
-          # pdb.set_trace()
-          return np.inf, np.repeat(0, len(params)).flatten(), 0
-
+        prior = self.computePriorTrajOneBiomk(params)
 
         posterior = -0.5 *  ( np.log(2 * np.pi * eps) + np.sum((Y - np.dot(output,W))**2)/eps) - \
-          Kullback_Leibler  - prior + Dterm
+          Kullback_Leibler  + prior + Dterm
 
         # Derivative of weights mean ad sd
         d_m_w = np.dot(((Y - np.dot(output,W))).T,output)/eps + penalty * np.sum(Doutput,0) \
@@ -457,24 +430,8 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         grad_penalty_list = []
         for b in range(self.nrBiomk):
             output_loglik, output_MC_grad, output_grad_penalty = \
-                self.stochastic_grad_manual_onebiomk(paramsB[b], X_arrayB[b], Y_arrayB[b],
-                self.penalty[b], fixSeed=False)
-            # current_params = paramsB[b]
-            # current_X = X_arrayB[b]
-            # current_Y = Y_arrayB[b]
-            # MC_grad = np.zeros(len(paramsB[b]))
-            # output_grad_penalty.append(0)
-            # loglik = 0
-            # for j in range(100):
-            #     perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(
-            #       [ 2*self.N_rnd_features,1])
-            #     objective_cost_function = lambda params: self.log_posterior_grad(
-            #       current_X, current_Y,self.N_rnd_features, perturbation_W, params,
-            #       self.penalty[b])
-            #     value, grad, grad_penalty = objective_cost_function(current_params)
-            #     MC_grad = MC_grad - grad
-            #     loglik = loglik - value
-            #     output_grad_penalty[b] = output_grad_penalty[b] - grad_penalty
+                self.likTrajOneBiomk(paramsB[b], X_arrayB[b], Y_arrayB[b],
+                                     b, fixSeed=False, nrSamples=100)
 
             loglik_list.append(output_loglik)
             MC_grad_list.append(output_MC_grad)
@@ -483,21 +440,23 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
         return loglik_list, MC_grad_list, grad_penalty_list
 
-    def stochastic_grad_manual_onebiomk(self, params, X_array, Y_array, penalty, fixSeed=False):
+    def likTrajOneBiomk(self, params, X_array, Y_array, biomkIndex,
+                        fixSeed=False, nrSamples=30):
         # Stochastic gradient of log-posterior with respect ot given parameters
-        # Default number of MC samples is 100
+        # Default number of MC samples is iterNr=100
 
         if fixSeed:
           np.random.seed(1)
           # print(ads)
 
+        penalty = self.penalty[biomkIndex]
         current_params = params
         current_X = X_array
         current_Y = Y_array
         MC_grad = np.zeros(len(params))
         output_grad_penalty = 0
         loglik = 0
-        for j in range(100):
+        for j in range(nrSamples):
             perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(
               [ 2*self.N_rnd_features,1])
             objective_cost_function = lambda params: self.log_posterior_grad(
@@ -507,9 +466,9 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
             MC_grad = MC_grad - grad
             loglik = loglik - value
             output_grad_penalty = output_grad_penalty - grad_penalty
-        output_MC_grad = MC_grad/100
-        output_loglik = loglik/100
-        output_grad_penalty = output_grad_penalty/100
+        output_MC_grad = MC_grad / nrSamples
+        output_loglik = loglik / nrSamples
+        output_grad_penalty = output_grad_penalty / nrSamples
 
 
         return output_loglik, output_MC_grad, output_grad_penalty
@@ -571,129 +530,13 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         # import pdb
         # pdb.set_trace()
 
-    def Optimize_GP_parameters(self, optimize_penalty = False, Niterat = 10):
+    def estimTrajParams(self, optimize_penalty = False, Niterat = 60):
         # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
         self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
         self.Reset_parameters()
         objective_grad = lambda params: self.stochastic_grad_manual(params, self.X_array, self.Y_array)
         self.Adadelta(Niterat, objective_grad, 0.05, self.parameters,
           output_grad_penalty = optimize_penalty)
-
-    def Optimize_GP_parameters_Raz(self, optimize_penalty = False, Niterat = 10):
-      # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
-      self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
-      self.Reset_parameters()
-
-      encapsParams = lambda par: np.concatenate((np.zeros(2 * self.N_rnd_features) - 1, par))
-      decapsParams = lambda par: par[2 * self.N_rnd_features:]
-
-      for l in range(self.nrBiomk):
-        objFuncCurrBiomk = lambda params: self.stochasticObjFuncOneBiomkRaz(params,
-          self.X_array[l], self.Y_array[l], self.penalty[l])
-
-        print('objFuncCurrBiomk', objFuncCurrBiomk(decapsParams(self.parameters[l])))
-        # resStruct = scipy.optimize.minimize(objFuncCurrBiomk, decapsParams(self.parameters[l]), method='Powell',
-        #   jac=True, options={'disp': True, 'xatol':1e+0, 'adaptive':True, 'maxiter':100, 'maxfev':300, 'eps':1e+1})
-
-        resStruct = scipy.optimize.minimize(objFuncCurrBiomk, decapsParams(self.parameters[l]), method='CG',
-          jac=True, options={'disp': True, 'maxiter':100})
-
-        self.parameters[l] = encapsParams(resStruct.x)
-
-    def stochasticObjFuncOneBiomkRaz(self, current_params, current_X, current_Y, current_penalty):
-      # Stochastic gradient of log-posterior with respect ot given parameters
-      # Default number of MC samples is 100
-      output_MC_grad = []
-      output_loglik = []
-      output_grad_penalty = 0
-
-      encapsParams = lambda par: np.concatenate((np.zeros(2 * self.N_rnd_features) - 1, par))
-      decapsParams = lambda par: par[2 * self.N_rnd_features:]
-
-      MC_grad = np.zeros(len(current_params))
-      loglik = 0
-      nrPerturb = 100
-      for j in range(nrPerturb):
-          perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(
-            [ 2*self.N_rnd_features,1])
-          objective_cost_function = lambda params: self.log_posterior_grad(
-            current_X, current_Y,self.N_rnd_features, perturbation_W, params,
-            current_penalty)
-
-          value, grad, grad_penalty = objective_cost_function(encapsParams(current_params))
-
-          # print('value, current_params, grad', value, current_params, grad)
-
-          if ~np.isfinite(grad).all():
-            import pdb
-            pdb.set_trace()
-
-          loglik = loglik - value
-          MC_grad = MC_grad - decapsParams(grad)
-          output_grad_penalty = output_grad_penalty - grad_penalty
-
-      return loglik/nrPerturb, MC_grad/(nrPerturb)
-
-
-    # def log_posterior_time_shift(self, params, params_time_shift):
-    #     # Input: X, Y and a biomarker's parameters, current time-shift estimates
-    #     # Output: log-posterior and time-shift gradient
-    #     loglik =  0
-    #     Gradient = []
-    #     for l2 in range(2):
-    #         Gradient.append(np.zeros(self.nrSubj, np.float128))
-    #
-    #     # Shifting data according to current time-shift estimate
-    #     for i in range(self.nrBiomk):
-    #         Xdata = np.array([[1e10]])
-    #         Ydata = np.array([[1e10]])
-    #         for sub in range(self.nrSubj):
-    #             temp = self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub+1])]
-    #             shifted_temp = (temp * params_time_shift[1][sub] + params_time_shift[0][sub])
-    #             Xdata = np.hstack([Xdata,shifted_temp.T])
-    #             tempY = self.Y_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub + 1])]
-    #             Ydata = np.hstack([Ydata, tempY.T])
-    #
-    #         Xdata = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
-    #         Ydata = Ydata[0][1:].reshape([len(Ydata[0][1:]), 1])
-    #
-    #         s_omega, m_omega, s_w, m_w, sigma, l, eps = self.unpack_parameters(params[i])
-    #         s_omega = np.exp(s_omega)
-    #         s_w = np.exp(s_w)
-    #         l = np.exp(l)
-    #         sigma = np.exp(sigma)
-    #         eps = np.exp(eps)
-    #
-    #         perturbation_zero_W = np.zeros(int(2 * self.N_rnd_features)).reshape([2 * self.N_rnd_features, 1])
-    #         W = np.multiply(perturbation_zero_W, np.sqrt(np.exp(s_w))) + m_w
-    #         Omega = 1 / np.sqrt(l) * self.perturbation_Omega
-    #
-    #         output = self.basis(Xdata, sigma, Omega)
-    #         Doutput_time_shift = self.Dbasis_time_shift(Xdata, sigma, Omega)
-    #
-    #         Doutput = self.Dbasis(self.DX, sigma, Omega)
-    #         Kullback_Leibler = self.KL(s_omega, m_omega, s_w, m_w, l)
-    #         Dterm = np.sum(
-    #             np.log(2) - self.penalty[i] * np.dot(Doutput, W) / 2 + (self.penalty[i] * np.dot(Doutput, W)) ** 2 / 8)
-    #         prior = (eps - 0.3) ** 2 / 1e-2 + (sigma - 0.5) ** 2 / 1e-2   # + (l - np.log(0.2))**2/1e-0
-    #         prior_time_shift = np.sum((params_time_shift[0] - 0)**2/1e-0)
-    #
-    #         loglik = loglik - 0.5 * (
-    #         np.log(2 * np.pi * eps) + np.sum((self.Y_array[i] - np.dot(output, W)) ** 2) / eps) - prior - Dterm - Kullback_Leibler - prior_time_shift
-    #
-    #         temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega ]))
-    #         grad0 = (((Ydata - np.dot(output, W))) / eps * np.dot(temp, W)).flatten()
-    #         temp = np.multiply(Doutput_time_shift, np.concatenate([Omega * Xdata,Omega * Xdata],1))
-    #         grad1 = (((Ydata - np.dot(output, W))) / eps *  np.dot(temp, W)).flatten()
-    #
-    #         for sub in range(self.nrSubj):
-    #             temp0 = np.sum([grad0[k] for k in range(int(np.sum(self.N_obs_per_sub[i][:sub])),np.sum(self.N_obs_per_sub[i][:sub+1]))]) - 2 * ((params_time_shift[0] - 0) / 1e-0)[sub]
-    #             temp1 = np.sum([grad1[k] for k in range(int(np.sum(self.N_obs_per_sub[i][:sub])),np.sum(self.N_obs_per_sub[i][:sub+1]))])
-    #             Gradient[0][sub] = Gradient[0][sub] + temp0
-    #             Gradient[1][sub] = Gradient[1][sub] + 0 #temp1
-    #
-    #     return loglik, Gradient
-
 
 
     def log_posterior_time_shift_Raz(self, time_shift_one_sub, sub, sigmas, Omegas,
@@ -726,10 +569,11 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
       return loglik
 
-    def log_posterior_time_shift_onebiomk_given_arrays(self, Xdata, Ydata, sigma, Omega,
-                                                       eps, W, prior_time_shift):
+    def log_posterior_time_shift_onebiomk_given_arrays(self, Xdata, Ydata, trajParams, prior_time_shift):
       # Input: X, Y and a biomarker's parameters, current time-shift estimates
       # Output: log-posterior and time-shift gradient
+
+      sigma, Omega, eps, W = self.decapsTrajParamsOneBiomk(trajParams)
 
       output = self.basis(Xdata, sigma, Omega)
       Doutput_time_shift = self.Dbasis_time_shift(Xdata, sigma, Omega)
@@ -793,17 +637,11 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
             self.X_array[i] = Xdata[0][1:].reshape([len(Xdata[0][1:]),1])
 
 
-        minX = np.float128(np.min([el for sublist in self.X_array for item in sublist for el in item]))
-        maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
-        self.updateMinMax(minX, maxX)
-        self.DX = np.linspace(self.minX, self.maxX, self.N_Dpoints).reshape([self.N_Dpoints, 1])
+        self.xsUpdateSetLimits()
 
     def computeTrajParamsForTimeShifts(self):
       ######## calculate subject-nonspecific terms
-      sigmas = []
-      Ws = []
-      Omegas = []
-      epss = []
+      paramsB = []
       for i in range(self.nrBiomk):
         s_omega, m_omega, s_w, m_w, sigma, l, eps = self.unpack_parameters(self.parameters[i])
         s_omega = np.exp(s_omega)
@@ -816,14 +654,18 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         W = np.multiply(perturbation_zero_W, np.sqrt(np.exp(s_w))) + m_w
         Omega = 1 / np.sqrt(l) * self.perturbation_Omega
 
-        sigmas += [sigma]
-        Ws += [W]
-        Omegas += [Omega]
-        epss += [eps]
+        paramsB[b] += [self.encapsTrajParamsOneBiomk(sigma, Omega, eps, W)]
+
 
       #### end of subject non-specific part
 
       return sigmas, Ws, Omegas, epss
+
+    def encapsTrajParamsOneBiomk(self, sigma, Omega, eps, W):
+      return [sigma, Omega, eps, W]
+
+    def decapsTrajParamsOneBiomk(self, params):
+      return params[0], params[1], params[2], params[3]
 
     def Optimize_time_shift_Raz_indiv(self):
       # Adadelta for optimization of time shift parameters
@@ -873,10 +715,10 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         print("iteration ", i, "of ", N_global_iterations)
         print("Optimizing GP parameters")
         if i>float(N_global_iterations)-2:
-          self.Optimize_GP_parameters(Niterat = iterGP)
+          self.estimTrajParams(Niterat = iterGP)
         else:
           # self.N_Dpoints = 10
-          self.Optimize_GP_parameters(Niterat=iterGP, optimize_penalty = False)
+          self.estimTrajParams(Niterat=iterGP, optimize_penalty = False)
           print("Current penalty parameters: ")
           print(self.penalty)
 

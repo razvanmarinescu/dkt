@@ -131,6 +131,7 @@ def main():
 
   nrFuncUnits = 2
   nrBiomkInFuncUnits = 3
+  nrDis = 2
 
   nrBiomk = nrBiomkInFuncUnits * nrFuncUnits
   mapBiomkToFuncUnits = np.array(list(range(nrFuncUnits)) * nrBiomkInFuncUnits)
@@ -179,19 +180,30 @@ def main():
   params['nrGlobIterDis'] = 10
   params['iterParamsDis'] = 50
 
-  params['unitModelObj'] = MarcoModel.GP_progression_model
+  # params['unitModelObj'] = MarcoModel.GP_progression_model
+  params['unitModelObj'] = SigmoidModel.SigmoidModel
   params['disModelObj'] = SigmoidModel.SigmoidModel
+
+  # by default we have no priors
+  params['priors'] = None
+
+  ####### set priors for specific models #########
 
   # params['priors'] = dict(prior_length_scale_mean_ratio=0.33, # mean_length_scale = (self.maxX-self.minX)/3
   #     prior_length_scale_std=1e-4, prior_sigma_mean=2,prior_sigma_std = 1e-3,
   #     prior_eps_mean = 1, prior_eps_std = 1e-2)
-  params['priors'] = dict(prior_length_scale_mean_ratio=0.9,  # mean_length_scale = (self.maxX-self.minX)/3
-                              prior_length_scale_std=1e-4, prior_sigma_mean=3, prior_sigma_std=1e-3,
-                              prior_eps_mean=0.1, prior_eps_std=1e-6)
+  # params['priors'] = dict(prior_length_scale_mean_ratio=0.9,  # mean_length_scale = (self.maxX-self.minX)/3
+  #                             prior_length_scale_std=1e-4, prior_sigma_mean=3, prior_sigma_std=1e-3,
+  #                             prior_eps_mean=0.1, prior_eps_std=1e-6)
 
-  params['priorsJMD'] = dict(prior_length_scale_mean_ratio=0.05,  # mean_length_scale = (self.maxX-self.minX)/3
-                              prior_length_scale_std=1e-6, prior_sigma_mean=0.5, prior_sigma_std=1e-3,
-                              prior_eps_mean=0.1, prior_eps_std=1e-6)
+  # params['priorsUnitModels'] = [dict(prior_length_scale_mean_ratio=0.05,  # mean_length_scale = (self.maxX-self.minX)/3
+  #                             prior_length_scale_std=1e-6, prior_sigma_mean=0.5, prior_sigma_std=1e-3,
+  #                             prior_eps_mean=0.1, prior_eps_std=1e-6) for u in range(nrFuncUnits)]
+
+  params['priorsDisModels'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5, timeShiftStd=15)
+    for d in range(nrDis)]
+  params['priorsUnitModels'] = [None for d in range(nrDis)]
+
 
 
   ##### disease agnostic parameters ###########
@@ -347,7 +359,6 @@ def main():
   params['disLabels'] = ['Dis0', 'Dis1']
   params['otherBiomkPerDisease'] = [[], []]
 
-  nrDis = len(params['disLabels'])
   params['binMaskSubjForEachDisD'] = [np.in1d(params['diag'],
                                       params['diagsSetInDis'][disNr]) for disNr in range(nrDis)]
 
