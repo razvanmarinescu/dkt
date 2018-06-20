@@ -19,15 +19,19 @@ import DisProgBuilder
 class JMDBuilder(DisProgBuilder.DPMBuilder):
   # builds a Joint Disease model
 
-  def __init__(self):
-    pass
+  def __init__(self, unitModelObj, disModelObj, priorsUnitModels, priorsDisModels):
+    self.unitModelObj = unitModelObj
+    self.disModelObj = disModelObj
+    self.priorsUnitModels = priorsUnitModels
+    self.priorsDisModels = priorsDisModels
 
   def generate(self, dataIndices, expName, params):
-    return JointModel(dataIndices, expName, params)
+    return JointModel(dataIndices, expName, params,
+      self.unitModelObj, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
 
 class JointModel(DisProgBuilder.DPMInterface):
 
-  def __init__(self, dataIndices, expName, params):
+  def __init__(self, dataIndices, expName, params, unitModelObj, disModelObj, priorsUnitModels, priorsDisModels):
     self.dataIndices = dataIndices
     self.expName = expName
     self.params = params
@@ -62,6 +66,9 @@ class JointModel(DisProgBuilder.DPMInterface):
     for d in range(self.nrDis):
       self.ridsPerDisD[d] = self.params['RID'][self.binMaskSubjForEachDisD[d]]
 
+    self.priorsUnitModels = priorsUnitModels
+    self.priorsDisModels = priorsDisModels
+
   def runStd(self, runPart):
     self.run(runPart)
 
@@ -79,36 +86,42 @@ class JointModel(DisProgBuilder.DPMInterface):
 
       # self.makePlots(plotFigs, 0, 0)
 
-      for i in range(nrIt):
+      # i = 4
+      # self.loadCheckpoint(i, 4)
+
+      i = 0
+      while i < nrIt:
 
         # estimate biomk trajectories - disease agnostic
-        # self.estimBiomkTraj(self.unitModels, self.disModels, i)
-        # self.makePlots(plotFigs, i, 1)
-        # self.saveCheckpoint(i, 1)
+        self.estimBiomkTraj(self.unitModels, self.disModels, i)
+        self.makePlots(plotFigs, i, 1)
+        self.saveCheckpoint(i, 1)
         # self.loadCheckpoint(i, 1)
 
         # estimate subject latent variables
-        # self.estimSubjShifts(self.unitModels, self.disModels)
-        # self.makePlots(plotFigs, i, 2)
-        # self.saveCheckpoint(i, 2)
+        self.estimSubjShifts(self.unitModels, self.disModels)
+        self.makePlots(plotFigs, i, 2)
+        self.saveCheckpoint(i, 2)
         # # self.loadCheckpoint(i, 2)
         #
         # # estimate unit trajectories - disease specific
-        # self.estimTrajWithinDisModel(self.unitModels, self.disModels)
-        # self.makePlots(plotFigs, i, 3)
-        # self.saveCheckpoint(i, 3)
+        self.estimTrajWithinDisModel(self.unitModels, self.disModels)
+        self.makePlots(plotFigs, i, 3)
+        self.saveCheckpoint(i, 3)
         #
         # # estimate subject latent variables
-        # self.estimSubjShifts(self.unitModels, self.disModels)
-        # self.makePlots(plotFigs, i, 4)
-        # self.saveCheckpoint(i, 4)
-        self.loadCheckpoint(i, 4)
+        self.estimSubjShifts(self.unitModels, self.disModels)
+        self.makePlots(plotFigs, i, 4)
+        self.saveCheckpoint(i, 4)
+        # self.loadCheckpoint(i, 4)
 
         # try to vary the scaling of the sub shifts, optimise dis traj at the same time.
-        # the reason for this is because the estimated shift range is smaller than the true one.
+        # the reason for this is because the !"range"! of the estimated shift is smaller than the true range.
         self.varyShiftsScale(self.unitModels, self.disModels)
         self.makePlots(plotFigs, i, 5)
         self.saveCheckpoint(i, 5)
+
+        i += 1
 
     res = None
     return res
@@ -137,13 +150,15 @@ class JointModel(DisProgBuilder.DPMInterface):
         fig.savefig('%s/trajDisSpace%s_%d%d_%s.png' % (self.outFolder, self.params['disLabels'][d],
           iterNr, picNr, self.expName))
 
+
   def initParams(self):
     paramsCopy = copy.deepcopy(self.params)
     paramsCopy['nrGlobIterDis'] = 4 # set only two iterations, quick initialisation
     paramsCopy['nrGlobIterUnit'] = 4  # set only two iterations, quick initialisation
     paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
     paramsCopy['penaltyUnits'] = 1
-    onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy)
+    onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy,
+      self.priorsUnitModels, self.priorsDisModels)
 
     onePassModel.run(runPart = 'LL')
 
@@ -164,66 +179,94 @@ class JointModel(DisProgBuilder.DPMInterface):
     :return:
     """
 
-    XshiftedScScDBSX = [0 for _ in range(self.nrDis)]
+    # scalingFactors = [0.3, 1, 3]
+    scalingFactors = [0.6,0.9,1,1.1,1.5]
+    nrScFact = len(scalingFactors)
+
+    XshiftedScScFDBSX = [[0 for _ in range(self.nrDis)] for sc in range(nrScFact)]
     XshiftedScaledDBSX = [0 for _ in range(self.nrDis)]
     X_arrayScaledDB = [0 for _ in range(self.nrDis)]
     optimalShiftsDisModels = [0 for _ in range(self.nrDis)]
+    bestScalingIndD = np.zeros(self.nrDis, int)
     informPriorTrajDisModels = [True, True] # set informative priors only for the first disease
+    nrSubjAllDis = unitModels[0].nrSubj
+    optimalShiftsAll = np.zeros(nrSubjAllDis)
+    for d in range(self.nrDis):
+      optimalShiftsDisModels[d] = np.zeros((2, self.indSubjForEachDisD[d].shape[0]))
+
+
     for d in range(self.nrDis):
       XshiftedScaledDBSX[d], _, _, X_arrayScaledDB[d] = disModels[d].getData()
-
-      scalingFactors = [0.3, 1, 3]
-      nrScFact = len(scalingFactors)
       optimParams = [[0 for u in range(self.nrFuncUnits)] for _ in range(nrScFact)]
 
-      sumLik = np.zeros(nrScFact)
+      sumSSD = np.zeros(nrScFact)
+      X_arrayScScFBX = [0 for sc in range(nrScFact)]
       for sc in range(nrScFact):
 
-        XshiftedScScDBSX[d] = self.addScalingFactor(XshiftedScaledDBSX[d], scalingFactors[sc])
-        X_arrayScScBX = disModels[d].convertLongToArray(XshiftedScScDBSX[d], disModels[d].visitIndices)
+        XshiftedScScFDBSX[sc][d] = self.addScalingFactor(XshiftedScaledDBSX[d], scalingFactors[sc])
+        X_arrayScScFBX[sc], _, _ = disModels[d].convertLongToArray(XshiftedScScFDBSX[sc][d], disModels[d].visitIndices)
+
+        timeShiftPriorStd = disModels[d].priors['timeShiftStd']
+        priorSubShifts = np.sum([(XshiftedScScFDBSX[sc][d][0][s][0] - 0) ** 2 /timeShiftPriorStd
+          for s in range(disModels[d].nrSubj)])
 
         for u in range(self.nrFuncUnits):
           Y_arrayCurDis, indFiltToMisCurDisB = unitModels[u].filterLongArray(unitModels[u].Y_array,
             unitModels[u].N_obs_per_sub, self.binMaskSubjForEachDisD[d],unitModels[u].visitIndices)
 
-          for b in range(len(Y_arrayCurDis)):
-            assert Y_arrayCurDis[b].shape[0] == indFiltToMisCurDisB[b].shape[0]
-            print(Y_arrayCurDis[b].shape)
+          # for b in range(len(Y_arrayCurDis)):
+          #   assert Y_arrayCurDis[b].shape[0] == indFiltToMisCurDisB[b].shape[0]
+          #   # print(Y_arrayCurDis[b].shape)
 
           # build function that within a disease model takes a unit traj, and predicts lik of given
           # unit-traj params in corresponding unitModel.
-          likJDMobjFunc = lambda paramsCurrTraj: self.likJDMOneUnitTraj(disModels[d], unitModels[u],
-             X_arrayScScBX[b], [paramsCurrTraj, None], u, d, Y_arrayCurDis, indFiltToMisCurDisB,
-             informPriorTrajDisModels[d])
+
+
+          ssdJDMobjFunc = lambda paramsCurrTraj: self.ssdJDMOneUnitTraj(disModels[d], unitModels[u],
+            X_arrayScScFBX[sc], [paramsCurrTraj, None], u, d, Y_arrayCurDis, indFiltToMisCurDisB,
+            informPriorTrajDisModels[d])
           initParams, initVariance = disModels[d].unpack_parameters(disModels[d].parameters[u])
 
-          resStruct = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
-            options={'disp': True, 'maxiter':1000})
+          print('initSSD', ssdJDMobjFunc(initParams))
 
+          resStruct = scipy.optimize.minimize(ssdJDMobjFunc, initParams, method='Nelder-Mead',
+            options={'disp': True, 'maxiter':1000})
           optimParams[sc][u] = [resStruct.x, initVariance]
-          sumLik[sc] += likJDMobjFunc(resStruct.x)
+          sumSSD[sc] += ssdJDMobjFunc(resStruct.x)
 
           print('resStruct', resStruct)
 
-      print('sumLik', sumLik, np.argsort(sumLik))
 
-      bestScalingInd = np.argmax(sumLik)
+        # sumSSD[sc] += priorSubShifts
 
-      print('bestScalingInd', bestScalingInd)
-      print(asd)
-      disModels[d].parameters = optimParams[bestScalingInd]
+      # print('sumSSD', sumSSD, np.argsort(sumSSD))
+
+      bestScalingIndD[d] = int(np.argmin(sumSSD))
+
+      # print('bestScalingIndD[d]', bestScalingIndD[d])
+      # print('best scaling factor', scalingFactors[bestScalingIndD[d]])
+      # print('X_arrayScScFBX[sc] range', np.min(X_arrayScScFBX[bestScalingIndD[d]][0]),
+      #   np.max(X_arrayScScFBX[bestScalingIndD[d]][0]))
+      # print(adsa)
+      disModels[d].parameters = optimParams[bestScalingIndD[d]]
 
     # update optimal time shifts and Y-values in disease model
-    for d in range(self.nrDis):
-      optimalShiftsDisModels[d] = np.zeros((2, self.indSubjForEachDisD[d].shape[0]))
 
-    nrSubjAllDis = unitModels[0].nrSubj
-    optimalShiftsAll = np.zeros(nrSubjAllDis)
     for s in range(nrSubjAllDis):
       d = self.disIdxForEachSubjS[s]
       subjCurrIndInDisModel = np.where(self.indSubjForEachDisD[d] == s)[0][0]
-      optimalShiftsAll[s] = XshiftedScScDBSX[d][0][subjCurrIndInDisModel][0] - XshiftedScaledDBSX[d][0][subjCurrIndInDisModel][0]
+      oldStage = XshiftedScaledDBSX[d][0][subjCurrIndInDisModel][0]
+      newStage = XshiftedScScFDBSX[bestScalingIndD[d]][d][0][subjCurrIndInDisModel][0]
+
+      optimalShiftsAll[s] = newStage - oldStage
       optimalShiftsDisModels[d][0, subjCurrIndInDisModel] = optimalShiftsAll[s]
+
+      # print('abs(oldStage + optimalShiftsAll[s] - newStage)', abs(oldStage + optimalShiftsAll[s] - newStage))
+      if abs(oldStage + optimalShiftsAll[s] - newStage) > 0.001:
+        print('oldStage', oldStage)
+        print('optimalShiftsAll[s]', optimalShiftsAll[s])
+        print('newStage', newStage)
+        raise ValueError('Shifts dont match')
 
 
     for d in range(self.nrDis):
@@ -232,6 +275,9 @@ class JointModel(DisProgBuilder.DPMInterface):
     # update optimal time shifts in all functional models
     # actually not needed because when I optimise the unit traj I automatically update the X-vals then
     self.updateXvalsInFuncModels(optimalShiftsAll, disModels, unitModels, XshiftedScaledDBSX)
+
+    # print('dis0 final range', np.min(disModels[0].X_array[0]), np.max(disModels[0].X_array[0]))
+    # print(ads)
 
   def addScalingFactor(self, X_BSX, scaleFactor):
     newX_BSX = [[0 for s in range(len(X_BSX[0]))] for b in range(len(X_BSX))]
@@ -345,12 +391,12 @@ class JointModel(DisProgBuilder.DPMInterface):
           YdataScaled = self.unitModels[u].applyScalingYInv(Ydata.reshape(-1,1), b)
 
           loglikCurr = unitModels[u].log_posterior_time_shift_onebiomk_given_arrays(
-            Xdata, YdataScaled, trajParamsUB[u][b], prior_time_shift)
+            Xdata, YdataScaled, trajParamsUB[u][b])
 
           logliks += [loglikCurr]
 
 
-    return np.sum(logliks)
+    return np.sum(logliks) + prior_time_shift
 
   def updateXvalsInFuncModels(self, time_shift_delta_all, disModels, unitModels,
                               XshiftedScaledDBSX):
@@ -488,18 +534,10 @@ class JointModel(DisProgBuilder.DPMInterface):
 
         # build function that within a disease model takes a unit traj, and predicts lik of given
         # unit-traj params in corresponding unitModel.
-        likJDMobjFunc = lambda paramsCurrTraj: self.likJDMOneUnitTraj(disModels[d], unitModels[u],
-            X_arrayScaledDB[d], [paramsCurrTraj, None], u, d, Y_arrayCurDis, indFiltToMisCurDisB, informPriorTrajDisModels[d])
+        likJDMobjFunc = lambda paramsCurrTraj: self.ssdJDMOneUnitTraj(disModels[d], unitModels[u],
+          X_arrayScaledDB[d], [paramsCurrTraj, None], u, d, Y_arrayCurDis, indFiltToMisCurDisB, informPriorTrajDisModels[d])
         initParams, initVariance = disModels[d].unpack_parameters(disModels[d].parameters[u])
 
-
-        # print('initLik', likJDMobjFunc(initParams))
-        # print(adsa)
-        # print('initParams', initParams)
-        # print('10 evals', [likJDMobjFunc(initParams + perturb) for perturb in
-        #   np.random.normal(0,0.01,10)])
-        # print(adsa)
-        # print(ads)
         resStruct = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
           options={'disp': True, 'maxiter':1000})
 
@@ -509,7 +547,7 @@ class JointModel(DisProgBuilder.DPMInterface):
         disModels[d].parameters[u] = [resStruct.x, initVariance]
 
 
-  def likJDMOneUnitTraj(self, disModel, unitModel, X_arrayScaledDisB, params, unitNr, disNr, Y_arrayCurDis,
+  def ssdJDMOneUnitTraj(self, disModel, unitModel, X_arrayScaledDisB, params, unitNr, disNr, Y_arrayCurDis,
                         indFiltToMisCurDisB, informPriorTraj, breakPoint=False):
     """
     function computes the likelihood of params of one traj within one disModel.
@@ -517,14 +555,18 @@ class JointModel(DisProgBuilder.DPMInterface):
     :param disModel:
     :param unitModel:
     :param X_arrayScaledDisB: X_array values (scaled) for patients withing current disease
-    :param XdisDBSX:
     :param params: parameters for one unit-trajectory to optimise, within a diseModel
     :param unitNr:
     :param disNr:
     :param Y_arrayCurDis:
+    :param indFiltToMisCurDisB
+    :param informPriorTraj
+    :param breakPoint
 
     :return: log-likelihood
     """
+
+    assert type(X_arrayScaledDisB) == list
 
     ####### first predict dysScores in disModel for curr functional unit ##########
     paramsAllU = disModel.parameters
@@ -540,7 +582,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     predX_arrayUnitModel = [0 for b in range(unitModel.nrBiomk)]
 
-    sumLik =0
+    sumSSD =0
     for b in range(unitModel.nrBiomk):
       predScoresCurrBiomk = predScoresCurrXU[:,unitNr].reshape(-1,1)
       predX_arrayUnitModel[b] = unitModel.filterZarray(predScoresCurrBiomk,
@@ -548,15 +590,16 @@ class JointModel(DisProgBuilder.DPMInterface):
       assert predX_arrayUnitModel[b].shape[0] == Y_arrayCurDis[b].shape[0]
 
       if len(Y_arrayCurDis[b]) > 0:
-        lik = unitModel.likTrajOneBiomk(unitModel.parameters[b],
+        ssd = unitModel.ssdTrajOneBiomk(unitModel.parameters[b],
                                         predX_arrayUnitModel[b], Y_arrayCurDis[b], b)[0]
-        sumLik += lik
+        sumSSD += ssd
 
+    # here we also add the prior on the disease trajectories.
     prior_traj = 0
     if informPriorTraj:
       prior_traj = disModel.computePriorTrajOneBiomk(params)
 
-    return sumLik + prior_traj # sum the likelihood from each trajectory where there is data
+    return sumSSD + prior_traj # sum the likelihood from each trajectory where there is data
 
 
   def predictBiomkSubjGivenXs(self, newXs, disNr):

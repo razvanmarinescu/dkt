@@ -350,10 +350,26 @@ class PlotterJDM:
     trajSamplesBXS = dpmObj.sampleBiomkTrajGivenXs(xsTrajX, disNr, nrSamples=100)
 
     gpPlotter = PlotterDis(self.plotTrajParams)
-    fig = gpPlotter.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
-       XshiftedDisModelBS, Yfilt, diagSubjCurrDis, XsubjValidBSX=None, YsubjValidBSX=None,
-       diagValidS=None,  labels=self.plotTrajParams['labels'], ssdDKT=None, ssdNoDKT=None,
-       replaceFig=True)
+    if gpPlotter.plotTrajParams['isSynth']:
+
+      trueXsTrajX = dpmObj.params['trueParamsDis'][disNr]['xsX']
+      # trueXsScaledZeroOne = (trueXsTrajX - np.min(trueXsTrajX)) / (np.max(trueXsTrajX) - np.min(trueXsTrajX))
+
+      trueYsTrajXB = dpmObj.params['trueParamsDis'][disNr]['ysXB']
+
+      fig = gpPlotter.plotTrajInDisSpaceTrueTraj(xsTrajX, predTrajXB, trajSamplesBXS,
+         XshiftedDisModelBS, Yfilt, diagSubjCurrDis, trueXsTrajX, trueYsTrajXB,
+         labels=self.plotTrajParams['labels'], ssdDKT=None,
+         ssdNoDKT=None,
+         replaceFig=True)
+    else:
+      fig = gpPlotter.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
+         XshiftedDisModelBS, Yfilt, diagSubjCurrDis, XsubjValidBSX=None, YsubjValidBSX=None,
+         diagValidS=None,  labels=self.plotTrajParams['labels'], ssdDKT=None, ssdNoDKT=None,
+         replaceFig=True)
+
+
+
     return fig
 
 
@@ -646,6 +662,113 @@ class PlotterGP(ABC):
 
       ax.plot(xsTrajX,predTrajXB[:,b],
         lw=2, color='black', label='estim. traj.')
+
+      # ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
+      #   color=(0.5,0.5,0.5), lw=2)
+
+      minY = min_yB[b]-deltaB[b]
+      maxY = max_yB[b]+deltaB[b]
+      ax.set_ylim([minY, maxY])
+      minX, maxX = ax.get_xlim()
+
+      # pl.legend(ncol=1,fontsize=12)
+
+      if ssdDKT is not None:
+        ax.text(minX + 0.1*(maxX-minX), minY + 0.9*(maxY-minY), 'SSD DKT=%.3f' % ssdDKT[b])
+        ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD no-DKT=%.3f' % ssdNoDKT[b])
+
+    # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+
+
+    fig.text(0.5, 0.04, 'Disease Progression (months)', ha='center')
+    fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
+
+    h, labels = ax.get_legend_handles_labels()
+    print(h, labels)
+    # legend =  pl.legend(handles=h, bbox_to_anchor=plotTrajParams['legendPos'], loc='upper center', ncol=plotTrajParams['legendCols'])
+
+    legend = pl.figlegend(h[:5], labels[:5], loc='upper center', ncol=5, labelspacing=0.)
+    # set the linewidth of each legend object
+    for legobj in legend.legendHandles:
+      legobj.set_linewidth(4.0)
+
+
+    if replaceFig:
+      fig.show()
+    else:
+      pl.show()
+    # pl.pause(5)
+
+    return fig
+
+  def plotTrajInDisSpaceTrueTraj(self, xsTrajX, predTrajXB, trajSamplesBXS,
+      XsubjBSX, YsubjBSX, diagS, trueXsTrajX, trueYsTrajXB, labels,
+      ssdDKT=None, ssdNoDKT=None, replaceFig=True):
+    """
+    plot biomarker traj and subject data in disease space. function doesn't do any scaling of xs or ys
+
+    :param xsTrajX:
+    :param predTrajXB:
+    :param trajSamplesBXS:
+    :param XsubjBSX:
+    :param YsubjBSX:
+    :param diagS:
+    :param trueXsTrajX:
+    :param trueYsTrajXB:
+    :param replaceFig:
+    :return:
+    """
+
+    font = {'family': 'normal',
+      'size': 13}
+
+    import matplotlib
+    matplotlib.rc('font', **font)
+
+    # Plot method
+    figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
+    fig = pl.figure(3, figsize = figSizeInch)
+    pl.clf()
+    fig.show()
+
+    diagNrs = np.unique(diagS)
+    nrDiags = diagNrs.shape[0]
+
+    nrBiomk = len(XsubjBSX)
+    # nrBiomk = 18
+    nrRows, nrCols = auxFunc.findOptimalRowsCols(nrBiomk)
+
+    nrSamples = trajSamplesBXS.shape[2]
+
+    min_yB = np.zeros(nrBiomk)
+    max_yB = np.zeros(nrBiomk)
+    for b in range(nrBiomk):
+      listsMin = [np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.min(predTrajXB[:,b])]
+      listsMax = [np.max(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.max(predTrajXB[:,b])]
+
+      listsMin += np.min(trueYsTrajXB[b,:])
+      listsMax += np.max(trueYsTrajXB[b,:])
+
+      min_yB[b] = np.min(listsMin)
+      max_yB[b] = np.max(listsMax)
+
+    deltaB = (max_yB - min_yB)/5
+
+    for b in range(nrBiomk):
+      ax = pl.subplot(nrRows, nrCols, b + 1)
+      pl.title(labels[b])
+      # print('--------------b', b)
+      # plot traj samples
+      for i in range(nrSamples):
+        ax.plot(xsTrajX, trajSamplesBXS[b,:,i], lw = 0.05,
+          color = 'red', alpha=1)
+
+      self.plotSubjData(ax, XsubjBSX[b], YsubjBSX[b], diagS, labelExtra = '')
+
+      ax.plot(xsTrajX,predTrajXB[:,b],
+        lw=2, color='black', label='estim. traj.')
+
+      ax.plot(trueXsTrajX, trueYsTrajXB[:,b], '--', lw=2,color='black', label='true traj')
 
       # ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
       #   color=(0.5,0.5,0.5), lw=2)
@@ -998,35 +1121,35 @@ class PlotterGP(ABC):
 
     if self.plotTrajParams['allTrajOverlap']:
       ax2 = pl.subplot(nrRows, nrCols, nrPlotsSoFar+1)
-      pl.title('all trajectories')
+      pl.title('%s all trajectories' % self.plotTrajParams['title'])
       ax2.set_ylim([yMinAll, yMaxAll])
       for b in range(gpModel.nrBiomk):
         ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-', lw=2
                  , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
         print('trueXsScaledZeroOne trueYsTrajXB', trueXsScaledZeroOne.shape, trueYsTrajXB.shape)
         ax2.plot(trueXsScaledZeroOne, trueTrajScaledXB[:, b], '--', lw=2
-                 , c=self.plotTrajParams['colorsTraj'][b])
+                 , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
 
-      # ax2.legend(loc='lower right',ncol=4)
+      ax2.legend(loc='lower right',ncol=1)
       nrPlotsSoFar += 1
     else:
       ax2 = pl.subplot(nrRows, nrCols, nrPlotsSoFar+1)
-      pl.title('all estimated trajectories')
+      pl.title('%s estimated trajectories'  % self.plotTrajParams['title'])
       ax2.set_ylim([yMinAll, yMaxAll])
       for b in range(gpModel.nrBiomk):
         ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-', lw=2
                  , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
 
-      # ax2.legend(loc='lower right',ncol=4)
+      ax2.legend(loc='lower right',ncol=1)
 
       ax3 = pl.subplot(nrRows, nrCols, nrPlotsSoFar+2)
-      pl.title('all true trajectories')
+      pl.title('%s true trajectories' % self.plotTrajParams['title'])
       ax3.set_ylim([yMinAll, yMaxAll])
       for b in range(gpModel.nrBiomk):
         ax3.plot(trueXsScaledZeroOne, trueTrajScaledXB[:, b], '--', lw=2
-                 , c=self.plotTrajParams['colorsTraj'][b])
+                 , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
 
-      # ax3.legend(loc='lower right',ncol=4)
+      ax3.legend(loc='lower right',ncol=1)
 
       nrPlotsSoFar += 2
 

@@ -67,7 +67,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     return (params[0][0] - self.priors['meanA']) ** 2 / self.priors['stdA'] + \
                  (params[0][3] - self.priors['meanD']) ** 2 / self.priors['stdD']
 
-  def likTrajOneBiomk(self, params, X_arrayX, Y_arrayX, biomkIndex):
+  def ssdTrajOneBiomk(self, params, X_arrayX, Y_arrayX, biomkIndex):
     """
     computes the log posterior for the current biomarker
     :param X_arrayX: linearised array of DPS scores for current biomarker
@@ -89,11 +89,11 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
 
 
 
-    # SSD
-    logLik =  np.sum((Y_arrayX - self.sigFunc(X_arrayX, params[0])) ** 2) + prior_traj
+    # actually it's SSD + prior
+    ssd =  np.sum((Y_arrayX - self.sigFunc(X_arrayX, params[0])) ** 2) + prior_traj
     grad = 0
 
-    return logLik, grad
+    return ssd, grad
 
   def unpack_parameters(self, params):
     return params[0], params[1]
@@ -120,7 +120,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     for b in range(self.nrBiomk):
       initParams, initVariance = self.unpack_parameters(self.parameters[b])
 
-      objectiveFun = lambda params: self.likTrajOneBiomk([params, None], self.X_array[b],
+      objectiveFun = lambda params: self.ssdTrajOneBiomk([params, None], self.X_array[b],
                                                          self.Y_array[b], b)[0]
       resStruct = scipy.optimize.minimize(objectiveFun, initParams, method='Nelder-Mead',
                                           options={'disp': True})
@@ -194,8 +194,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     maxX = np.float128(np.max([el for sublist in self.X_array for item in sublist for el in item]))
     self.updateMinMax(minX, maxX)
 
-  def log_posterior_time_shift_onebiomk_given_arrays(self, Xdata, Ydata, trajParams,
-    prior_time_shift):
+  def log_posterior_time_shift_onebiomk_given_arrays(self, Xdata, Ydata, trajParams):
     # Input: X, Y and a biomarker's parameters, current time-shift estimates
     # Output: log-posterior and time-shift gradient
 
@@ -207,7 +206,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     # print('Ydata', Ydata)
 
     # print('eps', eps)
-    loglik = 0.5 * (np.sum((Ydata - Ypred) ** 2) / variance) + prior_time_shift
+    loglik = 0.5 * (np.sum((Ydata - Ypred) ** 2) / variance)
 
     # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega]))
     # grad0 = ((Ydata - np.dot(output, W)) / eps * np.dot(temp, W)).flatten()

@@ -47,6 +47,12 @@ parser.add_argument('--runPartStd', dest='runPartStd', default='RR',
   help=' choose whether to (R) run or (L) load from the checkpoints: '
   'either LL, RR, LR or RL. ')
 
+# parser.add_argument('--disModelObj', dest='disModelObj',
+#   help=' either SigmoidModel or ')
+
+parser.add_argument('--expName', dest="expName",
+  help='synth1 or synth2')
+
 args = parser.parse_args()
 
 if args.agg:
@@ -107,7 +113,6 @@ else: #if hostName == 'razvan-Precision-T1700':
   height = 450
 
 
-
 def main():
 
   nrSubjLong = 100
@@ -122,7 +127,7 @@ def main():
 
   outFolder = 'resfiles/synth/'
 
-  expName = 'synth1'
+  expName = args.expName
   fileName = '%s.npz' % expName
 
   regenerateData = args.regData
@@ -180,9 +185,9 @@ def main():
   params['nrGlobIterDis'] = 10
   params['iterParamsDis'] = 50
 
-  # params['unitModelObj'] = MarcoModel.GP_progression_model
-  params['unitModelObj'] = SigmoidModel.SigmoidModel
-  params['disModelObj'] = SigmoidModel.SigmoidModel
+  # # params['unitModelObj'] = MarcoModel.GP_progression_model
+  # params['unitModelObj'] = SigmoidModel.SigmoidModel
+  # params['disModelObj'] = SigmoidModel.SigmoidModel
 
   # by default we have no priors
   params['priors'] = None
@@ -196,14 +201,14 @@ def main():
   #                             prior_length_scale_std=1e-4, prior_sigma_mean=3, prior_sigma_std=1e-3,
   #                             prior_eps_mean=0.1, prior_eps_std=1e-6)
 
-  # params['priorsUnitModels'] = [dict(prior_length_scale_mean_ratio=0.05,  # mean_length_scale = (self.maxX-self.minX)/3
-  #                             prior_length_scale_std=1e-6, prior_sigma_mean=0.5, prior_sigma_std=1e-3,
-  #                             prior_eps_mean=0.1, prior_eps_std=1e-6) for u in range(nrFuncUnits)]
+  params['priorsUnitModelsMarcoModel'] = [dict(prior_length_scale_mean_ratio=0.05,  # mean_length_scale = (self.maxX-self.minX)/3
+                              prior_length_scale_std=1e-6, prior_sigma_mean=0.5, prior_sigma_std=1e-3,
+                              prior_eps_mean=0.1, prior_eps_std=1e-6) for u in range(nrFuncUnits)]
 
-  params['priorsDisModels'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5, timeShiftStd=15)
+
+  params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5, timeShiftStd=15)
     for d in range(nrDis)]
-  params['priorsUnitModels'] = [None for d in range(nrDis)]
-
+  params['priorsUnitModelsSigmoid'] = [None for d in range(nrDis)]
 
 
   ##### disease agnostic parameters ###########
@@ -219,7 +224,14 @@ def main():
   thetas[mapBiomkToFuncUnits == 1, 1] = 10
   # thetas[mapBiomkToFuncUnits == 2, 1] = 7
 
-  sigmaB = 0.05 * np.ones(nrBiomk)
+
+  if args.expName == 'synth1':
+    sigmaB = 0.05 * np.ones(nrBiomk)
+  elif args.expName == 'synth2':
+    sigmaB = 0.01 * np.ones(nrBiomk)
+  else:
+    raise ValueError('expName should be synth1 or synth2')
+
 
   # scale every biomarker with mean and std.
   scalingBiomk2B = np.zeros((2, nrBiomk))
@@ -261,7 +273,7 @@ def main():
     synthPlotter = Plotter.PlotterJDM(paramsDisOne['plotTrajParams'])
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisOne['X'], paramsDisOne['Y'],
       paramsDisOne['diag'], synthModelDisOne, paramsDisOne['trueParamsDis'], replaceFigMode=replaceFigMode)
-    fig.savefig('%s/synth1Dis1GenData.png' % outFolder)
+    fig.savefig('%s/%sDis1GenData.png' % (outFolder, expName))
 
   ##### disease 2 - disease specific parameters ###########
 
@@ -317,13 +329,13 @@ def main():
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisTwo['Xtrue'],
       paramsDisTwo['Ytrue'], paramsDisTwo['diag'],
       synthModelDisTwo, paramsDisTwo['trueParamsDis'], replaceFigMode=replaceFigMode)
-    fig.savefig('%s/synth1Dis2GenDataFull.png' % outFolder)
+    fig.savefig('%s/%sDis2GenDataFull.png' % (outFolder, expName))
 
     synthPlotter = Plotter.PlotterJDM(paramsDisTwo['plotTrajParams'])
     fig = synthPlotter.plotTrajDataMarcoFormat(paramsDisTwo['XemptyListsAllBiomk'],
       paramsDisTwo['YemptyListsAllBiomk'], paramsDisTwo['diag'],
       synthModelDisTwo, paramsDisTwo['trueParamsDis'], replaceFigMode=replaceFigMode)
-    fig.savefig('%s/synth1Dis2GenDataMissing.png' % outFolder)
+    fig.savefig('%s/%sDis2GenDataMissing.png' % (outFolder, expName))
 
 
   ############### now merge the two datasets ############

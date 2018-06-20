@@ -20,6 +20,8 @@ from DisProgBuilder import *
 import JointModel
 import MarcoModelWrapper
 import Plotter
+import MarcoModel
+import SigmoidModel
 
 from importlib.machinery import SourceFileLoader
 from sklearn import linear_model
@@ -30,7 +32,11 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
 
   if np.any(modelToRun == 0) or np.any(modelToRun == 14):
     # JMD - Joint Model of Diseases
-    dpmBuilder = JointModel.JMDBuilder()
+    unitModelObj = SigmoidModel.SigmoidModel
+    disModelObj = SigmoidModel.SigmoidModel
+    dpmBuilder = JointModel.JMDBuilder(unitModelObj,
+      disModelObj, params['priorsUnitModelsSigmoid'],
+      params['priorsDisModelsSigmoid'])
     modelName = 'JMD'
     expNameCurrModel = '%s_%s' % (expName, modelName)
     params['currModel'] = 14
@@ -48,7 +54,11 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
 
   if np.any(modelToRun == 0) or np.any(modelToRun == 16):
     # Joint Model of Diseases - One Pass
-    dpmBuilder = JointModelOnePass.JMDBuilderOnePass()
+    unitModelObj = MarcoModel.MarcoModel
+    disModelObj = SigmoidModel.SigmoidModel
+    dpmBuilder = JointModelOnePass.JMDBuilderOnePass(unitModelObj,
+      disModelObj, params['priorsUnitModelsMarcoModel'],
+      params['priorsDisModelsSigmoid'])
     modelName = 'JDMOnePass'
     expNameCurrModel = '%s_%s' % (expName, modelName)
     params['currModel'] = 16

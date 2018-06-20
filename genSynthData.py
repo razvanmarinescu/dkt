@@ -177,14 +177,6 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
     trueParamsDis = dict(xsX=trueLineSpacedDPSsX, ysXU=trueDysTrajFromDpsXU, ysXB=trueTrajPredXB,
        subShiftsS=subShiftsTrueMarcoFormatS, scalingBiomk2B=scalingBiomk2B)
 
-    # trueParamsMarcoFormat = dict(subShiftsTrueMarcoFormatS=subShiftsTrueMarcoFormatS,
-    #   trueSubjDysfuncScoresSU=trueSubjDysfuncScoresSU, trueLineSpacedDPSsX=trueLineSpacedDPSsX,
-    #   trueTrajPredXB=trueTrajPredXB, trueDysTrajFromDpsXU=trueDysTrajFromDpsXU,
-    #   trueDysfuncXsX=trueDysfuncXsX,trueTrajFromDysXB=trueTrajFromDysXB,
-    #   scalingBiomk2B=scalingBiomk2B, trueParamsFuncUnits=trueParamsFuncUnits,
-    #   trueParamsDis=trueParamsDis)
-    # localParams['trueParams'] = trueParamsMarcoFormat
-
     trueParamsMarcoFormat = dict(trueParamsFuncUnits=trueParamsFuncUnits,
       trueParamsCurrDis=trueParamsDis)
     localParams['trueParamsFuncUnits'] = trueParamsFuncUnits

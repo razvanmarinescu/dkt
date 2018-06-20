@@ -19,15 +19,19 @@ import DisProgBuilder
 class JMDBuilderOnePass(DisProgBuilder.DPMBuilder):
   # builds a Joint Disease model
 
-  def __init__(self):
-    pass
+  def __init__(self, unitModelObj, disModelObj, priorsUnitModels, priorsDisModels):
+    self.unitModelObj = unitModelObj
+    self.disModelObj = disModelObj
+    self.priorsUnitModels = priorsUnitModels
+    self.priorsDisModels = priorsDisModels
 
   def generate(self, dataIndices, expName, params):
-    return JDMOnePass(dataIndices, expName, params)
+    return JDMOnePass(dataIndices, expName, params,
+      self.unitModelObj, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
 
 class JDMOnePass(DisProgBuilder.DPMInterface):
 
-  def __init__(self, dataIndices, expName, params):
+  def __init__(self, dataIndices, expName, params, unitModelObj, disModelObj, priorsUnitModels, priorsDisModels):
     self.dataIndices = dataIndices
     self.expName = expName
     self.params = params
@@ -47,8 +51,8 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
     self.binMaskSubjForEachDisD = params['binMaskSubjForEachDisD']
 
-    self.unitModelObj = params['unitModelObj']
-    self.disModelObj = params['disModelObj']
+    # self.unitModelObj = params['unitModelObj']
+    # self.disModelObj = params['disModelObj']
 
   def runStd(self, runPart):
     self.run(runPart)
@@ -77,6 +81,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         os.system('mkdir -p %s' % outFolderCurrUnit)
         self.unitModels[u] = self.unitModelObj(XfiltCurrUnit, YfiltCurrUnit, visitIndicesCurrUnit, outFolderCurrUnit,
           plotterObjCurrFuncUnit, plotTrajParamsFuncUnit['labels'], self.params)
+        self.unitModels[u].priors = self.params['priorsUnitModels'][u]
 
         # self.unitModels[u].Set_penalty(self.params['penaltyUnits'])
         # self.unitModels[u].Optimize(nrGlobIterUnit, iterParamsUnit, Plot=True)

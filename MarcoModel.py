@@ -330,12 +330,12 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       prior_eps_mean = self.priors['prior_eps_mean']
       prior_eps_std = self.priors['prior_eps_std']
 
-      prior = -((eps - prior_eps_mean) ** 2 / prior_eps_std + (sigma - prior_sigma_mean) ** 2 / prior_sigma_std + (
-          l - prior_length_scale_mean) ** 2 / prior_length_scale_std)
+      prior = (eps - prior_eps_mean) ** 2 / prior_eps_std + (sigma - prior_sigma_mean) ** 2 / prior_sigma_std + (
+          l - prior_length_scale_mean) ** 2 / prior_length_scale_std
 
       return prior
 
-    def log_posterior_grad(self, X,Y, N, perturbationW, params, penalty):
+    def objFuncSSDAndGrad(self, X, Y, N, perturbationW, params, penalty):
         # Input: X, Y and a biomarker's parameters, random perturbation of the weights W
         # Output: log-posterior and parameters gradient
         s_omega, m_omega, s_w, m_w, sigma, l, eps = self.unpack_parameters(params)
@@ -370,8 +370,8 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
         prior = self.computePriorTrajOneBiomk(params)
 
-        posterior = -0.5 *  ( np.log(2 * np.pi * eps) + np.sum((Y - np.dot(output,W))**2)/eps) - \
-          Kullback_Leibler  + prior + Dterm
+        posterior = 0.5 *  ( np.log(2 * np.pi * eps) + np.sum((Y - np.dot(output,W))**2)/eps) + \
+          Kullback_Leibler  + prior - Dterm
 
         # Derivative of weights mean ad sd
         d_m_w = np.dot(((Y - np.dot(output,W))).T,output)/eps + penalty * np.sum(Doutput,0) \
@@ -430,7 +430,7 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         grad_penalty_list = []
         for b in range(self.nrBiomk):
             output_loglik, output_MC_grad, output_grad_penalty = \
-                self.likTrajOneBiomk(paramsB[b], X_arrayB[b], Y_arrayB[b],
+                self.ssdTrajOneBiomk(paramsB[b], X_arrayB[b], Y_arrayB[b],
                                      b, fixSeed=False, nrSamples=100)
 
             loglik_list.append(output_loglik)
@@ -440,7 +440,7 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
         return loglik_list, MC_grad_list, grad_penalty_list
 
-    def likTrajOneBiomk(self, params, X_array, Y_array, biomkIndex,
+    def ssdTrajOneBiomk(self, params, X_array, Y_array, biomkIndex,
                         fixSeed=False, nrSamples=30):
         # Stochastic gradient of log-posterior with respect ot given parameters
         # Default number of MC samples is iterNr=100
@@ -449,25 +449,25 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
           np.random.seed(1)
           # print(ads)
 
-        penalty = self.penalty[biomkIndex]
+        penalty = self.penalty[biomkIndefx]
         current_params = params
         current_X = X_array
         current_Y = Y_array
         MC_grad = np.zeros(len(params))
         output_grad_penalty = 0
-        loglik = 0
+        loglikSum = 0
         for j in range(nrSamples):
             perturbation_W = np.random.randn( 2 * self.N_rnd_features).reshape(
               [ 2*self.N_rnd_features,1])
-            objective_cost_function = lambda params: self.log_posterior_grad(
+            objective_cost_function = lambda params: self.objFuncSSDAndGrad(
               current_X, current_Y,self.N_rnd_features, perturbation_W, params,
               penalty)
-            value, grad, grad_penalty = objective_cost_function(current_params)
+            logLik, grad, grad_penalty = objective_cost_function(current_params)
             MC_grad = MC_grad - grad
-            loglik = loglik - value
+            loglikSum = loglikSum + logLik
             output_grad_penalty = output_grad_penalty - grad_penalty
         output_MC_grad = MC_grad / nrSamples
-        output_loglik = loglik / nrSamples
+        output_loglik = loglikSum / nrSamples
         output_grad_penalty = output_grad_penalty / nrSamples
 
 
@@ -546,34 +546,36 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       loglik =  0
       # grad = 0
 
-      timeShiftPriorSpread = 6
+      timeShiftPriorSpread = 2
       prior_time_shift = (time_shift_one_sub - 0) ** 2 / timeShiftPriorSpread
 
+      trajParamsB = self.computeTrajParamsForTimeShifts()
+
       # Shifting data according to current time-shift estimate
-      for i in range(self.nrBiomk):
+      for b in range(self.nrBiomk):
 
-        sigma = sigmas[i]
-        Omega = Omegas[i]
-        eps = epss[i]
-        W = Ws[i]
+        sigma = sigmas[b]
+        Omega = Omegas[b]
+        eps = epss[b]
+        W = Ws[b]
 
-        Xdata = time_shift_one_sub + self.X_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])): \
-          np.sum(self.N_obs_per_sub[i][:sub+1])]
-        Ydata = self.Y_array[i][int(np.sum(self.N_obs_per_sub[i][:sub])):np.sum(self.N_obs_per_sub[i][:sub + 1])]
+        Xdata = time_shift_one_sub + self.X_array[b][int(np.sum(self.N_obs_per_sub[b][:sub])): \
+          np.sum(self.N_obs_per_sub[b][:sub+1])]
+        Ydata = self.Y_array[b][int(np.sum(self.N_obs_per_sub[b][:sub])):np.sum(self.N_obs_per_sub[b][:sub + 1])]
 
-        loglikCurr = self.log_posterior_time_shift_onebiomk_given_arrays(Xdata, Ydata,
-          sigma, Omega, eps, W, prior_time_shift)
+        loglikCurr = self.log_posterior_time_shift_onebiomk_given_arrays(Xdata, Ydata, trajParamsB[b])
 
         loglik += loglikCurr
         # grad += gradCurr
 
-      return loglik
+      return loglik + prior_time_shift
 
-    def log_posterior_time_shift_onebiomk_given_arrays(self, Xdata, Ydata, trajParams, prior_time_shift):
+    def log_posterior_time_shift_onebiomk_given_arrays(self, Xdata, Ydata, trajParams):
       # Input: X, Y and a biomarker's parameters, current time-shift estimates
       # Output: log-posterior and time-shift gradient
 
-      sigma, Omega, eps, W = self.decapsTrajParamsOneBiomk(trajParams)
+
+      sigma , Omega, eps, W = self.decapsTrajParamsOneBiomk(trajParams)
 
       output = self.basis(Xdata, sigma, Omega)
       Doutput_time_shift = self.Dbasis_time_shift(Xdata, sigma, Omega)
@@ -584,7 +586,7 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       # print('Ydata', Ydata)
 
       # print('eps', eps)
-      loglik = 0.5 * (np.sum((Ydata - Ypred) ** 2) / eps) + prior_time_shift
+      loglik = 0.5 * (np.sum((Ydata - Ypred) ** 2) / eps)
 
       # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega]))
       # grad0 = ((Ydata - np.dot(output, W)) / eps * np.dot(temp, W)).flatten()
@@ -641,7 +643,7 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
 
     def computeTrajParamsForTimeShifts(self):
       ######## calculate subject-nonspecific terms
-      paramsB = []
+      trajParamsB = []
       for i in range(self.nrBiomk):
         s_omega, m_omega, s_w, m_w, sigma, l, eps = self.unpack_parameters(self.parameters[i])
         s_omega = np.exp(s_omega)
@@ -654,12 +656,12 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
         W = np.multiply(perturbation_zero_W, np.sqrt(np.exp(s_w))) + m_w
         Omega = 1 / np.sqrt(l) * self.perturbation_Omega
 
-        paramsB[b] += [self.encapsTrajParamsOneBiomk(sigma, Omega, eps, W)]
+        trajParamsB[b] += [self.encapsTrajParamsOneBiomk(sigma, Omega, eps, W)]
 
 
       #### end of subject non-specific part
 
-      return sigmas, Ws, Omegas, epss
+      return trajParamsB
 
     def encapsTrajParamsOneBiomk(self, sigma, Omega, eps, W):
       return [sigma, Omega, eps, W]
