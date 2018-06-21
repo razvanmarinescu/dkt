@@ -158,7 +158,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
     paramsCopy['penaltyUnits'] = 1
     onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy,
-      self.priorsUnitModels, self.priorsDisModels)
+      self.priorsUnitModels, self.priorsDisModels, self.priorsUnitModels, self.priorsDisModels)
 
     onePassModel.run(runPart = 'LL')
 

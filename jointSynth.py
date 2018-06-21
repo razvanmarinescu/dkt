@@ -158,11 +158,9 @@ def main():
   plotTrajParams['colorsTrajUnitsU'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
     np.linspace(0, 1, num=nrFuncUnits, endpoint=False)]
 
-
   # plotTrajParams['yNormMode'] = 'zScoreTraj'
   # plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
   plotTrajParams['yNormMode'] = 'unscaled'
-
 
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
