@@ -42,12 +42,13 @@ def regressCov(data, regressorVector, diag, diagsCTL = (CTL, CTL2), printFigs=Fa
   oldData = copy.deepcopy(data)
   M = np.zeros((data.shape[1], 2))
   desiredMean = np.zeros(data.shape[1])
+  regressorVectorArray = np.array(regressorVector)
   for i in range(data.shape[1]):
       currCol = data.columns[i]
-      notNanIndices = np.logical_not(np.isnan(regressorVector))
+      notNanIndices = np.logical_not(np.isnan(regressorVectorArray))
       notNanIndices = np.logical_and(notNanIndices,
         np.logical_not(np.isnan(data.loc[:,currCol])))
-      regressorVectorNN = regressorVector[notNanIndices]
+      regressorVectorNN = regressorVectorArray[notNanIndices]
       diagNN = diag[notNanIndices]
       dataNNcurrCol = data.loc[notNanIndices,currCol]
       indicesCtl = np.in1d(diagNN, diagsCTL)
@@ -60,7 +61,7 @@ def regressCov(data, regressorVector, diag, diagsCTL = (CTL, CTL2), printFigs=Fa
 
       M[i,:] = np.dot(XXX, dataNNcurrCol.loc[indicesCtl]) # params of linear fit
       assert(~any(np.isnan(M[i,:])));
-      Xfull = np.concatenate((regressorVector.reshape(-1,1),
+      Xfull = np.concatenate((regressorVectorArray.reshape(-1,1),
       np.ones((regressorVector.shape[0],1))),axis=1)
 
       Yhat = np.dot(Xfull, M[i,:]) # estimated Ys
@@ -94,28 +95,16 @@ def applyRegFromParams(data, regressorVector, diag, params, diagsCTL = (CTL, CTL
   diagLabels = ['CTL', 'PCA']
   diagCols = ['g', 'r']
 
-  assert regressorVector.shape[0] == diag.shape[0]
+  regressorVectorArray = np.array(regressorVector)
+
+  assert regressorVectorArray.shape[0] == diag.shape[0]
   for i in range(data.shape[1]):
       currCol = data.columns[i]
-      # notNanIndices = np.logical_not(np.isnan(regressorVector))
-      # notNanIndices = np.logical_and(notNanIndices,
-      #   np.logical_not(np.isnan(data.loc[:,currCol])))
-      # regressorVectorNN = regressorVector[notNanIndices]
-      # diagNN = diag[notNanIndices]
-      # dataNNcurrCol = data.loc[notNanIndices,currCol]
-      # indicesCtl = np.in1d(diagNN, diagsCTL)
-      # regressorCTL = regressorVectorNN[indicesCtl]
-      #
-      # # Solve the GLM: Y = [X 1] * M
-      # X = np.concatenate((regressorCTL.reshape(-1,1),
-      # np.ones((regressorCTL.shape[0],1))),axis=1)
-      # XXX = np.dot(np.linalg.pinv(np.dot(X.T,X)), X.T)
 
-      # M[i,:] = np.dot(XXX, dataNNcurrCol.loc[indicesCtl]) # params of linear fit
       assert(~any(np.isnan(M[i,:])));
 
-      Xfull = np.concatenate((regressorVector.reshape(-1,1),
-      np.ones((regressorVector.shape[0],1))),axis=1)
+      Xfull = np.concatenate((regressorVectorArray.reshape(-1,1),
+      np.ones((regressorVectorArray.shape[0],1))),axis=1)
 
       Yhat = np.dot(Xfull, M[i,:]) # estimated Ys
       data.loc[:, currCol] = data.loc[:,currCol] - (Yhat - desiredMean[i])
@@ -125,17 +114,17 @@ def applyRegFromParams(data, regressorVector, diag, params, diagsCTL = (CTL, CTL
         pl.clf()
         for d in range(len(diagNrs)):
           currDiagInd = np.in1d(diag, diagNrs[d])
-          print(regressorVector[currDiagInd])
+          print(regressorVectorArray[currDiagInd])
           print(oldData.loc[currDiagInd,currCol])
-          pl.scatter(regressorVector[currDiagInd], oldData.loc[currDiagInd,currCol],
+          pl.scatter(regressorVectorArray[currDiagInd], oldData.loc[currDiagInd,currCol],
             c=diagCols[d],marker='.',label='%s before' % diagLabels[d], s=12)
-          pl.scatter(regressorVector[currDiagInd], data.loc[currDiagInd, currCol],
+          pl.scatter(regressorVectorArray[currDiagInd], data.loc[currDiagInd, currCol],
             c=diagCols[d],marker='x',label='%s after' % diagLabels[d], s=12)
 
           # pl.scatter(regressorVector, oldData.loc[:, currCol], c='r', m='.', label='before', s=5)
           # pl.scatter(regressorVector, data[currCol], c='b', m='.', label='after', s=5)
 
-        pl.plot(regressorVector, Yhat, c='k', label='line')
+        pl.plot(regressorVectorArray, Yhat, c='k', label='line')
         if otherDataToPlot is not None:
           pl.scatter(otherRegVector, otherDataToPlot.loc[:, currCol], c = 'k', marker = 'o',
                      label = 'ADNI data', s = 12)
@@ -146,7 +135,7 @@ def applyRegFromParams(data, regressorVector, diag, params, diagsCTL = (CTL, CTL
         # pl.plot(regressorVectorNN[indicesCtl],correctedPred  , c='b')
         pl.title('%s' % data.columns[i])
         pl.legend()
-        pl.gca().set_xlim([np.min(regressorVector), np.max(regressorVector)])
+        pl.gca().set_xlim([np.min(regressorVectorArray), np.max(regressorVectorArray)])
 
         pl.show()
 
@@ -210,6 +199,11 @@ def prepareData(finalDataFile, tinyData):
   # print('meanValid', np.nanmean(validDf.loc[validDfCtlInd,dtiCols],axis=0), np.nanstd(validDf.loc[validDfCtlInd,dtiCols],axis=0))
   # print('dataDfAll', np.nanmean(dataDfAll.loc[trainDfCtlInd,dtiCols],axis=0), np.nanstd(dataDfAll.loc[trainDfCtlInd,dtiCols],axis=0))
   # print('trainCTLS', )
+  # print(adsa)
+
+  # print(dataDfAll[mriCols])
+  # print(dataDfAll['ICV'])
+  # print(dataDfAll['diag'])
   # print(adsa)
 
   # perform correction for both the data and the validation set

@@ -66,7 +66,6 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
     modelNames += [modelName]
 
 
-
   return modelNames, res
 
 def runStdDPM(params, expNameCurrModel, dpmBuilder, runPart):

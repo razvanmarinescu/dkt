@@ -69,6 +69,9 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.priorsUnitModels = priorsUnitModels
     self.priorsDisModels = priorsDisModels
 
+    self.unitModelObj = unitModelObj
+    self.disModelObj = disModelObj
+
   def runStd(self, runPart):
     self.run(runPart)
 
@@ -123,6 +126,8 @@ class JointModel(DisProgBuilder.DPMInterface):
 
         i += 1
 
+    self.makePlots(plotFigs, nrIt, 0)
+
     res = None
     return res
 
@@ -158,15 +163,15 @@ class JointModel(DisProgBuilder.DPMInterface):
     paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
     paramsCopy['penaltyUnits'] = 1
     onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy,
-      self.priorsUnitModels, self.priorsDisModels, self.priorsUnitModels, self.priorsDisModels)
+      self.unitModelObj, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
 
-    onePassModel.run(runPart = 'LL')
+    onePassModel.run(runPart = 'RR')
 
     self.unitModels = onePassModel.unitModels
     self.disModels = onePassModel.disModels
 
     for d in range(self.nrDis):
-      self.disModels[d].priors = self.params['priorsDisModels'][d]
+      self.disModels[d].priors = self.priorsDisModels[d]
 
 
   def varyShiftsScale(self, unitModels, disModels):
@@ -500,7 +505,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       if iterNr == 0:
         self.unitModels[u].updateXvals(predScoresCurrUSX[u], XdisSX)
 
-      self.unitModels[u].priors = self.params['priorsUnitModels'][u]
+      # self.unitModels[u].priors = self.params['priorsUnitModels'][u]
       # self.unitModels[u].Set_penalty(2)
       # self.unitModels[u].estimTrajParams(Niterat = 70)
       self.unitModels[u].estimTrajParams()

@@ -1271,6 +1271,7 @@ class PlotterGP(ABC):
     nrBiomk = predTrajXB.shape[1]
     subjShiftsEstimS = gpModel.getSubShiftsLong()
 
+
     # rescale all trajectories
     predTrajScaledXB, trueTrajScaledXB, yMinAll, yMaxAll, min_yB, max_yB = \
       rescaleTraj(predTrajXB, trueTrajCopyXB, self.plotTrajParams['yNormMode'],
@@ -1279,6 +1280,10 @@ class PlotterGP(ABC):
     trajStruct = dict(newXTrajScaledZeroOne=newXTrajScaledZeroOne, trueXsScaledZeroOne=trueXsScaledZeroOne,
                       predTrajScaledXB=predTrajScaledXB, trueTrajScaledXB=trueTrajScaledXB,
                       yMinAll=yMinAll, yMaxAll=yMaxAll, min_yB=min_yB, max_yB=max_yB)
+
+    print(trajStruct)
+    print(predTrajXB, trueTrajCopyXB, self.plotTrajParams['yNormMode'], self.plotTrajParams['diag'], nrBiomk, subjShiftsEstimS)
+    print(adsa)
 
     return trajStruct
 
@@ -1431,6 +1436,14 @@ def rescaleTraj(predTrajXB, trueTrajXB, yNormMode, diag, nrBiomk, subjStagesEsti
     deltaB = [(max_yB[b] - min_yB[b]) * 0.2 for b in range(nrBiomk)]
     min_yB = min_yB - deltaB
     max_yB = max_yB + deltaB
+
+    print('predTrajXB', predTrajXB)
+    print('trueTrajXB', trueTrajXB)
+    print('yMinTrue', yMinTrue)
+    print('yMinPred', yMinPred)
+    print('yMinAll', yMinAll)
+
+    print(adsa)
 
 
   elif yNormMode == 'unscaled':

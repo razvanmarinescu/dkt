@@ -211,6 +211,8 @@ def main():
   labels = ds['list_biomarkers']
   diag = ds['diag']
 
+
+
   visDataHist(dataDfAll)
   nrUnqDiags = np.unique(dataDfAll.diag)
   print(dataDfAll)
@@ -232,6 +234,7 @@ def main():
 
   nrFuncUnits = 6
   nrBiomkInFuncUnits = 5
+  nrDis = 2 # nr of diseases
 
   # nrBiomk = nrBiomkInFuncUnits * nrFuncUnits
   # print(labels)
@@ -259,7 +262,10 @@ def main():
   plotTrajParams['labels'] = labels
   plotTrajParams['nrRowsFuncUnit'] = 3
   plotTrajParams['nrColsFuncUnit'] = 4
-  plotTrajParams['colorsTraj'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in np.linspace(0, 1, num=nrBiomk, endpoint=False)]
+  plotTrajParams['colorsTrajBiomkB'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
+    np.linspace(0, 1, num=nrBiomk, endpoint=False)]
+  plotTrajParams['colorsTrajUnitsU'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
+    np.linspace(0, 1, num=nrFuncUnits, endpoint=False)]
 
   plotTrajParams['yNormMode'] = 'zScoreTraj'
   # plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
@@ -268,6 +274,7 @@ def main():
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
 
+  params['unitNames'] = ['Unit%d' % f for f in range(nrFuncUnits)]
   params['runIndex'] = args.runIndex
   params['nrProc'] = args.nrProc
   params['cluster'] = args.cluster
@@ -288,40 +295,39 @@ def main():
   params['RIDvalid'] = ds['RIDvalid']
   params['diagValid'] = ds['diagValid']
   params['dataDfAll'] = dataDfAll
+  params['visitIndices'] = ds['visitIndices']
+  params['visitIndicesValid'] = ds['visitIndicesValid']
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
   params['iterParamsUnit'] = 60
   params['nrGlobIterDis'] = 10
   params['iterParamsDis'] = 60
 
-  # nrSubj = len(ds['Yvalid'][0])
-  # for b in range(6,12):
-  #   print(b, labels[b], [ds['Yvalid'][b][s][0] for s in range(nrSubj) if (ds['Yvalid'][b][s] and ds['diag'][s]
-  #   == CTL)])
-  #   print('mean CTL', np.mean([ds['Yvalid'][b][s][0] for s in range(nrSubj) if (ds['Yvalid'][b][s] and ds['diag'][s]
-  #   == CTL)]))
-    # print('mean AD', np.mean(ds['Yvalid'][b][ds['diag'] == AD]))
+  # by default we have no priors
+  params['priors'] = None
 
-  # print(ads)
+  ####### set priors for specific models #########
+
+  # params['priors'] = dict(prior_length_scale_mean_ratio=0.33, # mean_length_scale = (self.maxX-self.minX)/3
+  #     prior_length_scale_std=1e-4, prior_sigma_mean=2,prior_sigma_std = 1e-3,
+  #     prior_eps_mean = 1, prior_eps_std = 1e-2)
+  # params['priors'] = dict(prior_length_scale_mean_ratio=0.9,  # mean_length_scale = (self.maxX-self.minX)/3
+  #                             prior_length_scale_std=1e-4, prior_sigma_mean=3, prior_sigma_std=1e-3,
+  #                             prior_eps_mean=0.1, prior_eps_std=1e-6)
+
+  params['priorsUnitModelsMarcoModel'] = [dict(prior_length_scale_mean_ratio=0.05,  # mean_length_scale = (self.maxX-self.minX)/3
+                              prior_length_scale_std=1e-6, prior_sigma_mean=0.5, prior_sigma_std=1e-3,
+                              prior_eps_mean=0.1, prior_eps_std=1e-6) for u in range(nrFuncUnits)]
+
+
+  params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5, timeShiftStd=15)
+    for d in range(nrDis)]
+  params['priorsUnitModelsSigmoid'] = [None for d in range(nrDis)]
 
 
   nrBiomkDisModel = nrFuncUnits + 3
   params['nrBiomkDisModel'] = nrBiomkDisModel
 
-  nrXPoints = 50
-  nrDis = 2 # nr of diseases
-  params['trueParams'] = {}
-  params['trueParams']['subShiftsTrueMarcoFormatS'] = np.zeros(RID.shape[0])
-  params['trueParams']['trueSubjDysfuncScoresSU'] = np.zeros((RID.shape[0],nrFuncUnits))
-  params['trueParams']['trueDysfuncXsX'] = np.linspace(0,1, nrXPoints)
-  params['trueParams']['trueTrajXB'] = np.zeros((nrXPoints, nrBiomk))
-  params['trueParams']['trueTrajFromDysXB'] = np.zeros((nrXPoints, nrBiomk))
-
-  params['trueParams']['trueLineSpacedDPSsX'] = np.linspace(-10,10, nrXPoints)
-  # params['trueParams']['trueTrajPredXB'] = np.zeros((nrXPoints,nrBiomk))
-  params['trueParams']['trueDysTrajFromDpsXU'] = [np.zeros((nrXPoints,nrBiomkDisModel)) for d in range(nrDis)]
-
-  params['plotTrajParams']['trueParams'] = params['trueParams']
   params['plotTrajParams']['unitNames'] = unitNames + labels[-3:]
 
   # map which diagnoses belong to which disease
@@ -329,6 +335,41 @@ def main():
   params['diagsSetInDis'] = [np.array([CTL, MCI, AD]), np.array([CTL2, PCA])]
   params['disLabels'] = ['tAD', 'PCA']
   params['otherBiomkPerDisease'] = [[nrBiomk-3,nrBiomk-2, nrBiomk-1], []]
+
+  params['binMaskSubjForEachDisD'] = [np.in1d(params['diag'],
+                                      params['diagsSetInDis'][disNr]) for disNr in range(nrDis)]
+
+  eps = 0.001
+  nrXPoints = 50
+  params['trueParams'] = {}
+  subShiftsS = np.zeros(RID.shape[0])
+  params['trueParams']['trueSubjDysfuncScoresSU'] = np.zeros((RID.shape[0],nrFuncUnits))
+  trueDysfuncXsX = np.linspace(0,1, nrXPoints)
+  params['trueParams']['trueTrajXB'] = eps * np.ones((nrXPoints, nrBiomk))
+  trueTrajFromDysXB = eps * np.ones((nrXPoints, nrBiomk))
+
+  trueLineSpacedDPSsX = np.linspace(-10,10, nrXPoints)
+  trueTrajPredXB = eps * np.ones((nrXPoints,nrBiomk))
+  trueDysTrajFromDpsXU = [eps * np.ones((nrXPoints,nrBiomkDisModel)) for d in range(nrDis)]
+
+  scalingBiomk2B = np.zeros((2, nrBiomk))
+  scalingBiomk2B[1,:] = 1
+
+  trueParamsFuncUnits = [0 for _ in range(nrFuncUnits)]
+  for f in range(nrFuncUnits):
+    trueParamsFuncUnits[f] = dict(xsX=trueDysfuncXsX, ysXB=trueTrajFromDysXB[:, biomkInFuncUnit[f]],
+                                  subShiftsS=subShiftsS,
+                                  scalingBiomk2B=scalingBiomk2B[:, biomkInFuncUnit[f]])
+
+  # disease specific
+  trueParamsDis = [0 for _ in range(nrDis)]
+  for d in range(nrDis):
+    trueParamsDis[d] = dict(xsX=trueLineSpacedDPSsX, ysXU=trueDysTrajFromDpsXU, ysXB=trueTrajPredXB,
+                       subShiftsS=np.zeros(params['diagsSetInDis'][d].shape[0]), scalingBiomk2B=scalingBiomk2B)
+
+  params['trueParamsFuncUnits'] = trueParamsFuncUnits
+  params['trueParamsDis'] = trueParamsDis
+
 
   print('diag', params['diag'].shape[0])
   print('X[0]',len(params['X'][0]))
@@ -352,13 +393,10 @@ def main():
 
 
 
-
 def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = None):
   """ runs all experiments"""
 
   res = {}
-
-  dpmBuilder.plotterObj.plotTrajParams = params['plotTrajParams']
 
   params['patientID'] = AD
   params['excludeID'] = -1

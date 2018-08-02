@@ -120,8 +120,6 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
     # localParams['longAgeAtScan'] = longAgeAtScan
     # localParams['inverseMap'] = inverseMap
 
-    # localParams['trueParamsMarcoFormat'] = trueParamsMarcoFormat
-
     # monthsSinceBlScan = 12*(ageAtScanCross - ageAtBlScanCross)
 
 
@@ -177,8 +175,6 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
     trueParamsDis = dict(xsX=trueLineSpacedDPSsX, ysXU=trueDysTrajFromDpsXU, ysXB=trueTrajPredXB,
        subShiftsS=subShiftsTrueMarcoFormatS, scalingBiomk2B=scalingBiomk2B)
 
-    trueParamsMarcoFormat = dict(trueParamsFuncUnits=trueParamsFuncUnits,
-      trueParamsCurrDis=trueParamsDis)
     localParams['trueParamsFuncUnits'] = trueParamsFuncUnits
     localParams['trueParamsDis'] = trueParamsDis # add more diseases later
 
