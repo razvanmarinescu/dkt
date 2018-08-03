@@ -43,6 +43,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.nrFuncUnits = params['nrFuncUnits']
     self.biomkInFuncUnit = params['biomkInFuncUnit']
 
+
     self.unitModels = None # functional unit models
     self.disModels = None # disease specific models
 
@@ -56,15 +57,27 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.plotter = Plotter.PlotterJDM(self.params['plotTrajParams'])
 
     # integer arrays
-    self.disIdxForEachSubjS = np.zeros(len(params['X'][0]), int)
+    self.disIdxForEachSubjS = np.nan * np.ones(len(params['X'][0]), int)
     self.indSubjForEachDisD = [0 for _ in range(self.nrDis)]
     for d in range(self.nrDis):
+      assert self.binMaskSubjForEachDisD[d].shape[0] == self.disIdxForEachSubjS.shape[0]
       self.disIdxForEachSubjS[self.binMaskSubjForEachDisD[d]] = d
       self.indSubjForEachDisD[d] = np.where(self.binMaskSubjForEachDisD[d])[0]
 
     self.ridsPerDisD = [_ for _ in range(self.nrDis)]
     for d in range(self.nrDis):
       self.ridsPerDisD[d] = self.params['RID'][self.binMaskSubjForEachDisD[d]]
+
+    assert not np.isnan(self.disIdxForEachSubjS).any()
+    self.disIdxForEachSubjS = np.array(self.disIdxForEachSubjS, int)
+
+    # print('diag', self.params['plotTrajParams']['diag'])
+    # print('self.binMaskSubjForEachDisD[d]', self.binMaskSubjForEachDisD[0])
+    # print('disIdxForEachSubjS', self.disIdxForEachSubjS)
+    # print('indSubjForEachDisD[0]', self.indSubjForEachDisD[0])
+    # print('self.ridsPerDisD[0]', self.ridsPerDisD[0])
+    # print('self.params[RID]', self.params['RID'])
+    # print(ads)
 
     self.priorsUnitModels = priorsUnitModels
     self.priorsDisModels = priorsDisModels
@@ -84,7 +97,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     if runPart[0] == 'R':
       self.initParams()
 
-    nrIt = 100
+    nrIt = 1
     if runPart[1] == 'R':
 
       # self.makePlots(plotFigs, 0, 0)
@@ -126,7 +139,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
         i += 1
 
-    self.makePlots(plotFigs, nrIt, 0)
+    # self.makePlots(plotFigs, nrIt, 0)
 
     res = None
     return res
@@ -165,7 +178,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy,
       self.unitModelObj, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
 
-    onePassModel.run(runPart = 'RR')
+    onePassModel.run(runPart = 'LL')
 
     self.unitModels = onePassModel.unitModels
     self.disModels = onePassModel.disModels
@@ -482,7 +495,20 @@ class JointModel(DisProgBuilder.DPMInterface):
       currDis = self.disIdxForEachSubjS[s]
       currRID = self.params['RID'][s]
       # print('currDis', currDis)
+      # print(self.disIdxForEachSubjS[s])
+      # print('currDis', currDis)
+      # print('self.ridsPerDisD[currDis]', self.ridsPerDisD[currDis])
+      # print('self.params[RID]', self.params['RID'])
+      # print(np.where(self.ridsPerDisD[currDis] == currRID))
+      # print('currRID', currRID)
+      # print('self.disIdxForEachSubjS', self.disIdxForEachSubjS)
       idxCurrSubjInDisModel = np.where(self.ridsPerDisD[currDis] == currRID)[0][0]
+      # print('idxCurrSubjInDisModel', idxCurrSubjInDisModel)
+      # print('XdisDBSX[currDis][0]', len(XdisDBSX[currDis][0]))
+      # print('self.ridsPerDisD[currDis]', self.ridsPerDisD[currDis].shape)
+      # print('self.params[RID]', self.params['RID'].shape)
+      # import pdb
+      # pdb.set_trace()
       XdisSX[s] = XdisDBSX[currDis][0][idxCurrSubjInDisModel]
 
       # get shifts for curr subj from correct disModel
@@ -676,6 +702,7 @@ class JointModel(DisProgBuilder.DPMInterface):
         trajSamplesBXS[biomkIndNotInFuncUnits[b],:,:] = \
           self.disModels[disNr].sampleTrajPost(newXs, indOfRealBiomk[b], nrSamples)
 
+    print('trajSamplesBXS', trajSamplesBXS[:,0,0])
     assert not np.isnan(trajSamplesBXS).any()
 
     return trajSamplesBXS
@@ -683,8 +710,6 @@ class JointModel(DisProgBuilder.DPMInterface):
 
   def plotTrajectories(self, res):
     pass
-    # fig = self.plotterObj.plotTraj(self.gpModel)
-    # fig.savefig('%s/allTrajFinal.png' % self.outFolder)
 
   def stageSubjects(self, indices):
     pass

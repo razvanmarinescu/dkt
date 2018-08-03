@@ -36,10 +36,10 @@ class ParHierModel:
     modelPredS = self.parFunc(dysScoresS, self.thetas[b,:])
 
     # print('self.dysfuncParams', self.dysfuncParams)
-    print('dpsCross', dpsCross)
-    print('dysScoresS', dysScoresS)
-    print('params', self.dysfuncParams[self.mapBiomkToFuncUnits[b],:])
-    print('modelPredS', modelPredS)
+    # print('dpsCross', dpsCross)
+    # print('dysScoresS', dysScoresS)
+    # print('params', self.dysfuncParams[self.mapBiomkToFuncUnits[b],:])
+    # print('modelPredS', modelPredS)
     # print(ads)
 
     return modelPredS
@@ -78,7 +78,6 @@ class ParHierModel:
     # find dysfunction scores for each subject
     for b in range(self.nrBiomk):
       modelPredSB[:,b] = self.parFunc(dysScoresS, self.thetas[b, :])
-
 
     return modelPredSB
 

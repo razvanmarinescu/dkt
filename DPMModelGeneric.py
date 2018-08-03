@@ -87,6 +87,11 @@ class DPMModelGeneric(object):
         indToIncludeCurr = np.in1d(origXvalsSX[s], self.X[b][s])
         newX_BSX[b][s] = newXvalsSX[s][indToIncludeCurr]
 
+        print('self.X[b][s]', self.X[b][s])
+        print('self.Y[b][s]', self.Y[b][s])
+        print('newXvalsSX[s]', newXvalsSX[s])
+        print('newX_BSX[b][s]', newX_BSX[b][s])
+        print('self.N_obs_per_sub[b][s]', self.N_obs_per_sub[b][s])
         assert self.N_obs_per_sub[b][s] == len(newX_BSX[b][s])
 
       newXarrayCurrBiomk = [np.float128(item) for sublist in newX_BSX[b] for item in sublist]

@@ -129,10 +129,8 @@ plotTrajParams['diagLabels'] = {CTL:'CTL ADNI', MCI:'MCI ADNI', AD:'tAD ADNI',
   PCA_OTHER_MODEL:'PCA LOCAL - No DKT', CTL_DKT:'CTL - DTK', PCA_DKT:'PCA - DTK'}
 
 plotTrajParams['freesurfPath'] = freesurfPath
-# plotTrajParams['ylimitsRandPoints'] = (-3,2)
 plotTrajParams['blenderPath'] = blenderPath
-# plotTrajParams['isSynth'] = False
-
+plotTrajParams['isSynth'] = False
 
 if args.agg:
   plotTrajParams['agg'] = True
@@ -169,7 +167,7 @@ def visDataHist(dataDfAll):
   biomks = dataDfAll.loc[:, 'CDRSB':].columns.tolist()
   for b in range(len(biomks)):
 
-    fig = pl.figure(1)
+    fig = pl.figure(5)
     fig.clf()
     for d in unqDiags:
       pl.hist(dataDfAll.loc[dataDfAll.diag == d, biomks[b]].dropna(), bins=15,
@@ -184,6 +182,9 @@ def visDataHist(dataDfAll):
 
 
 def main():
+
+  addExtraBiomk = False
+
   np.random.seed(1)
   random.seed(1)
   pd.set_option('display.max_columns', 50)
@@ -197,7 +198,7 @@ def main():
     expName = 'tad-drc'
 
   if regenerateData:
-    prepareData(finalDataFile, tinyData)
+    prepareData(finalDataFile, tinyData, addExtraBiomk)
 
   ds = pickle.load(open(finalDataFile, 'rb'))
   dataDfAll = ds['dataDfAll']
@@ -207,13 +208,13 @@ def main():
   regParamsDataset = ds['regParamsDataset']
   X = ds['X']
   Y = ds['Y']
-  RID = np.array(ds['RID'])
+  RID = np.array(ds['RID'], int)
   labels = ds['list_biomarkers']
   diag = ds['diag']
 
 
 
-  visDataHist(dataDfAll)
+  # visDataHist(dataDfAll)
   nrUnqDiags = np.unique(dataDfAll.diag)
   print(dataDfAll)
   for d in nrUnqDiags:
@@ -242,21 +243,29 @@ def main():
   # mapBiomkToFuncUnits = np.array(list(range(nrFuncUnits)) * nrBiomkInFuncUnits)
   # should give smth like [0,1,2,3,0,1,2,3,0,1,2,3]
 
+
+
   # change the order of the functional units so that the hippocampus and occipital are fitted first
   unitPermutation = [5,3,2,1,4,0]
-  mapBiomkToFuncUnits = np.array((unitPermutation * nrBiomkInFuncUnits) + [-1,-1,-1])
+  if addExtraBiomk:
+    mapBiomkToFuncUnits = np.array((unitPermutation * nrBiomkInFuncUnits) + [-1,-1,-1])
+  else:
+    mapBiomkToFuncUnits = np.array((unitPermutation * nrBiomkInFuncUnits))
+
   unitNames = [l.split(' ')[-1] for l in labels]
   unitNames = [unitNames[i] for i in unitPermutation]
   nrBiomk = mapBiomkToFuncUnits.shape[0]
-
-  biomkInFuncUnit = [0 for u in range(nrFuncUnits+1)]
+  biomkInFuncUnit = [0 for u in range(nrFuncUnits + 1)]
   for u in range(nrFuncUnits):
     biomkInFuncUnit[u] = np.where(mapBiomkToFuncUnits == u)[0]
-    # biomkInFuncUnit[u] += [nrBiomk-3, nrBiomk-2] # also add CDRSOB and ADAS in order hlp disentangle the trajectories and get better staging
 
-  # add extra entry with other biomks to be added in the disease models
-  biomkInFuncUnit[nrFuncUnits] = np.array([nrBiomk-3, nrBiomk-2, nrBiomk-1])
+  if addExtraBiomk:
+    # add extra entry with other biomks to be added in the disease models
+    biomkInFuncUnit[nrFuncUnits] = np.array([nrBiomk-3, nrBiomk-2, nrBiomk-1])
+  else:
+    biomkInFuncUnit[nrFuncUnits] = np.array([])  # need to leave this as empty list
 
+  nrExtraBiomkInDisModel = biomkInFuncUnit[-1].shape[0]
 
   plotTrajParams['biomkInFuncUnit'] = biomkInFuncUnit
   plotTrajParams['labels'] = labels
@@ -265,7 +274,8 @@ def main():
   plotTrajParams['colorsTrajBiomkB'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
     np.linspace(0, 1, num=nrBiomk, endpoint=False)]
   plotTrajParams['colorsTrajUnitsU'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
-    np.linspace(0, 1, num=nrFuncUnits, endpoint=False)]
+    np.linspace(0, 1, num=nrFuncUnits + nrExtraBiomkInDisModel, endpoint=False)]
+  plotTrajParams['nrBiomk'] = 3
 
   plotTrajParams['yNormMode'] = 'zScoreTraj'
   # plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
@@ -274,7 +284,7 @@ def main():
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
 
-  params['unitNames'] = ['Unit%d' % f for f in range(nrFuncUnits)]
+  params['unitNames'] = unitNames
   params['runIndex'] = args.runIndex
   params['nrProc'] = args.nrProc
   params['cluster'] = args.cluster
@@ -288,6 +298,8 @@ def main():
   params['X'] = X
   params['Y'] = Y
   params['RID'] = RID
+  # print('RID', RID)
+  # print(ads)
   params['diag'] = diag
   params['plotTrajParams']['diag'] = params['diag']
   params['Xvalid'] = ds['Xvalid']
@@ -320,21 +332,26 @@ def main():
                               prior_eps_mean=0.1, prior_eps_std=1e-6) for u in range(nrFuncUnits)]
 
 
-  params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5, timeShiftStd=15)
+  params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5, timeShiftStd=20000)
     for d in range(nrDis)]
-  params['priorsUnitModelsSigmoid'] = [None for d in range(nrDis)]
+  params['priorsUnitModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5, timeShiftStd=20000) for u in range(nrFuncUnits)]
 
-
-  nrBiomkDisModel = nrFuncUnits + 3
+  nrBiomkDisModel = nrFuncUnits + nrExtraBiomkInDisModel
   params['nrBiomkDisModel'] = nrBiomkDisModel
 
-  params['plotTrajParams']['unitNames'] = unitNames + labels[-3:]
+  if addExtraBiomk:
+    params['plotTrajParams']['unitNames'] = unitNames + labels[-3:]
+  else:
+    params['plotTrajParams']['unitNames'] = unitNames
 
   # map which diagnoses belong to which disease
   # first disease has CTL+AD, second disease has CTL2+PCA
-  params['diagsSetInDis'] = [np.array([CTL, MCI, AD]), np.array([CTL2, PCA])]
+  params['diagsSetInDis'] = [np.array([CTL, MCI, AD]), np.array([CTL2, PCA, AD2])]
   params['disLabels'] = ['tAD', 'PCA']
-  params['otherBiomkPerDisease'] = [[nrBiomk-3,nrBiomk-2, nrBiomk-1], []]
+  if addExtraBiomk:
+    params['otherBiomkPerDisease'] = [[nrBiomk-3,nrBiomk-2, nrBiomk-1], []] # can also add 3 extra cognitive tests
+  else:
+    params['otherBiomkPerDisease'] = [[], []]
 
   params['binMaskSubjForEachDisD'] = [np.in1d(params['diag'],
                                       params['diagsSetInDis'][disNr]) for disNr in range(nrDis)]
@@ -343,14 +360,14 @@ def main():
   nrXPoints = 50
   params['trueParams'] = {}
   subShiftsS = np.zeros(RID.shape[0])
-  params['trueParams']['trueSubjDysfuncScoresSU'] = np.zeros((RID.shape[0],nrFuncUnits))
+  # params['trueParams']['trueSubjDysfuncScoresSU'] = np.zeros((RID.shape[0],nrFuncUnits))
   trueDysfuncXsX = np.linspace(0,1, nrXPoints)
-  params['trueParams']['trueTrajXB'] = eps * np.ones((nrXPoints, nrBiomk))
+  # params['trueParams']['trueTrajXB'] = eps * np.ones((nrXPoints, nrBiomk))
   trueTrajFromDysXB = eps * np.ones((nrXPoints, nrBiomk))
 
   trueLineSpacedDPSsX = np.linspace(-10,10, nrXPoints)
   trueTrajPredXB = eps * np.ones((nrXPoints,nrBiomk))
-  trueDysTrajFromDpsXU = [eps * np.ones((nrXPoints,nrBiomkDisModel)) for d in range(nrDis)]
+  trueDysTrajFromDpsXU = eps * np.ones((nrXPoints,nrBiomkDisModel))
 
   scalingBiomk2B = np.zeros((2, nrBiomk))
   scalingBiomk2B[1,:] = 1
@@ -365,13 +382,13 @@ def main():
   trueParamsDis = [0 for _ in range(nrDis)]
   for d in range(nrDis):
     trueParamsDis[d] = dict(xsX=trueLineSpacedDPSsX, ysXU=trueDysTrajFromDpsXU, ysXB=trueTrajPredXB,
-                       subShiftsS=np.zeros(params['diagsSetInDis'][d].shape[0]), scalingBiomk2B=scalingBiomk2B)
+    subShiftsS=np.zeros(np.sum(np.in1d(params['diag'],params['diagsSetInDis'][d]))), scalingBiomk2B=scalingBiomk2B)
 
   params['trueParamsFuncUnits'] = trueParamsFuncUnits
   params['trueParamsDis'] = trueParamsDis
 
-
   print('diag', params['diag'].shape[0])
+  # print(adsa)
   print('X[0]',len(params['X'][0]))
   assert params['diag'].shape[0] == len(params['X'][0])
   # assert params['diag'].shape[0] == len(params['trueParams']['subShiftsTrueMarcoFormatS'])
@@ -390,7 +407,6 @@ def main():
   expNameDisOne = '%s' % expName
   modelNames, res = evaluationFramework.runModels(params, expName,
    args.modelToRun, runAllExpTadpoleDrc)
-
 
 
 def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = None):

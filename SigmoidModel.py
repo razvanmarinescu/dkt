@@ -15,14 +15,20 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     self.updateMinMax(minX, maxX)
 
     self.parameters = [0 for b in range(self.nrBiomk)] # parameters of sigmoid trajectories
+    avgStdX = np.nanmean([np.std(self.X_array[b]) for b in range(self.nrBiomk) if np.std(self.X_array[b] != 0)])
+    print('avgStdX', avgStdX)
     for b in range(self.nrBiomk):
+
       minY = np.min(self.Y_array[b])
       maxY = np.max(self.Y_array[b])
       transitionTime = 20 * np.std(self.X_array[b])
+      if transitionTime == 0:
+        transitionTime = 20 * avgStdX # in months
       center = np.mean(self.X_array[b])
       trajParams = self.transfTrajParams(minY, transitionTime, center, maxY)
       variance = np.var(self.Y_array[b])
       self.parameters[b] = [trajParams, variance]
+
 
     scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(self.nrBiomk)]
     self.min_yB = np.array([np.min(scaledYarrayB[b].reshape(-1)) for b in range(self.nrBiomk)])
@@ -135,10 +141,14 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
 
     # Shifting data according to current time-shift estimate
     loglik = 0
-    timeShiftPriorStd = 6
     timeShiftPriorMean = 0
     if self.priors is not None:
       timeShiftPriorStd = self.priors['timeShiftStd']
+    else:
+      timeShiftPriorStd = 20
+
+    # print('timeShiftPriorStd', timeShiftPriorStd)
+    # print(adas)
 
     for b in range(self.nrBiomk):
       trajParams, variance = self.unpack_parameters(params[b])
@@ -167,7 +177,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
       objectiveFun = lambda time_shift_one_sub: -self.shiftObjFunc(self.parameters,
                        time_shift_one_sub, s)[0]
 
-      options = {'disp': True, 'gtol': 1e-8}
+      options = {'disp': True, 'xtol': 1e-3}
       resStruct = scipy.optimize.minimize(objectiveFun, init_params_time_only[s], method='Nelder-Mead',
                                           options={'disp': True})
 
@@ -177,6 +187,9 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
       np.concatenate((params_time_shift_only_shift.reshape(1, -1),
                       np.ones((1, params_time_shift_only_shift.shape[0]))), axis=0)
     optimal_params = convTimeOnlyToTimePlusAcc(optimal_params_time_only)
+
+    # print('optimal_params', optimal_params)
+    # print(adsa)
 
     for l in range(1):
       self.params_time_shift[l] = self.params_time_shift[l] + optimal_params[l]
@@ -199,22 +212,9 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     # Output: log-posterior and time-shift gradient
 
     trajParams, variance = self.unpack_parameters(trajParams)
-
     Ypred = self.sigFunc(Xdata, trajParams)
-    # print('inside sigma, Omega, eps, W', sigma, Omega, eps, W)
-    # print('Ypred inside', Ypred)
-    # print('Ydata', Ydata)
-
-    # print('eps', eps)
     loglik = 0.5 * (np.sum((Ydata - Ypred) ** 2) / variance)
 
-    # temp = np.multiply(Doutput_time_shift, np.concatenate([Omega , Omega]))
-    # grad0 = ((Ydata - np.dot(output, W)) / eps * np.dot(temp, W)).flatten()
-    # Gradient = np.sum(grad0) - 2 * ((time_shift_one_sub - 0) / timeShiftPriorSpread)
-
-    # print('prior_time_shift', prior_time_shift)
-    # print('loglik', loglik)
-    # print(adsa)
 
     return loglik
 
@@ -236,6 +236,9 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
         fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, i + 1, self.expName))
         fig2 = self.plotter.plotCompWithTrueParams(self)
         fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, i + 1, self.expName))
+
+      # print(self.X_array)
+      # print(adsa)
 
       self.estimTrajParams()
       print("Current penalty parameters: ")
@@ -261,6 +264,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     for b in range(self.nrBiomk):
       trajParams, variance = self.unpack_parameters(params[b])
       predictedBiomksXB[:, b] = self.sigFunc(xsScaled, trajParams)
+
 
     return self.applyScalingYAllBiomk(predictedBiomksXB)
 

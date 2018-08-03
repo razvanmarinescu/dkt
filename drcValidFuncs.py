@@ -496,14 +496,7 @@ def validateDRCBiomk(dpmObj, params):
 
       dtiPredValidLin = dtiPredValidLin[0][0]
 
-      YvalidLinModelDti[f] += [np.array(dtiPredValidLin)]
-
-
-
-      # print('XvalidFilt MRI', [XvalidFilt[mriBiomksList[f]][s] for s in range(len(XvalidFilt[mriBiomksList[f]]))])
-      # print('XvalidFilt DTI', [XvalidFilt[dtiBiomksList[f]][s] for s in range(len(XvalidFilt[dtiBiomksList[f]]))])
-      # print('dtiPredValidLin', dtiPredValidLin)
-      # print(adsa)
+      YvalidLinModelDti[f] += [np.array([dtiPredValidLin])]
 
       indOfXTrajClosestToCurrSubj = np.argmin(np.abs(XvalidShifDtiFilt[f][s][0] - xsTrajX))
       dtiPredValidDkt = predTrajDtiXB[indOfXTrajClosestToCurrSubj, f]
@@ -534,7 +527,7 @@ def validateDRCBiomk(dpmObj, params):
   print('corrLin', np.mean(corrLin), corrLin, pValLin)
   print('corrDkt', np.mean(corrDkt), corrDkt, pValDkt)
   print([params['labels'][b] for b in dtiBiomksList])
-  print(adsa)
+  # print(adsa)
 
 
 
@@ -580,8 +573,8 @@ def validateDRCBiomk(dpmObj, params):
       assert YMriClosestToDti[f][s].shape[0] == YDti[f][s].shape[0]
 
 
-  print('YMriClosestToDti[0]', YMriClosestToDti[0][:520])
-  print('YDti[0]', YDti[0][:520])
+  # print('YMriClosestToDti[0]', YMriClosestToDti[0][:520])
+  # print('YDti[0]', YDti[0][:520])
   # print(adsa)
 
   labelsDti = [params['labels'][b] for b in dtiBiomksList]
@@ -596,7 +589,7 @@ def validateDRCBiomk(dpmObj, params):
   diagValidFiltDktModel[diagValidFiltDktModel == PCA] = PCA_DKT
 
   # plot DTI over MRI space: traj, validation data, predictions of linear model, training data.
-  fig = dpmObj.plotterObj.plotTrajInBiomkSpace(xsTrajXB=predTrajMriXB, predTrajXB=predTrajDtiXB,
+  fig = dpmObj.unitModels[0].plotter.plotTrajInBiomkSpace(xsTrajXB=predTrajMriXB, predTrajXB=predTrajDtiXB,
     trajSamplesBXS=trajSamplesDtiBXS,
     XsubjData1BSX=YvalidFiltMriClosestToDti, YsubjData1BSX=YvalidFiltDti, diagData1S=diagValidFilt,
     XsubjData2BSX=YvalidFiltMriClosestToDti, YsubjData2BSX=YvalidLinModelDti, diagData2S=diagValidFiltLinModel,
@@ -606,7 +599,7 @@ def validateDRCBiomk(dpmObj, params):
   fig.savefig('%s/validTrajDtiOverMriPCA.png' % params['outFolder'])
 
   # plot DTI over MRI space: DKT predictions, predictions of linear model, validation data.
-  fig = dpmObj.plotterObj.plotTrajInBiomkSpace(
+  fig = dpmObj.unitModels[0].plotter.plotTrajInBiomkSpace(
     xsTrajXB=None, predTrajXB=None, trajSamplesBXS=None,
     XsubjData1BSX=YvalidFiltMriClosestToDti, YsubjData1BSX=YvalidFiltDti, diagData1S=diagValidFilt,
     XsubjData2BSX=YvalidFiltMriClosestToDti, YsubjData2BSX=YvalidLinModelDti, diagData2S=diagValidFiltLinModel,
@@ -614,6 +607,8 @@ def validateDRCBiomk(dpmObj, params):
     labels=labelsDti,
     ssdDKT=ssdDKT, ssdNoDKT=ssdNoDKT, replaceFig=True)
   fig.savefig('%s/validPredDtiOverMriPCA.png' % params['outFolder'])
+
+
 
   # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajDtiXB, trajSamplesDtiBXS,
   #   XvalidShifDtiFilt, YvalidFiltDti, diagValidFilt,

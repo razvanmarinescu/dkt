@@ -179,7 +179,7 @@ def applyInverseScalingToBiomk(dataCrossSB, scalingBiomk2B):
   return scaledData
 
 def findOptimalRowsCols(nrBiomk):
-  potentialLayout = [(2, 2), (2, 3), (3, 3), (3, 4), (4, 4), (4, 5), (4, 6), (5, 6), (5,7), (6,7)]
+  potentialLayout = [(2, 2), (2, 3), (3, 3), (3, 4), (4, 4), (4, 5), (4, 6), (5, 6), (5,7), (6,7), (7,8), (7,9), (7,10), (8,11)]
 
   optimalRows, optimalCols = ([potentialLayout[i] for i in range(len(potentialLayout)) if
                                potentialLayout[i][0] * potentialLayout[i][1] >= nrBiomk])[0]

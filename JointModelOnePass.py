@@ -102,9 +102,9 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
           assert np.all(self.unitModels[0].X[b][s] == self.params['X'][idxInAllBiomk][s])
           assert np.all(self.unitModels[0].Y[b][s] == self.params['Y'][idxInAllBiomk][s])
 
-      for u in range(self.nrFuncUnits):
-        plotTrajParamsFuncUnit = JDMOnePass.createPlotTrajParamsFuncUnit(self.params, unitNr=u)
-        plotterObjCurrFuncUnit = Plotter.PlotterFuncUnit(plotTrajParamsFuncUnit)  # set separate plotter for the
+      # for u in range(self.nrFuncUnits):
+      #   plotTrajParamsFuncUnit = JDMOnePass.createPlotTrajParamsFuncUnit(self.params, unitNr=u)
+      #   plotterObjCurrFuncUnit = Plotter.PlotterFuncUnit(plotTrajParamsFuncUnit)  # set separate plotter for the
 
 
     disModelsFile = '%s/disModels.npz' % self.outFolder
@@ -194,9 +194,9 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
     elif runPart[1] == 'L':
       self.disModels = pickle.load(open(disModelsFile, 'rb'))
 
-      for disNr in range(self.nrDis):
-        plotTrajParamsDis = JDMOnePass.createPlotTrajParamsDis(self.params, disNr)
-        plotterCurrDis = Plotter.PlotterDis(plotTrajParamsDis)  # set separate plotter for the
+      # for disNr in range(self.nrDis):
+      #   plotTrajParamsDis = JDMOnePass.createPlotTrajParamsDis(self.params, disNr)
+      #   plotterCurrDis = Plotter.PlotterDis(plotTrajParamsDis)  # set separate plotter for the
 
         # fig = plotterCurrDis.plotTrajSameSpace(self.disModels[disNr])
         # fig.savefig('%s/%s_trajSameSpace_%s.png' % (self.outFolder, self.params['disLabels'][disNr],
@@ -309,7 +309,8 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
       plotTrajParamsDis['trueParams'] = params['trueParamsDis'][disNr]
 
 
-    plotTrajParamsDis['labels'] = params['unitNames']
+    plotTrajParamsDis['labels'] = params['unitNames'] + [plotTrajParamsDis['labels'][i]
+      for i in params['otherBiomkPerDisease'][disNr]]
     plotTrajParamsDis['colorsTraj'] =  plotTrajParamsDis['colorsTrajUnitsU']
     # if False, plot estimated traj. in separate plot from true traj. If True, use only one plot
     plotTrajParamsDis['allTrajOverlap'] = False

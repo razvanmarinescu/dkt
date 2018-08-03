@@ -141,7 +141,7 @@ def applyRegFromParams(data, regressorVector, diag, params, diagsCTL = (CTL, CTL
 
   return data
 
-def prepareData(finalDataFile, tinyData):
+def prepareData(finalDataFile, tinyData, addExtraBiomk):
 
   tadpoleFile = 'TADPOLE_D1_D2.csv'
   # dataDfTadpole = loadTadpole(tadpoleFile)
@@ -376,10 +376,10 @@ def prepareData(finalDataFile, tinyData):
 
       print('%s - %s: r %f   pval %e' % (c, m, r, p))
 
-  # print(asda)
 
   selectedBiomk = dataDfAll.loc[:, 'Volume Cingulate' : ].columns.tolist()
-  selectedBiomk += ['ADAS13', 'CDRSB', 'RAVLT_immediate']
+  if addExtraBiomk:
+    selectedBiomk += ['ADAS13', 'CDRSB', 'RAVLT_immediate']
 
   # print(dataDfAll.dtypes)
   for c in selectedBiomk:
