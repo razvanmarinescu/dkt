@@ -77,7 +77,7 @@ class DPMModelGeneric(object):
     """ Update the X_array with the given values. Compare origXvalsSX (full) with self.X (containing missing vals)
     to be able to tell where there was missing data originally. """
 
-    print('self.X_array[0][:10]', self.X_array[0][:10])
+    # print('self.X_array[0][:10]', self.X_array[0][:10])
 
     newX_BSX = [0 for b in range(self.nrBiomk)]
     for b in range(self.nrBiomk):
@@ -87,11 +87,11 @@ class DPMModelGeneric(object):
         indToIncludeCurr = np.in1d(origXvalsSX[s], self.X[b][s])
         newX_BSX[b][s] = newXvalsSX[s][indToIncludeCurr]
 
-        print('self.X[b][s]', self.X[b][s])
-        print('self.Y[b][s]', self.Y[b][s])
-        print('newXvalsSX[s]', newXvalsSX[s])
-        print('newX_BSX[b][s]', newX_BSX[b][s])
-        print('self.N_obs_per_sub[b][s]', self.N_obs_per_sub[b][s])
+        # print('self.X[b][s]', self.X[b][s])
+        # print('self.Y[b][s]', self.Y[b][s])
+        # print('newXvalsSX[s]', newXvalsSX[s])
+        # print('newX_BSX[b][s]', newX_BSX[b][s])
+        # print('self.N_obs_per_sub[b][s]', self.N_obs_per_sub[b][s])
         assert self.N_obs_per_sub[b][s] == len(newX_BSX[b][s])
 
       newXarrayCurrBiomk = [np.float128(item) for sublist in newX_BSX[b] for item in sublist]
@@ -186,10 +186,10 @@ class DPMModelGeneric(object):
         visitsSoFar += visitIndices[b][intIndicesSubj[s]].shape[0]
 
       # remember Z_Array[b] has shape array(NR_ELEM, 1). Call special filter function
-      print('b', b)
-      print('indSubj', indSubj)
-      print('np.array(idxFiltArray)', np.array(idxFiltArray))
-      print('Z_array[b]', Z_array[b].shape)
+      # print('b', b)
+      # print('indSubj', indSubj)
+      # print('np.array(idxFiltArray)', np.array(idxFiltArray))
+      # print('Z_array[b]', Z_array[b].shape)
       filtZ[b] = self.filterZarray(Z_array[b], np.array(idxFiltArray))
 
       # print('indFiltToMissingArrayS', indFiltToMissingArrayS)

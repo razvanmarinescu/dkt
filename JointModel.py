@@ -97,15 +97,14 @@ class JointModel(DisProgBuilder.DPMInterface):
     if runPart[0] == 'R':
       self.initParams()
 
-    nrIt = 1
+    nrIt = 5
     if runPart[1] == 'R':
 
       # self.makePlots(plotFigs, 0, 0)
 
-      # i = 4
-      # self.loadCheckpoint(i, 4)
-
-      i = 0
+      i = 50
+      self.loadCheckpoint(1, 4)
+      # i = 0
       while i < nrIt:
 
         # estimate biomk trajectories - disease agnostic
@@ -125,6 +124,7 @@ class JointModel(DisProgBuilder.DPMInterface):
         self.makePlots(plotFigs, i, 3)
         self.saveCheckpoint(i, 3)
         #
+        # self.loadCheckpoint(i, 3)
         # # estimate subject latent variables
         self.estimSubjShifts(self.unitModels, self.disModels)
         self.makePlots(plotFigs, i, 4)
@@ -157,17 +157,27 @@ class JointModel(DisProgBuilder.DPMInterface):
 
   def makePlots(self, plotFigs, iterNr, picNr):
     if plotFigs:
-      fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
-      fig.savefig('%s/compTrueParams%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
+      # if self.params['plotTrajParams']['isSynth']:
+      # fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
+      # fig.savefig('%s/compTrueParams%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
+      # pl.clf()
+      # pl.cla()
+      # pl.close()
 
       fig = self.plotter.plotHierData(self.unitModels, self.disModels, replaceFig=True)
       fig.savefig('%s/plotHierData%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
+      pl.clf()
+      pl.cla()
+      pl.close()
 
       for d in range(self.nrDis):
         fig = self.plotter.plotAllBiomkDisSpace(self, self.params, d)
         fig.savefig('%s/trajDisSpace%s_%d%d_%s.png' % (self.outFolder, self.params['disLabels'][d],
           iterNr, picNr, self.expName))
 
+        pl.clf()
+        pl.cla()
+        pl.close()
 
   def initParams(self):
     paramsCopy = copy.deepcopy(self.params)
@@ -185,6 +195,9 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     for d in range(self.nrDis):
       self.disModels[d].priors = self.priorsDisModels[d]
+
+    for u in range(self.nrFuncUnits):
+      self.unitModels[u].priors = self.priorsUnitModels[u]
 
 
   def varyShiftsScale(self, unitModels, disModels):
@@ -245,7 +258,7 @@ class JointModel(DisProgBuilder.DPMInterface):
             informPriorTrajDisModels[d])
           initParams, initVariance = disModels[d].unpack_parameters(disModels[d].parameters[u])
 
-          print('initSSD', ssdJDMobjFunc(initParams))
+          # print('initSSD', ssdJDMobjFunc(initParams))
 
           resStruct = scipy.optimize.minimize(ssdJDMobjFunc, initParams, method='Nelder-Mead',
             options={'disp': True, 'maxiter':1000})
@@ -400,6 +413,11 @@ class JointModel(DisProgBuilder.DPMInterface):
       # Shifting data according to current time-shift estimate
       for b in range(unitModels[u].nrBiomk):
         if unitModels[u].visitIndices[b][s].shape[0] > 0:
+          # print(unitModels[u])
+          # print(unitModels[u].visitIndices[b][s])
+          # print('predBiomksXU.shape', predBiomksXU.shape)
+          # print('u', u)
+          # print(predBiomksXU[unitModels[u].visitIndices[b][s], u])
           Xdata = predBiomksXU[unitModels[u].visitIndices[b][s], u].reshape(-1,1)
           # Xdata = Xdata # here need to apply scaling, if identity map was NOT used
           Ydata = YunitUBSX[u][b][s]
@@ -445,7 +463,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
         # Shifting data according to current time-shift estimate
         for b in range(unitModels[u].nrBiomk):
-          print('unitModels[u].visitIndices[b][s]', unitModels[u].visitIndices[b][0])
+          # print('unitModels[u].visitIndices[b][s]', unitModels[u].visitIndices[b][0])
           if unitModels[u].visitIndices[b][s].shape[0] > 0:
             XdataNewUBSX[u][b][s] = predBiomksXU[unitModels[u].visitIndices[b][s], u]
             # XdataNewUBSX[u][b][s] = XdataNewUBSX[u][b][s] # here need to apply scaling, if identity map was NOT used
@@ -524,12 +542,14 @@ class JointModel(DisProgBuilder.DPMInterface):
       assert predScoresCurrUSX[0][s].shape[0] == XdisSX[s].shape[0]
 
     for u in range(self.nrFuncUnits):
-      print('updating traj for func unit %d/%d' % (u+1, self.nrFuncUnits))
+      print('--------------updating traj for func unit %d/%d--------------' % (u+1, self.nrFuncUnits))
       # now update the X-values in each unitModel to the updated dysfunc scores
       # not that the X-vals are the same for every biomk within func units,
       # but initial missing values within each biomk are kept
       if iterNr == 0:
         self.unitModels[u].updateXvals(predScoresCurrUSX[u], XdisSX)
+        # reset the traj parameters, so that they don't end up with decreasing trajectories
+        self.unitModels[u].initialiseParams()
 
       # self.unitModels[u].priors = self.params['priorsUnitModels'][u]
       # self.unitModels[u].Set_penalty(2)
@@ -541,6 +561,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
       # fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, i + 1, self.expName))
 
+    # print(das)
 
   def estimTrajWithinDisModel(self, unitModels, disModels):
     """ estimates trajectory parameters within the disease specific models:
@@ -561,7 +582,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
         for b in range(len(Y_arrayCurDis)):
           assert Y_arrayCurDis[b].shape[0] == indFiltToMisCurDisB[b].shape[0]
-          print(Y_arrayCurDis[b].shape)
+          # print(Y_arrayCurDis[b].shape)
 
         # build function that within a disease model takes a unit traj, and predicts lik of given
         # unit-traj params in corresponding unitModel.

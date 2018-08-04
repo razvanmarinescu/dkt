@@ -338,6 +338,8 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   # fill in the missing diagnoses
   # print(np.sum(np.isnan(dataDfAll.diag)))
   unqRID = np.unique(dataDfAll.RID)
+  # also drop subjects with two or more entries per visit
+  idxToKeepDiffAge = np.zeros(dataDfAll.RID.shape[0], bool)
   for s in unqRID:
     idxCurrSubj = np.where(dataDfAll.RID == s)[0]
 
@@ -354,7 +356,24 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
     else:
       dataDfAll.loc[idxCurrSubj, 'diag'] = MCI # only one subj has absolutely no diag. assign MCI
 
+    ageCurrSubj = dataDfAll.age[idxCurrSubj]
+    ageUnq, ageInd = np.unique(ageCurrSubj, return_index=True)
+    maskCurr = np.in1d(np.array(range(ageCurrSubj.shape[0])), ageInd)
+    idxToKeepDiffAge[idxCurrSubj] = maskCurr
+    # print('ageInd', ageInd)
+    # print('maskCurr', maskCurr)
+
+  # print('idxToKeepDiffAge', idxToKeepDiffAge)
+  # print(np.sum(np.logical_not(idxToKeepDiffAge)))
+
+  # print(dataDfAll[np.logical_not(idxToKeepDiffAge)])
+
+  # dataDfAll = dataDfAll[idxToKeepDiffAge]
+  dataDfAll.drop(dataDfAll.index[np.logical_not(idxToKeepDiffAge)], inplace=True)
+  dataDfAll.reset_index(drop=True, inplace=True)
+
   # print(np.sum(np.isnan(dataDfAll.diag)))
+  # print(dataDfAll)
   # print(ads)
 
   if tinyData:
@@ -387,6 +406,8 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
     validDf[c] = validDf[c].astype(np.float128)
 
 
+
+
   # print(dataDfAll.dtypes)
   # print(adsa)
 
@@ -394,6 +415,8 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
 
   X, Y, RID, list_biomarkers, diag, visitIndices = \
     auxFunc.convert_table_marco(dataDfAll, list_biomarkers=selectedBiomk)
+
+
 
 
   # now drop all the mri values, which were used for testing consistency

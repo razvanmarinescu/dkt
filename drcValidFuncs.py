@@ -217,7 +217,7 @@ def addDRCValidData(validDf):
 
 
 def visValidDf(validDf, outFilePrefix):
-  fig = pl.figure(1)
+  fig = pl.figure(5)
   # print(validDf.columns.tolist())
   # print(adsa)
   dtiCols = validDf.loc[:, 'DTI FA Cingulate' : 'DTI FA Temporal'].columns.tolist()
@@ -587,6 +587,18 @@ def validateDRCBiomk(dpmObj, params):
   diagValidFiltDktModel = copy.deepcopy(diagValidFilt)
   diagValidFiltDktModel[diagValidFiltDktModel == CTL2] = CTL_DKT
   diagValidFiltDktModel[diagValidFiltDktModel == PCA] = PCA_DKT
+
+
+  for u in range(dpmObj.nrFuncUnits):
+    trajStructUnitModel = dpmObj.unitModels[u].plotter.getTrajStructWithTrueParams(dpmObj.unitModels[u])
+    fig = dpmObj.unitModels[u].plotTraj(dpmObj.unitModels[u], trajStructUnitModel)
+    fig.savefig('%s/unit%d_allTraj.png' % (params['outFolder'], u))
+
+  for d in range(dpmObj.nrDis):
+    trajStructDisModel = dpmObj.disModels[d].plotter.getTrajStructWithTrueParams(dpmObj.disModels[d])
+    fig = dpmObj.disModels[d].plotAllTrajZeroOne(dpmObj.disModels[d], trajStructDisModel)
+    fig.savefig('%s/dis%d_%s_allTrajZeroOne.png' % (params['outFolder'], d, dpmObj.params['plotTrajParams']['disLabels'][d]))
+
 
   # plot DTI over MRI space: traj, validation data, predictions of linear model, training data.
   fig = dpmObj.unitModels[0].plotter.plotTrajInBiomkSpace(xsTrajXB=predTrajMriXB, predTrajXB=predTrajDtiXB,

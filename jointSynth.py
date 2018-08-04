@@ -97,6 +97,7 @@ plotTrajParams['diagLabels'] = {CTL:'CTL', AD:'AD', PCA:'PCA', CTL2:'CTL2'}
 # plotTrajParams['ylimitsRandPoints'] = (-3,2)
 plotTrajParams['blenderPath'] = blenderPath
 plotTrajParams['isSynth'] = True
+plotTrajParams['padTightLayout'] = 1
 
 
 

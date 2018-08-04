@@ -73,6 +73,34 @@ def convert_table_marco(table, biomkStartCol=3, list_biomarkers=None):
           visitIndicesTrain[id_biom].append(visitIndices[id_biom][id_sub])
     # print('visitIndicesTrain', visitIndicesTrain)
     # print(asdasd)
+
+    # # some entries with duplicate Xs are in the tadpole dataset. Remove them.
+    # for b in range(len(Xtrain)):
+    #   for s in range(len(Xtrain[0])):
+    #     unqVals, unqInd = np.unique(Xtrain[b][s], return_index=True)
+    #     if unqVals.shape[0] < Xtrain[b][s].shape[0]:
+    #       Xtrain[b][s] = Xtrain[b][s][unqInd]
+    #       Ytrain[b][s] = Ytrain[b][s][unqInd]
+    #       visitIndicesTrain[b][s] = visitIndicesTrain[b][s][unqInd]
+    #       print('RID', RID[s])
+    #       print('Xtrain[b][s]', Xtrain[b][s])
+    #       print('unqInd', unqInd)
+    #       print('unqVals', unqVals)
+    #       print('visitIndicesTrain[b][s]', visitIndicesTrain[b][s])
+    #       visitIndicesTrain[b][s] = np.argsort(np.argsort(visitIndicesTrain[b][s]))
+    #       print('visitIndicesTrain[b][s]', visitIndicesTrain[b][s])
+    #       assert Xtrain[b][s].shape[0] == Ytrain[b][s].shape[0]
+    #       raise ValueError('duplicate XS found')
+    #
+    # for b in range(len(Xtrain)):
+    #   for s in range(len(Xtrain[0])):
+    #     unqVals, unqInd = np.unique(Xtrain[b][s], return_index=True)
+    #     if unqVals.shape[0] < Xtrain[b][s].shape[0]:
+    #       raise ValueError('duplicate XS found')
+
+
+    # print(asda)
+
     return Xtrain, Ytrain, np.array(RID), list_biomarkers, np.array(diagLong), visitIndicesTrain
 
 def makeShiftsIdentif(subShiftsCross, ageAtVisitCross, crossDiag, ctlDiagNr, patDiagNr):

@@ -182,13 +182,14 @@ class PlotterJDM:
       trajStruct = plotterFunc.getTrajStruct(unitModels[f])
       nrPlotsSoFar = plotterFunc.subplotAllTrajWithModelData(unitModels[f], trajStruct, nrPlotsSoFar, nrRows, nrCols)
 
-    pl.tight_layout(pad=1)
+    pl.tight_layout(pad=self.plotTrajParams['padTightLayout'])
+    pl.subplots_adjust(wspace=0, hspace=0)
 
     if replaceFig:
       fig.show()
     else:
       pl.show()
-    pl.pause(0.05)
+    pl.pause(1.05)
 
     # print(ads)
     return fig
@@ -284,14 +285,14 @@ class PlotterJDM:
     for d in range(nrDis):
       plotterDis = disModels[d].plotter
       trajStruct = plotterDis.getTrajStructWithTrueParams(disModels[d])
-      nrPlotsSoFar = plotterDis.subplotAllTraj(disModels[d], trajStruct, nrPlotsSoFar, nrRows, nrCols)
+      nrPlotsSoFar = plotterDis.subplotAllTrajZeroOne(disModels[d], trajStruct, nrPlotsSoFar, nrRows, nrCols)
 
     ######### compare biomk traj within functional units ##########
 
     for f in range(nrFuncUnits):
       plotterFunc = unitModels[f].plotter
       trajStruct = plotterFunc.getTrajStructWithTrueParams(unitModels[f])
-      nrPlotsSoFar = plotterFunc.subplotAllTraj(unitModels[f], trajStruct, nrPlotsSoFar, nrRows, nrCols)
+      nrPlotsSoFar = plotterFunc.subplotAllTrajZeroOne(unitModels[f], trajStruct, nrPlotsSoFar, nrRows, nrCols)
 
     pl.tight_layout(pad=1)
 
@@ -402,13 +403,12 @@ class PlotterGP(ABC):
   def __init__(self, plotTrajParams):
     self.plotTrajParams = plotTrajParams
 
-  def plotTraj(self, gpModel, replaceFig=True, legendExtraPlot=False):
+  def plotTraj(self, gpModel, replaceFig=True, legendExtraPlot=False, rowsAuto=False):
     nrBiomk = gpModel.nrBiomk
 
     # Plot method
 
-    font = {'family': 'normal',
-      'size': 13}
+    font = {'family': 'normal', 'size': 13}
 
     import matplotlib
     matplotlib.rc('font', **font)
@@ -428,11 +428,12 @@ class PlotterGP(ABC):
     min_yB, max_yB = gpModel.getMinMaxY_B(extraDelta=0)
     deltaB = [(max_yB[b] - min_yB[b]) * 0.2 for b in range(nrBiomk)]
 
-    nrRows = self.plotTrajParams['nrRows']
-    nrCols = self.plotTrajParams['nrCols']
+    if rowsAuto:
+      nrRows, nrCols = auxFunc.findOptimalRowsCols(nrBiomk)
+    else:
+      nrRows = self.plotTrajParams['nrRows']
+      nrCols = self.plotTrajParams['nrCols']
 
-    # nrRows = 2
-    # nrCols = 3
 
     newX = gpModel.getXsMinMaxRange()
     predBiomksYscaledXB = gpModel.predictBiomk(newX)
@@ -548,7 +549,7 @@ class PlotterGP(ABC):
 
     trajStruct = self.getTrajStructWithTrueParams(gpModel)
 
-    nrPlotsSoFar = self.subplotAllTraj(gpModel, trajStruct, nrPlotsSoFar, nrRows, nrCols)
+    nrPlotsSoFar = self.subplotAllTrajZeroOne(gpModel, trajStruct, nrPlotsSoFar, nrRows, nrCols)
 
     ######### compare biomarker trajectories one by one ##########
 
@@ -647,7 +648,7 @@ class PlotterGP(ABC):
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
     fig = pl.figure(3, figsize = figSizeInch)
     pl.clf()
-    fig.show()
+    # fig.show()
 
     diagNrs = np.unique(diagS)
     nrDiags = diagNrs.shape[0]
@@ -758,7 +759,6 @@ class PlotterGP(ABC):
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
     fig = pl.figure(3, figsize = figSizeInch)
     pl.clf()
-    fig.show()
 
     diagNrs = np.unique(diagS)
     nrDiags = diagNrs.shape[0]
@@ -1115,7 +1115,7 @@ class PlotterGP(ABC):
         pl.annotate(names[i], xy=(Xrange[max] * scaling + gpModel.mean_std_X[0][0], final_predSX[i][max]))
     pl.show()
 
-  def subplotAllTraj(self, gpModel, trajStruct, nrPlotsSoFar, nrRows, nrCols):
+  def subplotAllTrajZeroOne(self, gpModel, trajStruct, nrPlotsSoFar, nrRows, nrCols):
 
     newXTrajScaledZeroOne = trajStruct['newXTrajScaledZeroOne']
     trueXsScaledZeroOne = trajStruct['trueXsScaledZeroOne']
@@ -1164,6 +1164,36 @@ class PlotterGP(ABC):
       nrPlotsSoFar += 2
 
     return nrPlotsSoFar
+
+
+  def plotAllTrajZeroOne(self, gpModel, trajStruct):
+
+    newXTrajScaledZeroOne = trajStruct['newXTrajScaledZeroOne']
+    trueXsScaledZeroOne = trajStruct['trueXsScaledZeroOne']
+    predTrajScaledXB = trajStruct['predTrajScaledXB']
+    trueTrajScaledXB = trajStruct['trueTrajScaledXB']
+    yMinAll = trajStruct['yMinAll']
+    yMaxAll = trajStruct['yMaxAll']
+    min_yB = trajStruct['min_yB']
+    max_yB = trajStruct['max_yB']
+
+    figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
+    fig = pl.figure(7, figsize=figSizeInch)
+
+    # pl.title('%s all trajectories' % self.plotTrajParams['title'])
+    pl.set_ylim([yMinAll, yMaxAll])
+    for b in range(gpModel.nrBiomk):
+      pl.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-', lw=2
+               , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
+      pl.plot(trueXsScaledZeroOne, trueTrajScaledXB[:, b], '--', lw=2
+               , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
+
+    pl.legend(loc='lower right',ncol=1)
+
+
+    return nrPlotsSoFar
+
+
 
   def subplotAllTrajWithModelData(self, gpModel, trajStruct, nrPlotsSoFar, nrRows, nrCols):
 

@@ -131,6 +131,7 @@ plotTrajParams['diagLabels'] = {CTL:'CTL ADNI', MCI:'MCI ADNI', AD:'tAD ADNI',
 plotTrajParams['freesurfPath'] = freesurfPath
 plotTrajParams['blenderPath'] = blenderPath
 plotTrajParams['isSynth'] = False
+plotTrajParams['padTightLayout'] = 0.0
 
 if args.agg:
   plotTrajParams['agg'] = True
@@ -332,9 +333,10 @@ def main():
                               prior_eps_mean=0.1, prior_eps_std=1e-6) for u in range(nrFuncUnits)]
 
 
-  params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5, timeShiftStd=20000)
-    for d in range(nrDis)]
-  params['priorsUnitModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5, timeShiftStd=20000) for u in range(nrFuncUnits)]
+  params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
+    shapeB=2, rateB=2, timeShiftStd=20000) for d in range(nrDis)]
+  params['priorsUnitModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5,
+    shapeB=2, rateB=2, timeShiftStd=20000) for u in range(nrFuncUnits)]
 
   nrBiomkDisModel = nrFuncUnits + nrExtraBiomkInDisModel
   params['nrBiomkDisModel'] = nrBiomkDisModel
@@ -346,7 +348,7 @@ def main():
 
   # map which diagnoses belong to which disease
   # first disease has CTL+AD, second disease has CTL2+PCA
-  params['diagsSetInDis'] = [np.array([CTL, MCI, AD]), np.array([CTL2, PCA, AD2])]
+  params['diagsSetInDis'] = [np.array([CTL, MCI, AD, AD2]), np.array([CTL2, PCA])]
   params['disLabels'] = ['tAD', 'PCA']
   if addExtraBiomk:
     params['otherBiomkPerDisease'] = [[nrBiomk-3,nrBiomk-2, nrBiomk-1], []] # can also add 3 extra cognitive tests

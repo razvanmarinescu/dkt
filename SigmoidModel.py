@@ -3,6 +3,7 @@ import numpy as np
 import sys
 import scipy.optimize
 import DPMModelGeneric
+import scipy.stats
 
 class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   plt.interactive(False)
@@ -14,8 +15,34 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     maxX = np.float(np.max([el for sublist in self.X_array for item in sublist for el in item]))
     self.updateMinMax(minX, maxX)
 
-    self.parameters = [0 for b in range(self.nrBiomk)] # parameters of sigmoid trajectories
+    # self.parameters = [0 for b in range(self.nrBiomk)] # parameters of sigmoid trajectories
+    # avgStdX = np.nanmean([np.std(self.X_array[b]) for b in range(self.nrBiomk) if np.std(self.X_array[b] != 0)])
+    # print('avgStdX', avgStdX)
+    # for b in range(self.nrBiomk):
+    #
+    #   minY = np.min(self.Y_array[b])
+    #   maxY = np.max(self.Y_array[b])
+    #   transitionTime = 20 * np.std(self.X_array[b])
+    #   if transitionTime == 0:
+    #     transitionTime = 20 * avgStdX # in months
+    #   center = np.mean(self.X_array[b])
+    #   trajParams = self.transfTrajParams(minY, transitionTime, center, maxY)
+    #   variance = np.var(self.Y_array[b])
+    #   self.parameters[b] = [trajParams, variance]
+
+    self.parameters = self.initialiseParams()
+
+
+    scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(self.nrBiomk)]
+    self.min_yB = np.array([np.min(scaledYarrayB[b].reshape(-1)) for b in range(self.nrBiomk)])
+    self.max_yB = np.array([np.max(scaledYarrayB[b].reshape(-1)) for b in range(self.nrBiomk)])
+    self.priors = params['priors']
+
+  def initialiseParams(self):
+
+    parametersB = [0 for b in range(self.nrBiomk)]
     avgStdX = np.nanmean([np.std(self.X_array[b]) for b in range(self.nrBiomk) if np.std(self.X_array[b] != 0)])
+    print('stdsB-nonZero', [np.std(self.X_array[b]) for b in range(self.nrBiomk) if np.std(self.X_array[b] != 0)])
     print('avgStdX', avgStdX)
     for b in range(self.nrBiomk):
 
@@ -29,11 +56,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
       variance = np.var(self.Y_array[b])
       self.parameters[b] = [trajParams, variance]
 
-
-    scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(self.nrBiomk)]
-    self.min_yB = np.array([np.min(scaledYarrayB[b].reshape(-1)) for b in range(self.nrBiomk)])
-    self.max_yB = np.array([np.max(scaledYarrayB[b].reshape(-1)) for b in range(self.nrBiomk)])
-    self.priors = params['priors']
+    return parametersB
 
   def transfTrajParams(self, minY, transitionTime, center, maxY):
     """
@@ -71,7 +94,9 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
 
   def computePriorTrajOneBiomk(self, params):
     return (params[0][0] - self.priors['meanA']) ** 2 / self.priors['stdA'] + \
-                 (params[0][3] - self.priors['meanD']) ** 2 / self.priors['stdD']
+      (params[0][3] - self.priors['meanD']) ** 2 / self.priors['stdD'] - \
+      scipy.stats.gamma.logpdf(params[0][1], a=self.priors['shapeB'],
+        scale=1.0/self.priors['rateB'])
 
   def ssdTrajOneBiomk(self, params, X_arrayX, Y_arrayX, biomkIndex):
     """
@@ -117,21 +142,44 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     """
 
     # SSD/nrMeasurements
-    variance =  np.sum((Y_arrayX - self.sigFunc(X_arrayX, params)) ** 2)/Y_arrayX.shape[0]
+    variance = np.sum((Y_arrayX - self.sigFunc(X_arrayX, params)) ** 2)/Y_arrayX.shape[0]
     return variance
 
   def estimTrajParams(self):
     # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
 
-    for b in range(self.nrBiomk):
-      initParams, initVariance = self.unpack_parameters(self.parameters[b])
+    nrPerturbMax = 5
 
+    for b in range(self.nrBiomk):
       objectiveFun = lambda params: self.ssdTrajOneBiomk([params, None], self.X_array[b],
                                                          self.Y_array[b], b)[0]
+      initParams, initVariance = self.unpack_parameters(self.parameters[b])
+      print('initParams', initParams)
+
       resStruct = scipy.optimize.minimize(objectiveFun, initParams, method='Nelder-Mead',
-                                          options={'disp': True})
+                                          options={'disp': True, 'maxiter': len(initParams) * 500})
+      # keep trying perturbed initial points until fitting is successful, up to a max nr of perturbations
+      p = 0
+      # perturbParams = copy.deepcopy(initParams)
+      stdPerturb = [0, 1, 1, 0]
+      while not resStruct.success and p < nrPerturbMax:
+        print('optimisation not worked ... trying perturbation %d' % p)
+        perturbParams = [np.random.normal(initParams[i], stdPerturb[i])
+          for i in range(len(initParams))]
+        resStruct = scipy.optimize.minimize(objectiveFun, perturbParams, method='Nelder-Mead',
+                                              options={'disp': True, 'maxiter':len(initParams)*500})
+
+        p += 1
+
+
 
       variance = self.estimVariance(resStruct.x, self.X_array[b], self.Y_array[b])
+
+      print('resStruct', resStruct)
+
+      # if p >= 1:
+      #   import pdb
+      #   pdb.set_trace()
 
       self.parameters[b] = [resStruct.x, variance]
 
