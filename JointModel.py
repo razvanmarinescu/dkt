@@ -43,6 +43,8 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.nrFuncUnits = params['nrFuncUnits']
     self.biomkInFuncUnit = params['biomkInFuncUnit']
 
+    self.X = params['X']
+    self.Y = params['Y']
 
     self.unitModels = None # functional unit models
     self.disModels = None # disease specific models
@@ -103,7 +105,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       # self.makePlots(plotFigs, 0, 0)
 
       i = 50
-      self.loadCheckpoint(1, 4)
+      # self.loadCheckpoint(0, 2)
       # i = 0
       while i < nrIt:
 
@@ -413,11 +415,6 @@ class JointModel(DisProgBuilder.DPMInterface):
       # Shifting data according to current time-shift estimate
       for b in range(unitModels[u].nrBiomk):
         if unitModels[u].visitIndices[b][s].shape[0] > 0:
-          # print(unitModels[u])
-          # print(unitModels[u].visitIndices[b][s])
-          # print('predBiomksXU.shape', predBiomksXU.shape)
-          # print('u', u)
-          # print(predBiomksXU[unitModels[u].visitIndices[b][s], u])
           Xdata = predBiomksXU[unitModels[u].visitIndices[b][s], u].reshape(-1,1)
           # Xdata = Xdata # here need to apply scaling, if identity map was NOT used
           Ydata = YunitUBSX[u][b][s]

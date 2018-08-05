@@ -427,7 +427,7 @@ def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = Non
   dpmObjStd, res['std'] = evaluationFramework.runStdDPM(params,
     expName, dpmBuilder, params['runPartMain'])
 
-  dpmObjStd.plotter.plotAllBiomkDisSpace(dpmObjStd, params, disNr=0)
+  # dpmObjStd.plotter.plotAllBiomkDisSpace(dpmObjStd, params, disNr=0)
 
   # perform the validation against DRC data
   validateDRCBiomk(dpmObjStd, params)

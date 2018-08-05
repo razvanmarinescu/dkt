@@ -573,10 +573,6 @@ def validateDRCBiomk(dpmObj, params):
       assert YMriClosestToDti[f][s].shape[0] == YDti[f][s].shape[0]
 
 
-  # print('YMriClosestToDti[0]', YMriClosestToDti[0][:520])
-  # print('YDti[0]', YDti[0][:520])
-  # print(adsa)
-
   labelsDti = [params['labels'][b] for b in dtiBiomksList]
 
   # change diagnosis numbers to get different plotting behaviour (specific labels, colors and markers)
@@ -588,48 +584,57 @@ def validateDRCBiomk(dpmObj, params):
   diagValidFiltDktModel[diagValidFiltDktModel == CTL2] = CTL_DKT
   diagValidFiltDktModel[diagValidFiltDktModel == PCA] = PCA_DKT
 
+  plotFigs = False
 
-  for u in range(dpmObj.nrFuncUnits):
-    trajStructUnitModel = dpmObj.unitModels[u].plotter.getTrajStructWithTrueParams(dpmObj.unitModels[u])
-    fig = dpmObj.unitModels[u].plotTraj(dpmObj.unitModels[u], trajStructUnitModel)
-    fig.savefig('%s/unit%d_allTraj.png' % (params['outFolder'], u))
+  fig = dpmObj.plotter.plotTrajInDisSpaceOverlap(dpmObj, disNr, params, replaceFig=True)
+  fig.savefig('%s/trajDisSpaceOverlap_%s_%s.png' % (params['outFolder'],
+    params['disLabels'][disNr], params['expName']))
 
-  for d in range(dpmObj.nrDis):
-    trajStructDisModel = dpmObj.disModels[d].plotter.getTrajStructWithTrueParams(dpmObj.disModels[d])
-    fig = dpmObj.disModels[d].plotAllTrajZeroOne(dpmObj.disModels[d], trajStructDisModel)
-    fig.savefig('%s/dis%d_%s_allTrajZeroOne.png' % (params['outFolder'], d, dpmObj.params['plotTrajParams']['disLabels'][d]))
+  if plotFigs:
 
-
-  # plot DTI over MRI space: traj, validation data, predictions of linear model, training data.
-  fig = dpmObj.unitModels[0].plotter.plotTrajInBiomkSpace(xsTrajXB=predTrajMriXB, predTrajXB=predTrajDtiXB,
-    trajSamplesBXS=trajSamplesDtiBXS,
-    XsubjData1BSX=YvalidFiltMriClosestToDti, YsubjData1BSX=YvalidFiltDti, diagData1S=diagValidFilt,
-    XsubjData2BSX=YvalidFiltMriClosestToDti, YsubjData2BSX=YvalidLinModelDti, diagData2S=diagValidFiltLinModel,
-    XsubjData3BSX=YMriClosestToDti, YsubjData3BSX=YDti, diagData3S=params['diag'],
-    labels=labelsDti,
-    ssdDKT=ssdDKT, ssdNoDKT=ssdNoDKT, replaceFig=True)
-  fig.savefig('%s/validTrajDtiOverMriPCA.png' % params['outFolder'])
-
-  # plot DTI over MRI space: DKT predictions, predictions of linear model, validation data.
-  fig = dpmObj.unitModels[0].plotter.plotTrajInBiomkSpace(
-    xsTrajXB=None, predTrajXB=None, trajSamplesBXS=None,
-    XsubjData1BSX=YvalidFiltMriClosestToDti, YsubjData1BSX=YvalidFiltDti, diagData1S=diagValidFilt,
-    XsubjData2BSX=YvalidFiltMriClosestToDti, YsubjData2BSX=YvalidLinModelDti, diagData2S=diagValidFiltLinModel,
-    XsubjData3BSX=YvalidFiltMriClosestToDti, YsubjData3BSX=YvalidDktDti, diagData3S=diagValidFiltDktModel,
-    labels=labelsDti,
-    ssdDKT=ssdDKT, ssdNoDKT=ssdNoDKT, replaceFig=True)
-  fig.savefig('%s/validPredDtiOverMriPCA.png' % params['outFolder'])
+    # for u in range(dpmObj.nrFuncUnits):
+    #   trajStructUnitModel = dpmObj.unitModels[u].plotter.getTrajStructWithTrueParams(dpmObj.unitModels[u])
+    #   fig = dpmObj.unitModels[u].plotter.plotTraj(dpmObj.unitModels[u], trajStructUnitModel,
+    #     legendExtraPlot=True, rowsAuto=True)
+    #   fig.savefig('%s/unit%d_allTraj.png' % (params['outFolder'], u))
 
 
+    # for d in range(dpmObj.nrDis):
+    #   trajStructDisModel = dpmObj.disModels[d].plotter.getTrajStructWithTrueParams(dpmObj.disModels[d])
+    #   fig = dpmObj.disModels[d].plotter.plotAllTrajZeroOne(dpmObj.disModels[d], trajStructDisModel)
+    #   fig.savefig('%s/dis%d_%s_allTrajZeroOne.png' % (params['outFolder'], d, dpmObj.params['disLabels'][d]))
+    #
+    # print(dasda)
 
-  # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajDtiXB, trajSamplesDtiBXS,
-  #   XvalidShifDtiFilt, YvalidFiltDti, diagValidFilt,
-  #   XvalidShifDtiFilt, YvalidLinModelDti, diagValidFiltLinModel, labelsDti, ssdDKT, ssdNoDKT,
-  #   replaceFig=False)
-  # fig.savefig('%s/validDtiPCA.png' % params['outFolder'])
+    # plot DTI over MRI space: traj, validation data, predictions of linear model, training data.
+    fig = dpmObj.unitModels[0].plotter.plotTrajInBiomkSpace(xsTrajXB=predTrajMriXB, predTrajXB=predTrajDtiXB,
+      trajSamplesBXS=trajSamplesDtiBXS,
+      XsubjData1BSX=YvalidFiltMriClosestToDti, YsubjData1BSX=YvalidFiltDti, diagData1S=diagValidFilt,
+      XsubjData2BSX=YvalidFiltMriClosestToDti, YsubjData2BSX=YvalidLinModelDti, diagData2S=diagValidFiltLinModel,
+      XsubjData3BSX=YMriClosestToDti, YsubjData3BSX=YDti, diagData3S=params['diag'],
+      labels=labelsDti,
+      ssdDKT=ssdDKT, ssdNoDKT=ssdNoDKT, replaceFig=True)
+    fig.savefig('%s/validTrajDtiOverMriPCA.png' % params['outFolder'])
+
+    # plot DTI over MRI space: DKT predictions, predictions of linear model, validation data.
+    fig = dpmObj.unitModels[0].plotter.plotTrajInBiomkSpace(
+      xsTrajXB=None, predTrajXB=None, trajSamplesBXS=None,
+      XsubjData1BSX=YvalidFiltMriClosestToDti, YsubjData1BSX=YvalidFiltDti, diagData1S=diagValidFilt,
+      XsubjData2BSX=YvalidFiltMriClosestToDti, YsubjData2BSX=YvalidLinModelDti, diagData2S=diagValidFiltLinModel,
+      XsubjData3BSX=YvalidFiltMriClosestToDti, YsubjData3BSX=YvalidDktDti, diagData3S=diagValidFiltDktModel,
+      labels=labelsDti,
+      ssdDKT=ssdDKT, ssdNoDKT=ssdNoDKT, replaceFig=True)
+    fig.savefig('%s/validPredDtiOverMriPCA.png' % params['outFolder'])
+
+    # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajDtiXB, trajSamplesDtiBXS,
+    #   XvalidShifDtiFilt, YvalidFiltDti, diagValidFilt,
+    #   XvalidShifDtiFilt, YvalidLinModelDti, diagValidFiltLinModel, labelsDti, ssdDKT, ssdNoDKT,
+    #   replaceFig=False)
+    # fig.savefig('%s/validDtiPCA.png' % params['outFolder'])
 
   # plot just the trajectories by modality groups
-  # fig = dpmObj.plotterObj.plotTrajInDisSpaceOverlap(xsTrajX, predTrajXB,
-  #   trajSamplesBXS, params, replaceFig=True)
-  # fig.savefig('%s/trajDisSpaceOverlap_%s_%s.png' % (params['outFolder'],
-  # params['disLabels'][disNr], params['expName']))
+  # trajStruct = self.getTrajStructWithTrueParams(gpModel)
+  # predTrajScaledXB, trueTrajScaledXB, yMinAll, yMaxAll, min_yB, max_yB = \
+  #   rescaleTraj(predTrajXB, predTrajXB, self.plotTrajParams['yNormMode'],
+  #               dpmObj.plotTrajParams['diag'], dpmObj.nrBiomk, subjShiftsEstimS, dpmObj)
+
