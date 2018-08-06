@@ -289,7 +289,7 @@ def validateDRCBiomk(dpmObj, params):
 
   diag = params['diag']
   disNr = 1 # predict for DRC subjects
-  indxSubjToKeep = np.where(dpmObj.binMaskSubjForEachDisD[disNr])[0]
+  indxSubjToKeep = dpmObj.getIndxSubjToKeep(disNr)
 
   nrBiomk = len(params['X'])
   print('nrBiomk', nrBiomk)
@@ -471,7 +471,6 @@ def validateDRCBiomk(dpmObj, params):
     YvalidLinModelDti[f] = [] # DTI predictions of linear model for subj in validation set
     YvalidDktDti[f] = [] # DTI predictions of DKT model for subj in validation set
 
-
     # print('dataDfAll.loc[mriBiomksDf[f]].iloc[nnMask]', dataDfAll.loc[mriBiomksDf[f]].iloc[nnMask])
     # print('dataDfAll.loc[dtiBiomksDf[f]].iloc[nnMask]', dataDfAll.loc[dtiBiomksDf[f]].iloc[nnMask])
 
@@ -505,7 +504,7 @@ def validateDRCBiomk(dpmObj, params):
       # print('XvalidShifDtiFilt[f][s][0]', XvalidShifDtiFilt[f][s][0])
       # print('xsTrajX', xsTrajX)
 
-      if diagValidFilt[s] == CTL2:
+      if diagValidFilt[s] == PCA:
         ssdNoDKT[f] += (dtiValValidCurrSubj - dtiPredValidLin) ** 2
         ssdDKT[f]  += (dtiValValidCurrSubj - dtiPredValidDkt) ** 2
 
@@ -528,15 +527,6 @@ def validateDRCBiomk(dpmObj, params):
   print('corrDkt', np.mean(corrDkt), corrDkt, pValDkt)
   print([params['labels'][b] for b in dtiBiomksList])
   # print(adsa)
-
-
-
-  # print('dtiValValidCurrSubj', dtiValValidCurrSubj)
-      # print('dtiPredValidLin', dtiPredValidLin)
-      # print('dtiPredValidDkt', dtiPredValidDkt)
-      # print('----------')
-
-    # print(asda)
 
 
   # plot against MRI vals instead of DPS time-shifts
@@ -568,10 +558,11 @@ def validateDRCBiomk(dpmObj, params):
           YMriClosestToDti[f][s] = np.array(mriValsCorrespToDtiCurrSubj)
 
 
-      print(YMriClosestToDti[f][s].shape[0])
-      print(YDti[f][s].shape[0])
+      # print(YMriClosestToDti[f][s].shape[0])
+      # print(YDti[f][s].shape[0])
       assert YMriClosestToDti[f][s].shape[0] == YDti[f][s].shape[0]
 
+  # print(ads)
 
   labelsDti = [params['labels'][b] for b in dtiBiomksList]
 
@@ -584,12 +575,13 @@ def validateDRCBiomk(dpmObj, params):
   diagValidFiltDktModel[diagValidFiltDktModel == CTL2] = CTL_DKT
   diagValidFiltDktModel[diagValidFiltDktModel == PCA] = PCA_DKT
 
-  plotFigs = False
+  # plot just the trajectories by modality groups
+  # for d in range(dpmObj.nrDis):
+  #   fig = dpmObj.plotter.plotTrajInDisSpaceOverlap(dpmObj, d, params, replaceFig=True)
+  #   fig.savefig('%s/trajDisSpaceOverlap_%s_%s.png' % (params['outFolder'],
+  #     params['disLabels'][d], params['expName']))
 
-  fig = dpmObj.plotter.plotTrajInDisSpaceOverlap(dpmObj, disNr, params, replaceFig=True)
-  fig.savefig('%s/trajDisSpaceOverlap_%s_%s.png' % (params['outFolder'],
-    params['disLabels'][disNr], params['expName']))
-
+  plotFigs = True
   if plotFigs:
 
     # for u in range(dpmObj.nrFuncUnits):
@@ -597,14 +589,15 @@ def validateDRCBiomk(dpmObj, params):
     #   fig = dpmObj.unitModels[u].plotter.plotTraj(dpmObj.unitModels[u], trajStructUnitModel,
     #     legendExtraPlot=True, rowsAuto=True)
     #   fig.savefig('%s/unit%d_allTraj.png' % (params['outFolder'], u))
-
-
+    #
+    #
     # for d in range(dpmObj.nrDis):
-    #   trajStructDisModel = dpmObj.disModels[d].plotter.getTrajStructWithTrueParams(dpmObj.disModels[d])
+    #   # yNormMode = dpmObj.params['plotTrajParams']['yNormMode']
+    #   yNormMode = 'unscaled'
+    #   trajStructDisModel = dpmObj.disModels[d].plotter.getTrajStructWithTrueParams(dpmObj.disModels[d], yNormMode)
     #   fig = dpmObj.disModels[d].plotter.plotAllTrajZeroOne(dpmObj.disModels[d], trajStructDisModel)
     #   fig.savefig('%s/dis%d_%s_allTrajZeroOne.png' % (params['outFolder'], d, dpmObj.params['disLabels'][d]))
-    #
-    # print(dasda)
+
 
     # plot DTI over MRI space: traj, validation data, predictions of linear model, training data.
     fig = dpmObj.unitModels[0].plotter.plotTrajInBiomkSpace(xsTrajXB=predTrajMriXB, predTrajXB=predTrajDtiXB,
@@ -632,9 +625,6 @@ def validateDRCBiomk(dpmObj, params):
     #   replaceFig=False)
     # fig.savefig('%s/validDtiPCA.png' % params['outFolder'])
 
-  # plot just the trajectories by modality groups
-  # trajStruct = self.getTrajStructWithTrueParams(gpModel)
-  # predTrajScaledXB, trueTrajScaledXB, yMinAll, yMaxAll, min_yB, max_yB = \
-  #   rescaleTraj(predTrajXB, predTrajXB, self.plotTrajParams['yNormMode'],
-  #               dpmObj.plotTrajParams['diag'], dpmObj.nrBiomk, subjShiftsEstimS, dpmObj)
+
+
 

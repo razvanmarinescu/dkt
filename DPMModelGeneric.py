@@ -235,6 +235,10 @@ class DPMModelGeneric(object):
   def applyScalingXzeroOneInv(self, xs):
     return xs * (self.maxScX - self.minScX) + self.minScX
 
+
+  def applyGivenScalingY(self, y_data, meanY, stdY):
+    return (y_data - meanY) / stdY
+
   def getData(self):
     nrBiomk = len(self.X)
     nrSubj = len(self.X[0])

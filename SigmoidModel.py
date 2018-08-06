@@ -5,6 +5,7 @@ import scipy.optimize
 import DPMModelGeneric
 import scipy.stats
 
+
 class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   plt.interactive(False)
 
@@ -30,7 +31,8 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     #   variance = np.var(self.Y_array[b])
     #   self.parameters[b] = [trajParams, variance]
 
-    self.parameters = self.initialiseParams()
+    self.parameters = [0 for b in range(self.nrBiomk)]
+    self.initialiseParams()
 
 
     scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(self.nrBiomk)]
@@ -40,7 +42,6 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
 
   def initialiseParams(self):
 
-    parametersB = [0 for b in range(self.nrBiomk)]
     avgStdX = np.nanmean([np.std(self.X_array[b]) for b in range(self.nrBiomk) if np.std(self.X_array[b] != 0)])
     print('stdsB-nonZero', [np.std(self.X_array[b]) for b in range(self.nrBiomk) if np.std(self.X_array[b] != 0)])
     print('avgStdX', avgStdX)
@@ -56,7 +57,6 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
       variance = np.var(self.Y_array[b])
       self.parameters[b] = [trajParams, variance]
 
-    return parametersB
 
   def transfTrajParams(self, minY, transitionTime, center, maxY):
     """
@@ -85,8 +85,6 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   def applyScalingXForward(self, x_data, biomk=0):
     return x_data
 
-  def applyGivenScalingY(self, y_data, meanY, stdY):
-    return (y_data - meanY) / stdY
 
   def sigFunc(self, xs, theta):
     # print('theta', theta)
@@ -174,6 +172,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
 
 
       variance = self.estimVariance(resStruct.x, self.X_array[b], self.Y_array[b])
+      # variance = self.varianceCTL
 
       print('resStruct', resStruct)
 
@@ -269,10 +268,12 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
 
   def Optimize(self, N_global_iterations, Plot=True):
     # Global optimizer (Sigmoid parameters + time shift)
-    fig = self.plotter.plotTraj(self)
-    fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, 0, self.expName))
-    fig2 = self.plotter.plotCompWithTrueParams(self, replaceFig=True)
-    fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
+    # fig = self.plotter.plotTraj(self)
+    # fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, 0, self.expName))
+
+    # if self.plotter.plotTrajParams['isSynth']:
+    #   fig2 = self.plotter.plotCompWithTrueParams(self, replaceFig=True)
+    #   fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, 0, self.expName))
 
     for i in range(N_global_iterations):
 
@@ -282,8 +283,9 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
       if Plot:
         fig = self.plotter.plotTraj(self)
         fig.savefig('%s/allTraj%d0_%s.png' % (self.outFolder, i + 1, self.expName))
-        fig2 = self.plotter.plotCompWithTrueParams(self)
-        fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, i + 1, self.expName))
+        if self.plotter.plotTrajParams['isSynth']:
+          fig2 = self.plotter.plotCompWithTrueParams(self)
+          fig2.savefig('%s/compTrueParams%d0_%s.png' % (self.outFolder, i + 1, self.expName))
 
       # print(self.X_array)
       # print(adsa)

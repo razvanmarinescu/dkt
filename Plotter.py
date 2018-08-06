@@ -6,6 +6,7 @@ from env import *
 import copy
 import auxFunc
 from abc import ABC, ABCMeta, abstractmethod
+import DPMModelGeneric
 
 class PlotterJDM:
 
@@ -425,11 +426,15 @@ class PlotterJDM:
     predTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajX, disNr)
     trajSamplesBXS = dpmObj.sampleBiomkTrajGivenXs(xsTrajX, disNr, nrSamples=100)
 
-    subjShiftsEstimS = dpmObj.disModels[disNr].getSubShiftsLong()
+    subjShiftsEstimS = dpmObj.getSubShiftsLong()
+    # print('yNormMode', self.plotTrajParams['yNormMode'])
+    # print(ads)
     predTrajScaledXB, _, yMinAll, yMaxAll, min_yB, max_yB = \
-      rescaleTraj(predTrajXB, predTrajXB, self.plotTrajParams['yNormMode'],
-      dpmObj.disModels[disNr].plotter.plotTrajParams['diag'], dpmObj.nrBiomk,
-      subjShiftsEstimS, dpmObj.disModels[disNr])
+      rescaleTraj(predTrajXB, None, self.plotTrajParams['yNormMode'],
+      dpmObj.params['diag'], dpmObj.nrBiomk,
+      subjShiftsEstimS, dpmObj)
+
+
 
     font = {'family': 'normal', 'size': 13}
 
@@ -438,7 +443,7 @@ class PlotterJDM:
 
     # Plot method
     figSizeInch = (self.plotTrajParams['SubfigTrajWinSize'][0] / 100, self.plotTrajParams['SubfigTrajWinSize'][1] / 100)
-    fig = pl.figure(1, figsize = figSizeInch)
+    fig = pl.figure(11, figsize = figSizeInch)
     # pl.subplots(nrows = 3, ncols = 3, sharex = True, sharey = True)
     pl.clf()
 
@@ -464,13 +469,13 @@ class PlotterJDM:
 
       groupName = params['labels'][biomkIndInGr[g][0]].split(' ')[0]
 
-      print('groupName', groupName)
-      print('biomkIndInGr[g]', biomkIndInGr[g])
-      print('labels in group', [params['labels'][b] for b in biomkIndInGr[g]])
+      # print('groupName', groupName)
+      # print('biomkIndInGr[g]', biomkIndInGr[g])
+      # print('labels in group', [params['labels'][b] for b in biomkIndInGr[g]])
       # print(asda)
 
       predTrajXBCurrGr = predTrajXB[:,biomkIndInGr[g]]
-      trajSamplesBXSCurrGr = trajSamplesBXS[biomkIndInGr[g],:,:]
+      # trajSamplesBXSCurrGr = trajSamplesBXS[biomkIndInGr[g],:,:]
 
       min_yB = np.zeros(nrBiomk)
       max_yB = np.zeros(nrBiomk)
@@ -495,9 +500,9 @@ class PlotterJDM:
 
       for b in range(nrBiomkPerGroup):
 
-        for i in range(nrSamples):
-          ax.plot(xsTrajX, trajSamplesBXSCurrGr[b,:,i], lw = 0.05,
-            color = colorsTraj[b], alpha=0.7)
+        # for i in range(nrSamples):
+        #   ax.plot(xsTrajX, trajSamplesBXSCurrGr[b,:,i], lw = 0.05,
+        #     color = colorsTraj[b], alpha=0.7)
 
         currLabel = self.plotTrajParams['labels'][biomkIndInGr[g][b]]
         ax.plot(xsTrajX,predTrajXBCurrGr[:,b],
@@ -737,7 +742,7 @@ class PlotterGP(ABC):
 
     #rescale all trajectories
     predTrajScaledXB, _, yMinAll, yMaxAll, min_yB, max_yB = \
-      rescaleTraj(predTrajXB, predTrajXB, self.plotTrajParams['yNormMode'],
+      rescaleTraj(predTrajXB, None, self.plotTrajParams['yNormMode'],
       self.plotTrajParams['diag'], nrBiomk, subjStagesEstim, gpModel)
 
     # pl.gca().set_ylim([yMinAll, yMaxAll])
@@ -1176,6 +1181,8 @@ class PlotterGP(ABC):
       pl.title('%s true trajectories' % self.plotTrajParams['title'])
       ax3.set_ylim([yMinAll, yMaxAll])
       for b in range(gpModel.nrBiomk):
+        print(self.plotTrajParams['colorsTraj'])
+        print(self.plotTrajParams['labels'])
         ax3.plot(trueXsScaledZeroOne, trueTrajScaledXB[:, b], '--', lw=2
                  , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
 
@@ -1321,7 +1328,7 @@ class PlotterGP(ABC):
 
     # rescale all trajectories
     _, _, yMinAll, yMaxAll, min_yB, max_yB = \
-      rescaleTraj(predTrajXB, predTrajXB, 'unscaled',
+      rescaleTraj(predTrajXB, None, 'unscaled',
                   self.plotTrajParams['diag'], nrBiomk, subjShiftsEstimS, gpModel)
 
     trajStruct = dict(newXTraj=newXTraj, predTrajXB=predTrajXB, yMinAll=yMinAll, yMaxAll=yMaxAll,
@@ -1329,7 +1336,7 @@ class PlotterGP(ABC):
 
     return trajStruct
 
-  def getTrajStructWithTrueParams(self, gpModel):
+  def getTrajStructWithTrueParams(self, gpModel, yNormMode=None):
 
     newXTraj = gpModel.getXsMinMaxRange()
     newXTrajScaledZeroOne = (newXTraj - np.min(newXTraj)) / (np.max(newXTraj) - np.min(newXTraj))
@@ -1343,10 +1350,15 @@ class PlotterGP(ABC):
     nrBiomk = predTrajXB.shape[1]
     subjShiftsEstimS = gpModel.getSubShiftsLong()
 
+    if yNormMode is None:
+      yNormMode = self.plotTrajParams['yNormMode']
+
+    # print(self.plotTrajParams['yNormMode'])
+    # print(ads)
 
     # rescale all trajectories
     predTrajScaledXB, trueTrajScaledXB, yMinAll, yMaxAll, min_yB, max_yB = \
-      rescaleTraj(predTrajXB, trueTrajCopyXB, self.plotTrajParams['yNormMode'],
+      rescaleTraj(predTrajXB, trueTrajCopyXB, yNormMode ,
                   self.plotTrajParams['diag'], nrBiomk, subjShiftsEstimS, gpModel)
 
     trajStruct = dict(newXTrajScaledZeroOne=newXTrajScaledZeroOne, trueXsScaledZeroOne=trueXsScaledZeroOne,
@@ -1464,6 +1476,10 @@ def rescaleTraj(predTrajXB, trueTrajXB, yNormMode, diag, nrBiomk, subjStagesEsti
   """
 
   assert diag.shape[0] == len(gpModel.Y[0])
+  assert gpModel.nrBiomk == predTrajXB.shape[1]
+  assert subjStagesEstim.shape[0] == diag.shape[0]
+
+
 
   if yNormMode == 'zScoreTraj':
     idxZscore = [np.where(np.in1d(diag, [CTL, CTL2]))[0]
@@ -1490,11 +1506,11 @@ def rescaleTraj(predTrajXB, trueTrajXB, yNormMode, diag, nrBiomk, subjStagesEsti
   else:
     raise ValueError('plotTrajParams[yNormMode] should be either unscaled, zScoreTraj or zScoreEarlyStageTraj')
 
+  # Y_arrayB, _, _ = gpModel.convertLongToArray(gpModel.Y, gpModel.params['visitIndices'])
+
   if yNormMode in ['zScoreTraj', 'zScoreEarlyStageTraj']:
     meanCtlB = np.zeros(gpModel.nrBiomk)
     stdCtlB = np.zeros(gpModel.nrBiomk)
-
-    print('predTrajXB', predTrajXB)
 
     for b in range(gpModel.nrBiomk):
       yValsOfCtl = [gpModel.Y[b][s] for s in idxZscore[b]]
@@ -1502,22 +1518,30 @@ def rescaleTraj(predTrajXB, trueTrajXB, yNormMode, diag, nrBiomk, subjStagesEsti
       meanCtlB[b] = np.mean(yValsOfCtl)
       stdCtlB[b] = np.std(yValsOfCtl)
 
-      print('b', b)
-      print(meanCtlB[b], stdCtlB[b])
-      print('trueTrajXB', trueTrajXB)
-      print(trueTrajXB[:, b])
-      print(gpModel.applyGivenScalingY(trueTrajXB[:, b], meanCtlB[b], stdCtlB[b]))
+      # print('----------b----------', b)
+      # print('yValsOfCtl', yValsOfCtl)
+      # print('CTL: mean, std', meanCtlB[b], stdCtlB[b])
+      # print('All: mean, std', np.mean(Y_arrayB[b]), np.std(Y_arrayB[b]))
+      # print('ALl: min, max', np.min(Y_arrayB[b]), np.max(Y_arrayB[b]))
+      # print('predTrajXB', predTrajXB[:, b])
+      # print('Y - mean / std', (predTrajXB[:, b] - meanCtlB[b]) / stdCtlB[b])
 
       predTrajXB[:, b] = gpModel.applyGivenScalingY(predTrajXB[:, b], meanCtlB[b], stdCtlB[b])
-      trueTrajXB[:, b] = gpModel.applyGivenScalingY(trueTrajXB[:, b], meanCtlB[b], stdCtlB[b])
+      if trueTrajXB is not None:
+        trueTrajXB[:, b] = gpModel.applyGivenScalingY(trueTrajXB[:, b], meanCtlB[b], stdCtlB[b])
+
 
     yMinPred = np.min(predTrajXB, axis=(0, 1))
-    yMinTrue = np.min(trueTrajXB, axis=(0, 1))
-    yMinAll = np.min([yMinPred, yMinTrue])
-
     yMaxPred = np.max(predTrajXB, axis=(0, 1))
-    yMaxTrue = np.max(trueTrajXB, axis=(0, 1))
-    yMaxAll = np.max([yMaxPred, yMaxTrue])
+    if trueTrajXB is not None:
+      yMinTrue = np.min(trueTrajXB, axis=(0, 1))
+      yMinAll = np.min([yMinPred, yMinTrue])
+      yMaxTrue = np.max(trueTrajXB, axis=(0, 1))
+      yMaxAll = np.max([yMaxPred, yMaxTrue])
+    else:
+      yMinAll = yMinPred
+      yMaxAll = yMaxPred
+
 
     min_yB = yMinAll * np.ones(nrBiomk)
     max_yB = yMaxAll * np.ones(nrBiomk)
@@ -1536,7 +1560,6 @@ def rescaleTraj(predTrajXB, trueTrajXB, yNormMode, diag, nrBiomk, subjStagesEsti
 
 
   elif yNormMode == 'unscaled':
-    scaledYarrayB = [gpModel.applyScalingY(gpModel.Y_array[b], b) for b in range(nrBiomk)]
     min_yB, max_yB = gpModel.getMinMaxY_B(extraDelta=0.2)
 
     yMinAll = np.min(min_yB)

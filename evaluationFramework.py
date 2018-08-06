@@ -22,6 +22,7 @@ import MarcoModelWrapper
 import Plotter
 import MarcoModel
 import SigmoidModel
+import SigmoidWrapper
 
 from importlib.machinery import SourceFileLoader
 from sklearn import linear_model
@@ -62,6 +63,16 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
     modelName = 'JDMOnePass'
     expNameCurrModel = '%s_%s' % (expName, modelName)
     params['currModel'] = 16
+    res += [runAllExpFunc(params, expNameCurrModel, dpmBuilder)]
+    modelNames += [modelName]
+
+  if np.any(modelToRun == 0) or np.any(modelToRun == 17):
+    # Joint Model of Diseases - One Pass
+    dpmBuilder = SigmoidWrapper.SigmoidModelBuilder(params['plotTrajParams'])
+    modelName = 'Sig'
+    expNameCurrModel = '%s_%s' % (expName, modelName)
+    params['currModel'] = 17
+    params['priors'] = params['priorsNoDKTSigmoid']
     res += [runAllExpFunc(params, expNameCurrModel, dpmBuilder)]
     modelNames += [modelName]
 

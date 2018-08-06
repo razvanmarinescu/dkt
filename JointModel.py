@@ -105,7 +105,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       # self.makePlots(plotFigs, 0, 0)
 
       i = 50
-      # self.loadCheckpoint(0, 2)
+      self.loadCheckpoint(0, 2)
       # i = 0
       while i < nrIt:
 
@@ -135,9 +135,10 @@ class JointModel(DisProgBuilder.DPMInterface):
 
         # try to vary the scaling of the sub shifts, optimise dis traj at the same time.
         # the reason for this is because the !"range"! of the estimated shift is smaller than the true range.
-        self.varyShiftsScale(self.unitModels, self.disModels)
-        self.makePlots(plotFigs, i, 5)
-        self.saveCheckpoint(i, 5)
+        if self.params['plotTrajParams']['isSynth']:
+          self.varyShiftsScale(self.unitModels, self.disModels)
+          self.makePlots(plotFigs, i, 5)
+          self.saveCheckpoint(i, 5)
 
         i += 1
 
@@ -247,10 +248,6 @@ class JointModel(DisProgBuilder.DPMInterface):
           Y_arrayCurDis, indFiltToMisCurDisB = unitModels[u].filterLongArray(unitModels[u].Y_array,
             unitModels[u].N_obs_per_sub, self.binMaskSubjForEachDisD[d],unitModels[u].visitIndices)
 
-          # for b in range(len(Y_arrayCurDis)):
-          #   assert Y_arrayCurDis[b].shape[0] == indFiltToMisCurDisB[b].shape[0]
-          #   # print(Y_arrayCurDis[b].shape)
-
           # build function that within a disease model takes a unit traj, and predicts lik of given
           # unit-traj params in corresponding unitModel.
 
@@ -356,6 +353,8 @@ class JointModel(DisProgBuilder.DPMInterface):
       optimalShiftsAll[s] = resStruct.x
 
       # self.plotShiftBeforeAfter(optimalShiftsAll[s], XshiftedScaledCurrX, YunitUBSX, d, s)
+      # import pdb
+      # pdb.set_trace()
 
       # now update the disease model and the unitModels with the optimal shift
       optimalShiftsDisModels[d][0, subjCurrIndInDisModel] = optimalShiftsAll[s]
@@ -363,6 +362,8 @@ class JointModel(DisProgBuilder.DPMInterface):
     # update optimal time shifts and Y-values in disease model
     for d in range(self.nrDis):
       disModels[d].updateTimeShiftsAndData(optimalShiftsDisModels[d])
+
+    # print(asa)
 
     # update optimal time shifts in all functional models
     # actually not needed because when I optimise the unit traj I automatically update the X-vals then
@@ -710,7 +711,6 @@ class JointModel(DisProgBuilder.DPMInterface):
         trajSamplesBXS[biomkIndInCurrUnit[b],:,:] = \
             self.unitModels[u].sampleTrajPost(dysfuncPredXU[:,u], b, nrSamples)
 
-
     biomkIndNotInFuncUnits = self.biomkInFuncUnit[-1]
     nrBiomkNotInUnit = biomkIndNotInFuncUnits.shape[0]
     if nrBiomkNotInUnit > 0:
@@ -724,6 +724,34 @@ class JointModel(DisProgBuilder.DPMInterface):
     assert not np.isnan(trajSamplesBXS).any()
 
     return trajSamplesBXS
+
+  def getSubShiftsLong(self):
+    subjShiftsEstimS = np.zeros(self.params['diag'].shape)
+    for d in range(self.nrDis):
+      subjShiftsEstimS[self.binMaskSubjForEachDisD[d]] = self.disModels[d].getSubShiftsLong()
+
+    return subjShiftsEstimS
+
+  def convertLongToArray(self, Z, visitIndices):
+    return self.disModels[0].convertLongToArray(Z, visitIndices)
+
+  def applyGivenScalingY(self, y_data, meanY, stdY):
+    return (y_data - meanY) / stdY
+
+  def applyScalingY(self, y_data, biomk):
+    return self.unitModels[self.params['mapBiomkToFuncUnits'][biomk]].applyScalingY(y_data, biomk)
+
+  def getMinMaxY_B(self, extraDelta):
+    min_yB = np.zeros(self.nrBiomk)
+    max_yB = np.zeros(self.nrBiomk)
+    for u in range(self.nrFuncUnits):
+      min_yB[self.biomkInFuncUnit[u]], max_yB[self.biomkInFuncUnit[u]] = \
+        self.unitModels[u].getMinMaxY_B(extraDelta)
+
+    return min_yB, max_yB
+
+  def getIndxSubjToKeep(self, disNr):
+    return np.where(dpmObj.binMaskSubjForEachDisD[disNr])[0]
 
 
   def plotTrajectories(self, res):

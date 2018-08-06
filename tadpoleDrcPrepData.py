@@ -141,6 +141,66 @@ def applyRegFromParams(data, regressorVector, diag, params, diagsCTL = (CTL, CTL
 
   return data
 
+def normaliseData(dataDfAll, validDf, allBiomkCols):
+
+  # convert biomarkers to Z-scores
+  # meanCtl = np.nanmean(dataDfAll[allBiomkCols][np.in1d(dataDfAll['diag'], [CTL, CTL2])],axis=0)
+  # stdCtl = np.nanstd(dataDfAll[allBiomkCols][np.in1d(dataDfAll['diag'], [CTL, CTL2])], axis=0)
+  # dataDfAll[allBiomkCols] = (np.array(dataDfAll[allBiomkCols]) - meanCtl[None, :]) / (stdCtl[None, :])
+
+  # convert biomarkers to [0,1] interval
+  minB = np.nanmin(dataDfAll[allBiomkCols], axis=0)
+  maxB = np.nanmax(dataDfAll[allBiomkCols], axis=0)
+  dataDfAll[allBiomkCols] = (np.array(dataDfAll[allBiomkCols]) - minB[None, :]) / (maxB - minB)[None, :]
+  validDf[allBiomkCols] = (np.array(validDf[allBiomkCols]) - minB[None, :]) / (maxB - minB)[None, :]
+
+  # bring the validation set in the same space as the training dataset.
+  # match means and stds of controls in each datasets
+  dtiCols = [c for c in validDf.columns if c.startswith('DTI')]
+  validDfCtlInd = np.in1d(validDf.diag, [CTL, CTL2])
+  meanValid = np.nanmean(validDf.loc[validDfCtlInd,dtiCols], axis = 0)
+  stdValid = np.nanstd(validDf.loc[validDfCtlInd,dtiCols], axis = 0)
+
+  trainDfCtlInd = np.in1d(dataDfAll.diag, [CTL, CTL2])
+  meanTrain = np.nanmean(dataDfAll.loc[trainDfCtlInd,dtiCols], axis = 0)
+  stdTrain = np.nanstd(dataDfAll.loc[trainDfCtlInd,dtiCols], axis = 0)
+  validDf[dtiCols] = (validDf[dtiCols].as_matrix() - meanValid[None,:])/(stdValid[None,:])
+  validDf[dtiCols] = validDf[dtiCols].as_matrix() * stdTrain[None, :] + meanTrain[None, :]
+
+  print('meanValid', np.nanmean(validDf.loc[validDfCtlInd,dtiCols],axis=0), np.nanstd(validDf.loc[validDfCtlInd,dtiCols],axis=0))
+  print('dataDfAll', np.nanmean(dataDfAll.loc[trainDfCtlInd,dtiCols],axis=0), np.nanstd(dataDfAll.loc[trainDfCtlInd,dtiCols],axis=0))
+  # print(adsa)
+
+  # print('meanValid', np.nanmean(validDf[allBiomkCols],axis=0))
+  # print(adsa)
+
+  # # also normalise the validation set to be in the same space as ADNI.
+  # # Note that the previous dataset normalisation doesn't work, because in the training
+  # # set there were no DTI biomarkers in dataset 2.
+  # for c in range(len(dtiCols)):
+  #
+  #   stdADNI =np.nanstd(dataDfAll.loc[:, dtiCols[c]])
+  #   stdDRC = np.nanstd(validDf.loc[:, dtiCols[c]])
+  #   stdRatio = stdDRC / stdADNI
+  #   validDf.loc[:, dtiCols[c]] = validDf.loc[:, dtiCols[c]] / stdRatio
+  #
+  #   meanADNI = np.nanmean(dataDfAll.loc[:, dtiCols[c]])
+  #   meanDRC = np.nanmean(validDf.loc[:, dtiCols[c]])
+  #   meanDiff = (meanDRC - meanADNI)
+  #   validDf.loc[:, dtiCols[c]] = validDf.loc[:, dtiCols[c]] - meanDiff
+  #
+  #   meanDRC = np.nanmean(validDf.loc[:, dtiCols[c]])
+  #   stdDRC = np.nanstd(validDf.loc[:, dtiCols[c]])
+  #
+  #   # print('ADNI mean', meanADNI)&
+  #   # print('ADNI std', stdADNI)
+  #   # print('DRC mean', meanDRC)
+  #   # print('DRC std', stdDRC)
+  #   #
+  #   # print(asda)
+
+  return dataDfAll, validDf
+
 def prepareData(finalDataFile, tinyData, addExtraBiomk):
 
   tadpoleFile = 'TADPOLE_D1_D2.csv'
@@ -251,62 +311,6 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   dataDfAll[['MMSE', 'RAVLT_immediate']] *= -1
   validDf[['MMSE', 'RAVLT_immediate']] *= -1
 
-  # convert biomarkers to Z-scores
-  # meanCtl = np.nanmean(dataDfAll[allBiomkCols][np.in1d(dataDfAll['diag'], [CTL, CTL2])],axis=0)
-  # stdCtl = np.nanstd(dataDfAll[allBiomkCols][np.in1d(dataDfAll['diag'], [CTL, CTL2])], axis=0)
-  # dataDfAll[allBiomkCols] = (np.array(dataDfAll[allBiomkCols]) - meanCtl[None, :]) / (stdCtl[None, :])
-
-  # convert biomarkers to [0,1] interval
-  minB = np.nanmin(dataDfAll[allBiomkCols], axis=0)
-  maxB = np.nanmax(dataDfAll[allBiomkCols], axis=0)
-  dataDfAll[allBiomkCols] = (np.array(dataDfAll[allBiomkCols]) - minB[None, :]) / (maxB - minB)[None, :]
-  validDf[allBiomkCols] = (np.array(validDf[allBiomkCols]) - minB[None, :]) / (maxB - minB)[None, :]
-
-  # bring the validation set in the same space as the training dataset.
-  # match means and stds of controls in each datasets
-  dtiCols = [c for c in validDf.columns if c.startswith('DTI')]
-  validDfCtlInd = np.in1d(validDf.diag, [CTL, CTL2])
-  meanValid = np.nanmean(validDf.loc[validDfCtlInd,dtiCols], axis = 0)
-  stdValid = np.nanstd(validDf.loc[validDfCtlInd,dtiCols], axis = 0)
-
-  trainDfCtlInd = np.in1d(dataDfAll.diag, [CTL, CTL2])
-  meanTrain = np.nanmean(dataDfAll.loc[trainDfCtlInd,dtiCols], axis = 0)
-  stdTrain = np.nanstd(dataDfAll.loc[trainDfCtlInd,dtiCols], axis = 0)
-  validDf[dtiCols] = (validDf[dtiCols].as_matrix() - meanValid[None,:])/(stdValid[None,:])
-  validDf[dtiCols] = validDf[dtiCols].as_matrix() * stdTrain[None, :] + meanTrain[None, :]
-
-  print('meanValid', np.nanmean(validDf.loc[validDfCtlInd,dtiCols],axis=0), np.nanstd(validDf.loc[validDfCtlInd,dtiCols],axis=0))
-  print('dataDfAll', np.nanmean(dataDfAll.loc[trainDfCtlInd,dtiCols],axis=0), np.nanstd(dataDfAll.loc[trainDfCtlInd,dtiCols],axis=0))
-  # print(adsa)
-
-  # print('meanValid', np.nanmean(validDf[allBiomkCols],axis=0))
-  # print(adsa)
-
-  # # also normalise the validation set to be in the same space as ADNI.
-  # # Note that the previous dataset normalisation doesn't work, because in the training
-  # # set there were no DTI biomarkers in dataset 2.
-  # for c in range(len(dtiCols)):
-  #
-  #   stdADNI =np.nanstd(dataDfAll.loc[:, dtiCols[c]])
-  #   stdDRC = np.nanstd(validDf.loc[:, dtiCols[c]])
-  #   stdRatio = stdDRC / stdADNI
-  #   validDf.loc[:, dtiCols[c]] = validDf.loc[:, dtiCols[c]] / stdRatio
-  #
-  #   meanADNI = np.nanmean(dataDfAll.loc[:, dtiCols[c]])
-  #   meanDRC = np.nanmean(validDf.loc[:, dtiCols[c]])
-  #   meanDiff = (meanDRC - meanADNI)
-  #   validDf.loc[:, dtiCols[c]] = validDf.loc[:, dtiCols[c]] - meanDiff
-  #
-  #   meanDRC = np.nanmean(validDf.loc[:, dtiCols[c]])
-  #   stdDRC = np.nanstd(validDf.loc[:, dtiCols[c]])
-  #
-  #   # print('ADNI mean', meanADNI)&
-  #   # print('ADNI std', stdADNI)
-  #   # print('DRC mean', meanDRC)
-  #   # print('DRC std', stdDRC)
-  #   #
-  #   # print(asda)
-
   print(dataDfAll.shape)
   if tinyData:
     # or try to balance the modalities, currently MRI seems to dominate the fitting.
@@ -334,6 +338,9 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
     dataDfAll.drop(dataDfAll.index[idxToDrop], inplace=True)
     dataDfAll.reset_index(drop=True, inplace=True)
 
+
+  # update 6 Aug 2018: moved normalisation after making the data tiny.
+  dataDfAll, validDf = normaliseData(dataDfAll, validDf, allBiomkCols)
 
   # fill in the missing diagnoses
   # print(np.sum(np.isnan(dataDfAll.diag)))

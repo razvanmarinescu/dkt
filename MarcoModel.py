@@ -168,8 +168,6 @@ class GP_progression_model(DPMModelGeneric.DPMModelGeneric):
       scaleX = self.max_X[biomk] * self.mean_std_X[biomk][1]
       return (x_data - self.mean_std_X[biomk][0])/scaleX
 
-    def applyGivenScalingY(self, y_data, meanY, stdY):
-      return (y_data - meanY)/stdY
 
     def applyScalingXzeroOneFwd(self, xs):
       return (xs - self.minScX) / \

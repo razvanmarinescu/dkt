@@ -61,8 +61,6 @@ class MarcoModelWrapper(DisProgBuilder.DPMInterface):
     else:
       self.gpModel = pickle.load(open(filePath, 'rb'))
 
-
-
     res = None
     return res
 

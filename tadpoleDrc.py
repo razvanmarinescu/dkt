@@ -182,6 +182,16 @@ def visDataHist(dataDfAll):
     fig.savefig('resfiles/tad-drc/%d_%s.png' % (b, biomks[b]))
 
 
+def getGammShapeRateFromTranTime(transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax):
+
+  bPriorMean = 16 / (1 * transitionTimePriorMean)
+  bPriorStd = np.abs(16 / (1 * transitionTimePriorMax) - 16 / (1 * transitionTimePriorMin))
+
+  bPriorShape = (bPriorMean ** 2) / (bPriorStd ** 2)
+  bPriorRate = bPriorMean / (bPriorStd ** 2)
+
+  return bPriorShape, bPriorRate
+
 def main():
 
   addExtraBiomk = False
@@ -278,9 +288,9 @@ def main():
     np.linspace(0, 1, num=nrFuncUnits + nrExtraBiomkInDisModel, endpoint=False)]
   plotTrajParams['nrBiomk'] = 3
 
-  plotTrajParams['yNormMode'] = 'zScoreTraj'
+  # plotTrajParams['yNormMode'] = 'zScoreTraj'
   # plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
-  # plotTrajParams['yNormMode'] = 'unscaled'
+  plotTrajParams['yNormMode'] = 'unscaled'
 
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
@@ -294,6 +304,7 @@ def main():
   params['penaltyDis'] = args.penalty
   params['nrFuncUnits'] = nrFuncUnits
   params['biomkInFuncUnit'] = biomkInFuncUnit
+  params['mapBiomkToFuncUnits'] = mapBiomkToFuncUnits
   params['labels'] = labels
 
   params['X'] = X
@@ -319,7 +330,7 @@ def main():
   # by default we have no priors
   params['priors'] = None
 
-  ####### set priors for specific models #########
+  ############# set priors for specific models ################
 
   # params['priors'] = dict(prior_length_scale_mean_ratio=0.33, # mean_length_scale = (self.maxX-self.minX)/3
   #     prior_length_scale_std=1e-4, prior_sigma_mean=2,prior_sigma_std = 1e-3,
@@ -332,11 +343,30 @@ def main():
                               prior_length_scale_std=1e-6, prior_sigma_mean=0.5, prior_sigma_std=1e-3,
                               prior_eps_mean=0.1, prior_eps_std=1e-6) for u in range(nrFuncUnits)]
 
+  transitionTimePriorMean = 1 # in DPS 0-1 space, prior mean
+  transitionTimePriorMin = 0.9
+  transitionTimePriorMax = 1.1
+
+  bPriorShape, bPriorRate = getGammShapeRateFromTranTime(
+    transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax)
+
+  # print('bPriorShape', bPriorShape)
+  # print('bPriorRate', bPriorRate)
+  # print(adsas)
 
   params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
     shapeB=2, rateB=2, timeShiftStd=20000) for d in range(nrDis)]
+  # params['priorsUnitModelsSigmoid'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
+  #  shapeB=2, rateB=2, timeShiftStd=20000) for d in range(nrDis)]
   params['priorsUnitModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5,
-    shapeB=2, rateB=2, timeShiftStd=20000) for u in range(nrFuncUnits)]
+    shapeB=bPriorShape, rateB=bPriorRate, timeShiftStd=20000) for u in range(nrFuncUnits)]
+
+  bPriorShapeNoDKT, bPriorRateNoDKT = getGammShapeRateFromTranTime(
+    transitionTimePriorMean=50, transitionTimePriorMin=40, transitionTimePriorMax=60)
+  params['priorsNoDKTSigmoid'] = dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5,
+    shapeB=bPriorShapeNoDKT, rateB=bPriorRateNoDKT, timeShiftStd=20000)
+
+  ######################
 
   nrBiomkDisModel = nrFuncUnits + nrExtraBiomkInDisModel
   params['nrBiomkDisModel'] = nrBiomkDisModel
@@ -384,10 +414,18 @@ def main():
   trueParamsDis = [0 for _ in range(nrDis)]
   for d in range(nrDis):
     trueParamsDis[d] = dict(xsX=trueLineSpacedDPSsX, ysXU=trueDysTrajFromDpsXU, ysXB=trueTrajPredXB,
-    subShiftsS=np.zeros(np.sum(np.in1d(params['diag'],params['diagsSetInDis'][d]))), scalingBiomk2B=scalingBiomk2B)
+    subShiftsS=np.zeros(np.sum(np.in1d(params['diag'],params['diagsSetInDis'][d]))),
+    scalingBiomk2B=scalingBiomk2B)
 
+
+  # for DKT DPMs
   params['trueParamsFuncUnits'] = trueParamsFuncUnits
   params['trueParamsDis'] = trueParamsDis
+
+  # simpler non-DKT DPMs
+  params['trueParams'] = dict(xsX=trueLineSpacedDPSsX, ysXU = trueTrajPredXB, ysXB = trueTrajPredXB,
+    subShiftsS=subShiftsS, scalingBiomk2B=scalingBiomk2B)
+  params['plotTrajParams']['trueParams'] = params['trueParams']
 
   print('diag', params['diag'].shape[0])
   # print(adsa)
@@ -396,10 +434,11 @@ def main():
   # assert params['diag'].shape[0] == len(params['trueParams']['subShiftsTrueMarcoFormatS'])
   # assert params['diag'].shape[0] == len(params['trueParams']['trueSubjDysfuncScoresSU'])
 
-  if np.abs(args.penalty - int(args.penalty) < 0.00001):
-    expName = '%sPen%d' % (expName, args.penalty)
-  else:
-    expName = '%sPen%.1f' % (expName, args.penalty)
+  if args.penalty is not None:
+    if np.abs(args.penalty - int(args.penalty) < 0.00001):
+      expName = '%sPen%d' % (expName, args.penalty)
+    else:
+      expName = '%sPen%.1f' % (expName, args.penalty)
 
   # params['runPartStd'] = ['L', 'L']
   params['runPartStd'] = args.runPartStd
@@ -409,6 +448,113 @@ def main():
   expNameDisOne = '%s' % expName
   modelNames, res = evaluationFramework.runModels(params, expName,
    args.modelToRun, runAllExpTadpoleDrc)
+
+  if params['masterProcess']:
+    printResADNIthick(modelNames, res, plotTrajParams)
+
+
+def printResADNIthick(modelNames, res, plotTrajParams):
+  #nrModels = len(modelNames)
+
+  dktModelName = 'JDM'
+  linModelName = 'Lin'
+  sigModelName = 'Sig'
+
+  officialNames = {'JDM' :  'DKT', 'Lin' : 'Linear Model', 'Sig' : 'Latent stage model' }
+
+  dktIndex = [i for i in range(len(modelNames)) if modelNames[i] ==  dktModelName][0]
+  linIndex = [i for i in range(len(modelNames)) if modelNames[i] == linModelName][0]
+  sigIndex = [i for i in range(len(modelNames)) if modelNames[i] == sigModelName][0]
+
+  # print('##### biomk prediction ######')
+  nrModels = len(modelNames)
+  pred = list(range(nrModels))
+  predMean = list(range(nrModels))
+  predStd = list(range(nrModels))
+  for m in range(nrModels):
+    pred[m] = res[m]['cogCorr']['predStats']
+    predMean[m] = np.nanmean(pred[m])
+    predStd[m] = np.nanstd(pred[m])
+
+
+
+  nrCogStats = res[0]['cogCorr']['statsAllFolds'].shape[1]
+  tStatsDiveRoi = np.zeros(nrCogStats+1,float)
+  pValsDiveRoi = np.zeros(nrCogStats+1,float)
+  tStatsDiveNoStaging = np.zeros(nrCogStats+1,float)
+  pValsDiveNoStaging = np.zeros(nrCogStats+1,float)
+
+
+  ####### Compute the stats across all folds ###############
+  stats = list(range(nrModels))
+  for m in [dktIndex, linIndex, sigIndex]:
+    stats[m] = res[m]['cogCorr']['statsAllFolds']  # shape (NR_FOLDS, 2*NR_COG_TESTS)
+    print('stats:', stats[m])
+    print(modelNames[m],end=' ')
+
+  for t in range(nrCogStats):
+    # comparison between DIVE (9) and roi-based Model (6)
+    tStatsDiveRoi[t], pValsDiveRoi[t] = scipy.stats.ttest_rel(
+      stats[dktIndex][:,t], stats[linIndex][:,t])
+
+    # comparison between DIVE (9) and NoDPS (10)
+    tStatsDiveNoStaging[t], pValsDiveNoStaging[t] = scipy.stats.ttest_rel(
+      stats[dktIndex][:,t], stats[sigIndex][:,t])
+
+
+  # comparison between DIVE (9) and roi-based Model (6)
+  tStatsDiveRoi[-1], pValsDiveRoi[-1] = scipy.stats.ttest_rel(
+    pred[dktIndex], pred[linIndex])
+
+  # comparison between DIVE (9) and NoDPS (10)
+  tStatsDiveNoStaging[-1], pValsDiveNoStaging[-1] = scipy.stats.ttest_rel(
+    pred[dktIndex], pred[sigIndex])
+
+
+  print('%s vs %s model' % (modelNames[dktIndex], modelNames[linIndex]),
+    tStatsDiveRoi, pValsDiveRoi)
+  print('%s vs %s model' % (modelNames[dktIndex], modelNames[sigIndex]),
+    tStatsDiveNoStaging, pValsDiveNoStaging)
+
+
+  # Perform BOnferroni correction
+  sigLevel = 0.05/(5*2) # 5 measurements, comparing two simpler models to DIVE
+
+  print('##### correlation with cog tests & pred ######')
+  print(r'''Model & CDRSOB ($\rho$) & ADAS13 ($\rho$) & MMSE ($\rho$) & RAVLT ($\rho$) & Prediction (RMSE)\\''')
+  for m in [dktIndex, linIndex, sigIndex]:
+    stats[m] = res[m]['cogCorr']['statsAllFolds']  # shape (NR_FOLDS, 2*NR_COG_TESTS)
+    # print('stats:', stats[m])
+    # print(modelNames[m],end=' ')
+    meanStats = np.nanmean(stats[m], 0)
+    stdStats = np.nanstd(stats[m], 0)
+
+    print('%s &' % officialNames[modelNames[m]], end='')
+
+    for i in range(int(meanStats.shape[0]/2)): # don't show Spearman's coefficients
+
+      signifLabel = ''
+      if m == linIndex and pValsDiveRoi[i] < sigLevel:
+        signifLabel = '*'
+
+      if m == sigIndex and pValsDiveNoStaging[i] < sigLevel:
+        signifLabel = '*'
+
+      print('%s%.2f +/- %.2f & ' % (signifLabel, meanStats[i], stdStats[i]), end='')
+
+
+    signifLabel = ''
+    if m == linIndex and pValsDiveRoi[-1] < sigLevel:
+      signifLabel = '*'
+
+    if m == sigIndex and pValsDiveNoStaging[-1] < sigLevel:
+      signifLabel = '*'
+
+    print('%s%.3f +/- %.3f' % (signifLabel, predMean[m], predStd[m]), end='')
+
+    print('\\\\')
+
+  plotScoresHist(scores = pred, labels=modelNames)
 
 
 def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = None):
