@@ -219,6 +219,17 @@ class DPMModelGeneric(object):
     else:
       return np.array([])
 
+  @staticmethod
+  def filterXYsubjInd(X, Y, indxSubjToKeep):
+    nrBiomk = len(X)
+    Xfilt = [[] for b in range(nrBiomk)]
+    Yfilt = [[] for b in range(nrBiomk)]
+    for b in range(nrBiomk):
+      Xfilt[b] = [X[b][i] for i in indxSubjToKeep]
+      Yfilt[b] = [Y[b][i] for i in indxSubjToKeep]
+
+    return Xfilt, Yfilt
+
   def getXsMinMaxRange(self, nrPoints=50):
     return np.linspace(self.minScX, self.maxScX, nrPoints).reshape([-1, 1])
 

@@ -44,7 +44,7 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
     res += [runAllExpFunc(params, expNameCurrModel, dpmBuilder)]
     modelNames += [modelName]
 
-  if np.any(modelToRun == 0) or np.any(modelToRun == 15):
+  if np.any(modelToRun == 15):
     # Marco's Model
     dpmBuilder = MarcoModelWrapper.MarcoModelBuilder(params['plotTrajParams'])
     modelName = 'MarcoModel'
@@ -53,7 +53,7 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
     res += [runAllExpFunc(params, expNameCurrModel, dpmBuilder)]
     modelNames += [modelName]
 
-  if np.any(modelToRun == 0) or np.any(modelToRun == 16):
+  if np.any(modelToRun == 16):
     # Joint Model of Diseases - One Pass
     unitModelObj = MarcoModel.MarcoModel
     disModelObj = SigmoidModel.SigmoidModel
@@ -67,7 +67,7 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
     modelNames += [modelName]
 
   if np.any(modelToRun == 0) or np.any(modelToRun == 17):
-    # Joint Model of Diseases - One Pass
+    # Sigmoid Model
     dpmBuilder = SigmoidWrapper.SigmoidModelBuilder(params['plotTrajParams'])
     modelName = 'Sig'
     expNameCurrModel = '%s_%s' % (expName, modelName)

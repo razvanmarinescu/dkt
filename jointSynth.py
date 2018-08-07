@@ -298,8 +298,6 @@ def main():
   paramsDisTwo['Xtrue'] = paramsDisTwo['X']
   paramsDisTwo['Ytrue'] = paramsDisTwo['Y']
 
-
-
   # for disease two, change the format of the X and Y arrays, add the missing biomarkers with empty lists
   XemptyListsAllBiomk = [0 for _ in range(nrBiomk)]
   YemptyListsAllBiomk = [0 for _ in range(nrBiomk)]

@@ -15,6 +15,7 @@ import MarcoModel
 import JointModelOnePass
 
 import DisProgBuilder
+import DPMModelGeneric
 
 class JMDBuilder(DisProgBuilder.DPMBuilder):
   # builds a Joint Disease model
@@ -97,16 +98,14 @@ class JointModel(DisProgBuilder.DPMInterface):
     plotFigs = True
 
     if runPart[0] == 'R':
-      self.initParams()
+      self.initParams(runPartOnePass='RR')
+    else:
+      self.initParams(runPartOnePass='LL')
 
     nrIt = 5
     if runPart[1] == 'R':
-
       # self.makePlots(plotFigs, 0, 0)
-
-      i = 50
-      self.loadCheckpoint(0, 2)
-      # i = 0
+      i = 0
       while i < nrIt:
 
         # estimate biomk trajectories - disease agnostic
@@ -141,6 +140,8 @@ class JointModel(DisProgBuilder.DPMInterface):
           self.saveCheckpoint(i, 5)
 
         i += 1
+    else:
+      self.loadCheckpoint(0, 2)
 
     # self.makePlots(plotFigs, nrIt, 0)
 
@@ -182,7 +183,7 @@ class JointModel(DisProgBuilder.DPMInterface):
         pl.cla()
         pl.close()
 
-  def initParams(self):
+  def initParams(self, runPartOnePass):
     paramsCopy = copy.deepcopy(self.params)
     paramsCopy['nrGlobIterDis'] = 4 # set only two iterations, quick initialisation
     paramsCopy['nrGlobIterUnit'] = 4  # set only two iterations, quick initialisation
@@ -191,7 +192,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy,
       self.unitModelObj, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
 
-    onePassModel.run(runPart = 'LL')
+    onePassModel.run(runPart = runPartOnePass)
 
     self.unitModels = onePassModel.unitModels
     self.disModels = onePassModel.disModels
@@ -751,7 +752,43 @@ class JointModel(DisProgBuilder.DPMInterface):
     return min_yB, max_yB
 
   def getIndxSubjToKeep(self, disNr):
-    return np.where(dpmObj.binMaskSubjForEachDisD[disNr])[0]
+    return np.where(self.binMaskSubjForEachDisD[disNr])[0]
+
+  def getXsMinMaxRange(self, disNr):
+    return self.disModels[disNr].getXsMinMaxRange()
+
+  def getDataDis(self, disNr):
+    return self.disModels[disNr].getData()
+
+  def getDataDisOverBiomk(self, disNr):
+
+    """
+    get sub-shifts for each biomarker (not for functional units or dis units),
+    only for the disease disNr
+
+    :param disNr:
+    :return:
+    """
+    indxSubjToKeep = self.getIndxSubjToKeep(disNr)
+    nrSubCurrDis = indxSubjToKeep.shape[0]
+    XshiftedDisModelBS = [[] for b in range(self.nrBiomk)]
+    ysPredBS = [[] for b in range(self.nrBiomk)]
+    XshiftedDisModelUS, XdisModelUS, _, _ = self.getDataDis(disNr)
+    xsOrigPred1S = XdisModelUS[0]  # all biomarkers should contain all timepoints in the disease model
+
+    #### construct sub-shifts for each biomarker
+    for s in range(nrSubCurrDis):
+      bTmp = 0  # some biomarker, doesn't matter which one
+
+      ysCurrSubXB = self.predictBiomkSubjGivenXs(XshiftedDisModelUS[bTmp][s], disNr)
+
+      for b in range(self.nrBiomk):
+        ysPredBS[b] += [ysCurrSubXB[:, b]]
+
+        XshiftedDisModelBS[b] += [XshiftedDisModelUS[0][s]]
+
+
+    return XshiftedDisModelBS, ysPredBS, xsOrigPred1S
 
 
   def plotTrajectories(self, res):

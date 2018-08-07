@@ -544,6 +544,16 @@ class PlotterJDM:
 
     return fig
 
+  def plotTrajInBiomkSpace(self, dpmObj, xsTrajXB, predTrajXB, trajSamplesBXS,
+      XsubjData1BSX, YsubjData1BSX, diagData1S, XsubjData2BSX, YsubjData2BSX, diagData2S,
+      XsubjData3BSX, YsubjData3BSX, diagData3S, labels, ssdDKT=None, ssdNoDKT=None,
+      replaceFig=True):
+      return dpmObj.unitModels[0].plotter.plotTrajInBiomkSpace(dpmObj, xsTrajXB, predTrajXB, trajSamplesBXS,
+        XsubjData1BSX, YsubjData1BSX, diagData1S, XsubjData2BSX, YsubjData2BSX, diagData2S,
+        XsubjData3BSX, YsubjData3BSX, diagData3S, labels, ssdDKT, ssdNoDKT,
+        replaceFig)
+
+
 
 class PlotterGP(ABC):
 
@@ -985,7 +995,7 @@ class PlotterGP(ABC):
     return fig
 
 
-  def plotTrajInBiomkSpace(self, xsTrajXB, predTrajXB, trajSamplesBXS,
+  def plotTrajInBiomkSpace(self, dpmObj, xsTrajXB, predTrajXB, trajSamplesBXS,
       XsubjData1BSX, YsubjData1BSX, diagData1S, XsubjData2BSX, YsubjData2BSX, diagData2S,
       XsubjData3BSX, YsubjData3BSX, diagData3S, labels, ssdDKT=None, ssdNoDKT=None,
       replaceFig=True):

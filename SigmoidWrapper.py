@@ -12,6 +12,7 @@ import copy
 import Plotter
 import SigmoidModel
 import DisProgBuilder
+import DPMModelGeneric
 
 class SigmoidModelBuilder(DisProgBuilder.DPMBuilder):
 
@@ -24,7 +25,7 @@ class SigmoidModelBuilder(DisProgBuilder.DPMBuilder):
 
 class SigmoidModelWrapper(DisProgBuilder.DPMInterface):
 
-  def __init__(self, dataIndices, expName, params, plotterObj):
+  def __init__(self, dataIndices, expName, params, plotter):
     self.dataIndices = dataIndices
     self.expName = expName
     self.params = params
@@ -32,16 +33,16 @@ class SigmoidModelWrapper(DisProgBuilder.DPMInterface):
     os.system('mkdir -p %s' % self.outFolder)
     self.params['plotTrajParams']['outFolder'] = self.outFolder
     self.params['plotTrajParams']['expName'] = expName
-    self.plotterObj = plotterObj
+    self.plotter = plotter
 
-    self.plotterObj.plotTrajParams['title'] = 'Biomarker traj.'
-    self.plotterObj.plotTrajParams['colorsTraj'] = params['plotTrajParams']['colorsTrajBiomkB']
+    self.plotter.plotTrajParams['title'] = 'Biomarker traj.'
+    self.plotter.plotTrajParams['colorsTraj'] = params['plotTrajParams']['colorsTrajBiomkB']
 
 
     Xfilt, Yfilt, visitIndicesFilt = filterDataListFormat(params, dataIndices)
 
     self.model = SigmoidModel.SigmoidModel(Xfilt, Yfilt, visitIndicesFilt,
-                                           self.outFolder, plotterObj, self.params['labels'], self.params)
+                                           self.outFolder, plotter, self.params['labels'], self.params)
 
     self.nrBiomk = len(Xfilt)
 
@@ -49,6 +50,14 @@ class SigmoidModelWrapper(DisProgBuilder.DPMInterface):
     # boolean masks
     self.binMaskSubjForEachDisD = [np.in1d(self.params['plotTrajParams']['diag'],
       self.params['diagsSetInDis'][disNr]) for disNr in range(self.nrDis)]
+
+    # integer arrays
+    self.disIdxForEachSubjS = np.nan * np.ones(len(params['X'][0]), int)
+    self.indSubjForEachDisD = [0 for _ in range(self.nrDis)]
+    for d in range(self.nrDis):
+      assert self.binMaskSubjForEachDisD[d].shape[0] == self.disIdxForEachSubjS.shape[0]
+      self.disIdxForEachSubjS[self.binMaskSubjForEachDisD[d]] = d
+      self.indSubjForEachDisD[d] = np.where(self.binMaskSubjForEachDisD[d])[0]
 
   def runStd(self, runPart):
     self.run(runPart)
@@ -66,7 +75,7 @@ class SigmoidModelWrapper(DisProgBuilder.DPMInterface):
     return res
 
   def plotTrajectories(self, res):
-    # fig = self.plotterObj.plotCompWithTrueParams(self.model, replaceFig=True)
+    # fig = self.plotter.plotCompWithTrueParams(self.model, replaceFig=True)
     # fig.savefig('%s/compTrueFinal.png' % self.outFolder)
     pass
 
@@ -88,9 +97,54 @@ class SigmoidModelWrapper(DisProgBuilder.DPMInterface):
     for b in range(self.nrBiomk):
       trajSamplesBXS[b,:,:] = self.model.sampleTrajPost(newXs,b,nrSamples)
 
+    return trajSamplesBXS
 
   def getIndxSubjToKeep(self, disNr):
-    return np.where(dpmObj.binMaskSubjForEachDisD[disNr])[0]
+    return np.where(self.binMaskSubjForEachDisD[disNr])[0]
 
+  def getDataDis(self, disNr):
+    XshiftedBS, X_BS, _, _ =  self.model.getData()
+    indCurrDis = self.indSubjForEachDisD[disNr]
+    XshiftedCurrDisBS, XcurrDis_BS = DPMModelGeneric.DPMModelGeneric.filterXYsubjInd(XshiftedBS, X_BS, indCurrDis)
+    return XshiftedCurrDisBS, XcurrDis_BS
 
+  def getDataDisOverBiomk(self, disNr):
 
+    """
+    get sub-shifts for each biomarker (not for functional units or dis units),
+    only for the disease disNr
+
+    :param disNr:
+    :return:
+    """
+    indxSubjToKeep = self.getIndxSubjToKeep(disNr)
+    nrSubCurrDis = indxSubjToKeep.shape[0]
+    XshiftedAllTimeptsBS = [[] for b in range(self.nrBiomk)]
+    ysPredBS = [[] for b in range(self.nrBiomk)]
+    XshiftedCurrDisBS, XcurrDisBS = self.getDataDis(disNr)
+    xsOrigPred1S = XcurrDisBS[0]  # all biomarkers should contain all timepoints in the disease model
+
+    #### construct sub-shifts for each biomarker
+    for s in range(nrSubCurrDis):
+      bTmp = 0  # some biomarker, doesn't matter which one
+
+      allXsCurrSubj = []
+      for b in range(self.nrBiomk):
+        allXsCurrSubj += list(XshiftedCurrDisBS[b][s])
+
+      for b in range(self.nrBiomk):
+        XshiftedAllTimeptsBS[b] += [np.sort(np.unique(allXsCurrSubj))]
+
+      # print('XshiftedAllTimeptsBS', XshiftedAllTimeptsBS[0][s])
+      # print('XshiftedCurrDisBS[b][s]', [XshiftedCurrDisBS[b][s] for b in range(self.nrBiomk)])
+      # print(dasa)
+
+      ysCurrSubXB = self.predictBiomkSubjGivenXs(XshiftedAllTimeptsBS[0][s], disNr)
+
+      for b in range(self.nrBiomk):
+        ysPredBS[b] += [ysCurrSubXB[:, b]]
+
+    return XshiftedCurrDisBS, ysPredBS, xsOrigPred1S
+
+  def getXsMinMaxRange(self, _):
+    return self.model.getXsMinMaxRange()
