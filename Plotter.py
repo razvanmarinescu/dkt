@@ -261,15 +261,18 @@ class PlotterJDM:
     # nrRows = self.plotTrajParams['nrRows']
     # nrCols = self.plotTrajParams['nrCols']
 
-    nrRows, nrCols = auxFunc.findOptimalRowsCols(nrDis * 2 + nrFuncUnits * 2 + 5)
+    if self.plotTrajParams['allTrajOverlap']:
+      nrRows, nrCols = auxFunc.findOptimalRowsCols(nrDis + nrFuncUnits + 2)
+    else:
+      nrRows, nrCols = auxFunc.findOptimalRowsCols(nrDis * 2 + nrFuncUnits * 2 + 2)
 
-    if (nrDis*2 + nrFuncUnits*2) > nrRows * nrCols:
-      print('nrRows', nrRows)
-      print('nrCols', nrCols)
-      print('nrDis', nrDis)
-      print('nrFuncUnits', nrFuncUnits)
-      print('labels', self.plotTrajParams['labels'])
-      raise ValueError('too few nrRows and nrCols')
+    # if (nrDis*2 + nrFuncUnits*2) > nrRows * nrCols:
+    #   print('nrRows', nrRows)
+    #   print('nrCols', nrCols)
+    #   print('nrDis', nrDis)
+    #   print('nrFuncUnits', nrFuncUnits)
+    #   print('labels', self.plotTrajParams['labels'])
+    #   raise ValueError('too few nrRows and nrCols')
 
     # trueParamsDis = self.plotTrajParams['trueParamsDis']
     # trueParamsFuncUnits = self.plotTrajParams['trueParamsFuncUnits']
@@ -394,7 +397,7 @@ class PlotterJDM:
          diagValidS=None,  labels=self.plotTrajParams['labels'], ssdDKT=None, ssdNoDKT=None,
          replaceFig=True)
 
-
+    pl.pause(1)
 
     return fig
 
@@ -1087,9 +1090,9 @@ class PlotterGP(ABC):
 
       # pl.legend(ncol=1,fontsize=12)
 
-
-      ax.text(minX + 0.1*(maxX-minX), minY + 0.9*(maxY-minY), 'SSD DKT=%.3f' % ssdDKT[b])
-      ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD no-DKT=%.3f' % ssdNoDKT[b])
+      if ssdDKT is not None:
+        ax.text(minX + 0.1*(maxX-minX), minY + 0.9*(maxY-minY), 'SSD DKT=%.3f' % ssdDKT[b])
+        ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD no-DKT=%.3f' % ssdNoDKT[b])
 
     # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
@@ -1171,7 +1174,7 @@ class PlotterGP(ABC):
       for b in range(gpModel.nrBiomk):
         ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-', lw=2
                  , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
-        print('trueXsScaledZeroOne trueYsTrajXB', trueXsScaledZeroOne.shape, trueYsTrajXB.shape)
+        print('trueXsScaledZeroOne trueTrajScaledXB', trueXsScaledZeroOne.shape, trueTrajScaledXB.shape)
         ax2.plot(trueXsScaledZeroOne, trueTrajScaledXB[:, b], '--', lw=2
                  , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
 

@@ -117,7 +117,6 @@ else: #if hostName == 'razvan-Precision-T1700':
 def main():
 
   nrSubjLong = 100
-  nrBiomk = 4
   nrTimepts = 4
 
   lowerAgeLim = 60
@@ -204,8 +203,15 @@ def main():
                               prior_length_scale_std=1e-6, prior_sigma_mean=0.5, prior_sigma_std=1e-3,
                               prior_eps_mean=0.1, prior_eps_std=1e-6) for u in range(nrFuncUnits)]
 
+  transitionTimePriorMean = 1 # in DPS 0-1 space, prior mean
+  transitionTimePriorMin = 0.1
+  transitionTimePriorMax = 10
 
-  params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5, timeShiftStd=15)
+  bPriorShape, bPriorRate = getGammShapeRateFromTranTime(
+    transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax)
+
+  params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5,
+    shapeB=bPriorShape, rateB=bPriorRate, timeShiftStd=15)
     for d in range(nrDis)]
   params['priorsUnitModelsSigmoid'] = [None for d in range(nrDis)]
 
@@ -375,10 +381,10 @@ def main():
   assert np.sum(params['binMaskSubjForEachDisD'][0]) == len(params['trueParamsDis'][0]['subShiftsS'])
   assert params['diag'].shape[0] == len(params['trueParamsFuncUnits'][0]['subShiftsS'])
 
-  if np.abs(args.penalty - int(args.penalty) < 0.00001):
-    expName = '%sPen%d' % (expName, args.penalty)
-  else:
-    expName = '%sPen%.1f' % (expName, args.penalty)
+  # if np.abs(args.penalty - int(args.penalty) < 0.00001):
+  #   expName = '%sPen%d' % (expName, args.penalty)
+  # else:
+  #   expName = '%sPen%.1f' % (expName, args.penalty)
 
   params['runPartStd'] = args.runPartStd
   params['runPartMain'] = ['R', 'I', 'I'] # [mainPart, plot, stage]

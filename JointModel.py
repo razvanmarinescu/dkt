@@ -106,6 +106,12 @@ class JointModel(DisProgBuilder.DPMInterface):
     if runPart[1] == 'R':
       # self.makePlots(plotFigs, 0, 0)
       i = 0
+
+      if self.params['plotTrajParams']['isSynth']:
+        i = 70
+        nrIt = 71
+        self.loadCheckpoint(i-1, 5)
+
       while i < nrIt:
 
         # estimate biomk trajectories - disease agnostic
@@ -141,9 +147,12 @@ class JointModel(DisProgBuilder.DPMInterface):
 
         i += 1
     else:
-      self.loadCheckpoint(0, 2)
 
-    # self.makePlots(plotFigs, nrIt, 0)
+      # i = 70
+      # self.loadCheckpoint(i, 2)
+      # self.makePlots(plotFigs, i, 2)
+
+      self.loadCheckpoint(0, 2) # for the real data
 
     res = None
     return res
@@ -159,14 +168,24 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.unitModels = ds['unitModels']
     self.disModels = ds['disModels']
 
+    for d in range(self.nrDis):
+      self.disModels[d].priors = self.priorsDisModels[d]
+      self.disModels[d].plotter.plotTrajParams['allTrajOverlap'] = self.params['plotTrajParams']['allTrajOverlap']
+
+
+    for u in range(self.nrFuncUnits):
+      self.unitModels[u].priors = self.priorsUnitModels[u]
+      self.unitModels[u].plotter.plotTrajParams['allTrajOverlap'] = self.params['plotTrajParams']['allTrajOverlap']
+
+
   def makePlots(self, plotFigs, iterNr, picNr):
     if plotFigs:
-      # if self.params['plotTrajParams']['isSynth']:
-      # fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
-      # fig.savefig('%s/compTrueParams%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
-      # pl.clf()
-      # pl.cla()
-      # pl.close()
+      if self.params['plotTrajParams']['isSynth']:
+        fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
+        fig.savefig('%s/compTrueParams%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
+        pl.clf()
+        pl.cla()
+        pl.close()
 
       fig = self.plotter.plotHierData(self.unitModels, self.disModels, replaceFig=True)
       fig.savefig('%s/plotHierData%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))

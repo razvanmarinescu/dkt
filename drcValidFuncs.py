@@ -480,34 +480,57 @@ def validateDRCBiomk(dpmObj, params):
       dtiPredValidLinAll[f] += [dtiPredValidLin]
       dtiPredValidDktAll[f] += [dtiPredValidDkt]
 
-    dtiValValidAll[f] = np.array(dtiValValidAll[f])
-    dtiPredValidLinAll[f] = np.array(dtiPredValidLinAll[f])
-    dtiPredValidDktAll[f] = np.array(dtiPredValidDktAll[f])
+    dtiValValidAll[f] = np.array(dtiValValidAll[f]).reshape(-1, 1).astype(float)
+    dtiPredValidLinAll[f] = np.array(dtiPredValidLinAll[f]).reshape(-1, 1).astype(float)
+    dtiPredValidDktAll[f] = np.array(dtiPredValidDktAll[f]).reshape(-1, 1).astype(float)
 
-    print('dtiValValidAll', dtiValValidAll[f].shape, dtiValValidAll[f])
-    print('dtiPredValidLinAll', dtiPredValidLinAll[f].shape, dtiPredValidLinAll[f])
-    print('dtiPredValidDktAll', dtiPredValidDktAll[f].shape, dtiPredValidDktAll[f])
+    # print('dtiValValidAll', dtiValValidAll[f].shape, dtiValValidAll[f])
+    # print('dtiPredValidLinAll', dtiPredValidLinAll[f].shape, dtiPredValidLinAll[f])
+    # print('dtiPredValidDktAll', dtiPredValidDktAll[f].shape, dtiPredValidDktAll[f])
 
-    corrDpm[f], pValDpm[f] = scipy.stats.spearmanr(dtiValValidAll[f].reshape(-1, 1).astype(float), dtiPredValidDktAll[f].reshape(-1, 1).astype(float))
-    corrLin[f], pValLin[f] = scipy.stats.spearmanr(dtiValValidAll[f].reshape(-1, 1).astype(float), dtiPredValidLinAll[f].reshape(-1, 1).astype(float))
+    corrDpm[f], pValDpm[f] = scipy.stats.spearmanr(dtiValValidAll[f],
+      dtiPredValidDktAll[f])
+    corrLin[f], pValLin[f] = scipy.stats.spearmanr(dtiValValidAll[f],
+      dtiPredValidLinAll[f])
 
   for f in range(nrDtiBiomk):
     squaredErrorsLin[f] = np.array(squaredErrorsLin[f])
     squaredErrorsDpm[f] = np.array(squaredErrorsDpm[f])
 
-  nrBootStraps = 20
+    # dtiValValidAll[f] = dtiValValidAll[f]
+    # dtiPredValidDktAll[f] = dtiPredValidDktAll[f]
+    # dtiPredValidLinAll[f] = dtiPredValidLinAll[f]
+
+  nrBootStraps = 500
   mseDpmUB = np.zeros((nrDtiBiomk, nrBootStraps), float)
   mseLinUB = np.zeros((nrDtiBiomk, nrBootStraps), float)
   nrSubjWithValidAndChosen = len(squaredErrorsLin[0])
+  corrDpmUB = np.zeros((nrDtiBiomk, nrBootStraps), float)
+  corrLinUB = np.zeros((nrDtiBiomk, nrBootStraps), float)
   for f in range(nrDtiBiomk):
     for b in range(nrBootStraps):
       idxBootCurr = np.array(np.random.choice(nrSubjWithValidAndChosen,nrSubjWithValidAndChosen), int)
-      print(len(squaredErrorsLin[f]))
-      print(idxBootCurr)
+      # print(len(squaredErrorsLin[f]))
+      # print(idxBootCurr)
       mseDpmUB[f, b] = np.mean(squaredErrorsLin[f][idxBootCurr])
       mseLinUB[f, b] = np.mean(squaredErrorsDpm[f][idxBootCurr])
 
+      idxBootCorrCurr = np.array(np.random.choice(nrSubjWithValid, nrSubjWithValid), int)
+      corrDpmUB[f, b], _ = scipy.stats.spearmanr(dtiValValidAll[f][idxBootCorrCurr],
+        dtiPredValidDktAll[f][idxBootCorrCurr])
+      corrLinUB[f, b], _ = scipy.stats.spearmanr(dtiValValidAll[f][idxBootCorrCurr],
+        dtiPredValidLinAll[f][idxBootCorrCurr])
 
+      # print('corrDpmUB[f, b]', corrDpmUB[f, b])
+      # print('dtiPredValidDktAll[f]', dtiPredValidDktAll[f])
+      # print('dtiValValidAll[f][idxBootCurr]', dtiValValidAll[f][idxBootCurr])
+      # print('dtiPredValidDktAll[f][idxBootCurr]', dtiPredValidDktAll[f][idxBootCurr])
+
+
+
+  # print('corrDpmUB', corrDpmUB)
+  # print('xsTrajX.shape', xsTrajX.shape)
+  # print(adsa)
   # print('mseLin', mseLin)
   # print('mseDpm', mseDpm)
   # print('corrLin', np.mean(corrLin), corrLin, pValLin)
@@ -517,12 +540,12 @@ def validateDRCBiomk(dpmObj, params):
 
   metrics = {}
   metrics['dpm'] = {}
-  metrics['dpm']['corrU'] = corrDpm
-  metrics['dpm']['pValsU'] = pValDpm
+  metrics['dpm']['corrUB'] = corrDpmUB
+  # metrics['dpm']['pValsU'] = pValDpm
   metrics['dpm']['mseUB'] = mseDpmUB
   metrics['lin'] = {}
-  metrics['lin']['corrU'] = corrLin
-  metrics['lin']['pValsU'] = pValLin
+  metrics['lin']['corrUB'] = corrLinUB
+  # metrics['lin']['pValsU'] = pValLin
   metrics['lin']['mseUB'] = mseLinUB
 
   # plot against MRI vals instead of DPS time-shifts
@@ -577,7 +600,7 @@ def validateDRCBiomk(dpmObj, params):
   #   fig.savefig('%s/trajDisSpaceOverlap_%s_%s.png' % (params['outFolder'],
   #     params['disLabels'][d], params['expName']))
 
-  plotFigs = False
+  plotFigs = True
   if plotFigs:
 
     # for u in range(dpmObj.nrFuncUnits):
@@ -612,7 +635,7 @@ def validateDRCBiomk(dpmObj, params):
       XsubjData2BSX=YvalidFiltMriClosestToDti, YsubjData2BSX=YvalidLinModelDti, diagData2S=diagValidFiltLinModel,
       XsubjData3BSX=YvalidFiltMriClosestToDti, YsubjData3BSX=YvalidDktDti, diagData3S=diagValidFiltDktModel,
       labels=labelsDti,
-      ssdDKT=mseDpm, ssdNoDKT=mseLin, replaceFig=True)
+      ssdDKT=None, ssdNoDKT=None, replaceFig=True)
     fig.savefig('%s/validPredDtiOverMriPCA.png' % params['outFolder'])
 
     # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajDtiXB, trajSamplesDtiBXS,

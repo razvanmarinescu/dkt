@@ -182,16 +182,6 @@ def visDataHist(dataDfAll):
     fig.savefig('resfiles/tad-drc/%d_%s.png' % (b, biomks[b]))
 
 
-def getGammShapeRateFromTranTime(transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax):
-
-  bPriorMean = 16 / (1 * transitionTimePriorMean)
-  bPriorStd = np.abs(16 / (1 * transitionTimePriorMax) - 16 / (1 * transitionTimePriorMin))
-
-  bPriorShape = (bPriorMean ** 2) / (bPriorStd ** 2)
-  bPriorRate = bPriorMean / (bPriorStd ** 2)
-
-  return bPriorShape, bPriorRate
-
 def main():
 
   addExtraBiomk = False
@@ -472,54 +462,80 @@ def printRes(modelNames, res, plotTrajParams):
 
   # print('##### biomk prediction ######')
   nrModels = len(officialNames)
-  mseUB = list(range(nrModels))
+  mseMUB = list(range(nrModels))
   mseMeanMU = list(range(nrModels))
   mseStdMU = list(range(nrModels))
 
-  corrMU = list(range(nrModels))
+  corrMUB = list(range(nrModels))
+  corrMeanMU = list(range(nrModels))
+  corrStdMU = list(range(nrModels))
   pvalsMU = list(range(nrModels))
 
   for m in range(nrModels-1):
-    mseUB[m] = res[m]['metrics']['dpm']['mseUB']
-    mseMeanMU[m] = np.nanmean(mseUB[m], axis=1)
-    mseStdMU[m] = np.nanstd(mseUB[m], axis=1)
+    mseMUB[m] = res[m]['metrics']['dpm']['mseUB']
+    mseMeanMU[m] = np.nanmean(mseMUB[m], axis=1)
+    mseStdMU[m] = np.nanstd(mseMUB[m], axis=1)
 
-    corrMU[m] = res[m]['metrics']['dpm']['corrU']
-    pvalsMU[m] = res[m]['metrics']['dpm']['pValsU']
+    corrMUB[m] = res[m]['metrics']['dpm']['corrUB']
+    # pvalsMU[m] = res[m]['metrics']['dpm']['pValsUB']
 
+    corrMeanMU[m] = np.nanmean(corrMUB[m], axis=1)
+    corrStdMU[m] = np.nanstd(corrMUB[m], axis=1)
 
-  mseUB[linIndex] = res[0]['metrics']['lin']['mseUB']
-  mseMeanMU[linIndex] = np.nanmean(mseUB[linIndex], axis=1)
-  mseStdMU[linIndex] = np.nanstd(mseUB[linIndex], axis=1)
-  corrMU[linIndex] = res[0]['metrics']['lin']['corrU']
-  pvalsMU[linIndex] = res[0]['metrics']['lin']['pValsU']
+  mseMUB[linIndex] = res[0]['metrics']['lin']['mseUB']
+  mseMeanMU[linIndex] = np.nanmean(mseMUB[linIndex], axis=1)
+  mseStdMU[linIndex] = np.nanstd(mseMUB[linIndex], axis=1)
+
+  corrMUB[linIndex] = res[0]['metrics']['lin']['corrUB']
+  corrMeanMU[linIndex] = np.nanmean(corrMUB[linIndex], axis=1)
+  corrStdMU[linIndex] = np.nanstd(corrMUB[linIndex], axis=1)
+  # pvalsMU[linIndex] = res[0]['metrics']['lin']['pValsU']
 
   biomkNames = [x.split(' ')[-1] for x in res[0]['metrics']['labelsDti']]
 
   # Perform Bonferroni correction
-  sigLevel = 0.05/(5*2)
+  sigLevel = 0.05/(6*2*2)
+
+  # print('mseMUB[dktIndex][u, :]', np.nanmean(mseMUB[dktIndex][1, :]), mseMUB[dktIndex][1, :])
+  # print('mseMUB[linIndex][u, :]', np.nanmean(mseMUB[linIndex][1, :]), mseMUB[linIndex][1, :])
+  # pl.figure(1)
+  # pl.hist(mseMUB[dktIndex][1, :], color='g', label='dkt')
+  # pl.hist(mseMUB[linIndex][1, :], color='r', label='lin')
+  # pl.show()
 
   print('##### mean squared error and rank correlation ######')
-  print(r'''Model & ''' + ' & '.join(biomkNames))
-  print('Prediction Error (MSE)')
+  print(r'''\textbf{Model} & ''' + ' & '.join(['\\textbf{%s}' % b for b in biomkNames]) + '\\\\')
+  print('& \multicolumn{6}{c}{\\textbf{Prediction Error (MSE)}}\\\\')
   for m in [dktIndex, sigIndex, linIndex]:
-    print('%s & ' % officialNames[modelNames[m]], end='')
+    print('%s' % officialNames[modelNames[m]], end='')
 
-    for u in range(mseMeanMU[m].shape[0]-1):
-      print('%.2f / %.2f & ' % (mseMeanMU[m][u], mseStdMU[m][u]), end='')
+    for u in range(mseMeanMU[m].shape[0]):
+      sigLabel = getSigLabel(mseMUB[m][u, :], mseMUB[dktIndex][u, :], sigLevel)
+      print(' & %.2f$\pm$%.2f%s' % (mseMeanMU[m][u], mseStdMU[m][u], sigLabel), end='')
 
-    print('%.2f / %.2f \\\\' % (mseMeanMU[m][-1], mseStdMU[m][-1]))
+    print('\\\\')
 
-  print('Ranking Error (Spearman rho)')
+  print('& \multicolumn{6}{c}{\\textbf{Rank Correlation (Spearman rho)}}\\\\')
   for m in [dktIndex, sigIndex, linIndex]:
-    print('%s & ' % officialNames[modelNames[m]], end='')
-
-    for u in range(mseMeanMU[m].shape[0]-1):
-      print('%.2f / %.1E & ' % (corrMU[m][u], pvalsMU[m][u]), end='')
-
-    print('%.2f / %.1E \\\\' % (corrMU[m][-1], pvalsMU[m][-1]))
+    print('%s ' % officialNames[modelNames[m]], end='')
 
 
+    for u in range(mseMeanMU[m].shape[0]):
+      sigLabel = getSigLabel(corrMUB[m][u,:], corrMUB[dktIndex][u,:], sigLevel)
+      print(' & %.2f%s ' % (corrMeanMU[m][u], sigLabel), end='')
+
+    print('\\\\' )
+
+
+def getSigLabel(xs, xsMyModel, sigLevel):
+  tstatCorrDkt, pValCorrDkt = scipy.stats.ttest_rel(xs, xsMyModel)
+
+  if pValCorrDkt < sigLevel:
+    sigLabel = '*'
+  else:
+    sigLabel = ''
+
+  return sigLabel
 
 def runAllExpTadpoleDrc(params, expName, dpmBuilder, compareTrueParamsFunc = None):
   """ runs all experiments"""

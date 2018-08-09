@@ -198,6 +198,16 @@ def filterDataListFormat(params, dataIndices):
   return Xfilt, Yfilt, visitIndicesFilt
 
 
+def getGammShapeRateFromTranTime(transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax):
+
+  bPriorMean = 16 / (1 * transitionTimePriorMean)
+  bPriorStd = np.abs(16 / (1 * transitionTimePriorMax) - 16 / (1 * transitionTimePriorMin))
+
+  bPriorShape = (bPriorMean ** 2) / (bPriorStd ** 2)
+  bPriorRate = bPriorMean / (bPriorStd ** 2)
+
+  return bPriorShape, bPriorRate
+
 def applyScalingToBiomk(dataCrossSB, scalingBiomk2B):
   scaledData = dataCrossSB * scalingBiomk2B[1,:][None, :] + scalingBiomk2B[0,:][None, :]
   return scaledData

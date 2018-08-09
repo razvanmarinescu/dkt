@@ -30,17 +30,9 @@ class ParHierModel:
     :return: Y = f_b (X)
     '''
 
-
     # find dysfunction scores for each subject
     dysScoresS = self.parFunc(dpsCross, self.dysfuncParams[self.mapBiomkToFuncUnits[b],:])
     modelPredS = self.parFunc(dysScoresS, self.thetas[b,:])
-
-    # print('self.dysfuncParams', self.dysfuncParams)
-    # print('dpsCross', dpsCross)
-    # print('dysScoresS', dysScoresS)
-    # print('params', self.dysfuncParams[self.mapBiomkToFuncUnits[b],:])
-    # print('modelPredS', modelPredS)
-    # print(ads)
 
     return modelPredS
 
