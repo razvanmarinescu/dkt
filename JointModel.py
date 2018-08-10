@@ -108,8 +108,8 @@ class JointModel(DisProgBuilder.DPMInterface):
       i = 0
 
       if self.params['plotTrajParams']['isSynth']:
-        i = 70
-        nrIt = 71
+        i = 10
+        nrIt = 11
         self.loadCheckpoint(i-1, 5)
 
       while i < nrIt:
@@ -182,20 +182,20 @@ class JointModel(DisProgBuilder.DPMInterface):
     if plotFigs:
       if self.params['plotTrajParams']['isSynth']:
         fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
-        fig.savefig('%s/compTrueParams%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
+        fig.savefig('%s/compTrueParams%d%d_%s.pdf' % (self.outFolder, iterNr, picNr, self.expName))
         pl.clf()
         pl.cla()
         pl.close()
 
       fig = self.plotter.plotHierData(self.unitModels, self.disModels, replaceFig=True)
-      fig.savefig('%s/plotHierData%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
+      fig.savefig('%s/plotHierData%d%d_%s.pdf' % (self.outFolder, iterNr, picNr, self.expName))
       pl.clf()
       pl.cla()
       pl.close()
 
       for d in range(self.nrDis):
         fig = self.plotter.plotAllBiomkDisSpace(self, self.params, d)
-        fig.savefig('%s/trajDisSpace%s_%d%d_%s.png' % (self.outFolder, self.params['disLabels'][d],
+        fig.savefig('%s/trajDisSpace%s_%d%d_%s.pdf' % (self.outFolder, self.params['disLabels'][d],
           iterNr, picNr, self.expName))
 
         pl.clf()

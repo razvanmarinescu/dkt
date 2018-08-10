@@ -101,7 +101,6 @@ plotTrajParams['padTightLayout'] = 1
 
 
 
-
 if args.agg:
   plotTrajParams['agg'] = True
 else:
@@ -138,6 +137,8 @@ def main():
   nrBiomkInFuncUnits = 3
   nrDis = 2
 
+
+
   nrBiomk = nrBiomkInFuncUnits * nrFuncUnits
   mapBiomkToFuncUnits = np.array(list(range(nrFuncUnits)) * nrBiomkInFuncUnits)
   # should give smth like [0,1,2,3,0,1,2,3,0,1,2,3]
@@ -150,7 +151,7 @@ def main():
   biomkInFuncUnit[nrFuncUnits] = np.array([]) # need to leave this as empty list
 
   plotTrajParams['biomkInFuncUnit'] = biomkInFuncUnit
-  plotTrajParams['labels'] = ['b%d' % n for n in range(nrBiomk)]
+  plotTrajParams['labels'] = ['biomarker %d' % n for n in range(nrBiomk)]
   plotTrajParams['nrRowsFuncUnit'] = 3
   plotTrajParams['nrColsFuncUnit'] = 4
   plotTrajParams['colorsTrajBiomkB'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
@@ -177,6 +178,7 @@ def main():
   params['nrFuncUnits'] = nrFuncUnits
   params['biomkInFuncUnit'] = biomkInFuncUnit
   params['nrBiomkDisModel'] = nrFuncUnits
+
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
   params['iterParamsUnit'] = 50

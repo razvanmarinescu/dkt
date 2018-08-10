@@ -21,6 +21,7 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
   if os.path.isfile(fileName) and not forceRegenerate:
     dataStruct = pickle.load(open(fileName, 'rb'))
     localParams = dataStruct['localParams']
+    localParams['labels'] = ['biomarker %d' % d for d in range(nrBiomk)]
 
   else:
     np.random.seed(1)
@@ -98,7 +99,7 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
 
     assert (not np.any(np.isnan(dataCrossSB)))
 
-    labels = ['biomk %d' % d for d in range(nrBiomk)]
+    labels = ['biomarker %d' % d for d in range(nrBiomk)]
 
     longData, longDiagAllTmpts, longDiag, longScanTimepts, longPartCode, longAgeAtScan, \
       inverseMap, filtData, filtDiag, filtScanTimetps, filtPartCode, filtYearsSinceBlScanCross, \
