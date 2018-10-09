@@ -603,13 +603,13 @@ def validateDRCBiomk(dpmObj, params):
   plotFigs = True
   if plotFigs:
 
-    # for u in range(dpmObj.nrFuncUnits):
-    #   trajStructUnitModel = dpmObj.unitModels[u].plotter.getTrajStructWithTrueParams(dpmObj.unitModels[u])
-    #   fig = dpmObj.unitModels[u].plotter.plotTraj(dpmObj.unitModels[u], trajStructUnitModel,
-    #     legendExtraPlot=True, rowsAuto=True)
-    #   fig.savefig('%s/unit%d_allTraj.png' % (params['outFolder'], u))
-    #
-    #
+    for u in range(dpmObj.nrFuncUnits):
+      trajStructUnitModel = dpmObj.unitModels[u].plotter.getTrajStructWithTrueParams(dpmObj.unitModels[u])
+      fig = dpmObj.unitModels[u].plotter.plotTraj(dpmObj.unitModels[u], trajStructUnitModel,
+        legendExtraPlot=True, rowsAuto=True)
+      fig.savefig('%s/unit%d_allTraj.png' % (params['outFolder'], u))
+
+
     # for d in range(dpmObj.nrDis):
     #   # yNormMode = dpmObj.params['plotTrajParams']['yNormMode']
     #   yNormMode = 'unscaled'

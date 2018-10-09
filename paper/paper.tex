@@ -74,6 +74,10 @@ urlcolor=black
 
 \maketitle              % typeset the title of the contribution
 
+
+\newcommand{\expFld}{../resfiles/tad-drcTiny_JMD}
+\newcommand{\jmdFld}{..}
+
 \begin{abstract}
 The availability of multimodal biomarker measurements in large scale clinical data is fundamental for the application of current disease progression models of neurodegenerative disorders. Due to the lack of data and to the low sample size, disease progression modeling of rare dementias is currently very challenging. To overcome this problem, we introduce Disease Knowledge Transfer (DKT), a technique for transferring biomarkers' progression models between Alzheimer's disease (AD) variants. We assume that different types of dementia affect overlapping brain regions, and thus present shared biomarker characteristics that can be transferred across diseases. We then implement this paradigm as a joint-disease generative model of biomarker progressions, disentangling disease-specific from  disease-agnostic biomarker relationships. We demonstrate DKT on independent datasets of 1) multimodal typical AD data (tAD), with large sample size and several biomarkers available over time, and 2) Posterior Cortical Atrophy (PCA) data, for which only MRI scans are available. DKT is able to predict, in tested PCA subjects, plausible population-level biomarkers for structural and molecular imaging biomarkers, for which no data were available. DKT may be a useful tool to analyse and understand rare forms of dementia for which multimodal data is not available or is limited. Moreover, by leveraging data from multiple diseases, DKT also has the potential to provide more accurate disease staging compared to traditional disease progression models.
 
@@ -112,7 +116,7 @@ We propose Disease Knowledge Transfer (DKT), a generative joint model that estim
 
 \begin{figure}[h]
  \centering
- \includegraphics[width=0.8\textwidth,trim=0 0 0 80,clip]{figures/disease_knowledge_transfer.png}
+ \includegraphics[width=0.8\textwidth,trim=0 0 0 0,clip]{figures/disease_knowledge_transfer.pdf}
  \caption{Outline of the proposed framework for joint modelling of multiple diseases. We assume that each disease can be modelled as the evolution of abstract dysfunctionality scores (Y-axis, top row), each one related to different brain regions. Each region-specific dysfunctionality score then further models (X-axis, bottom row) the progression of several modality-specific biomarkers within that same region. The biomarker correlations within the bottom units are assumed to be disease agnostic and shared across all diseases modelled. Disease knowledge transfer can then be achieved via the disease-agnostic units.}
  \label{fig:diagram}
 \end{figure}
@@ -147,8 +151,6 @@ We used 87 controls and 76 PCA subjects from our local dataset, which only had M
 % Fig1: biomarker traj. over dysfunction scores in one functional unit -> Fig2: dysfunction trajectories over disease stage in the two disease models -> Fig3: inferred biomarker trajectories "directly" over disease stage  in PCA
 Fig. \ref{fig:pcaTadDisSpace}A shows the estimated biomarker trajectories within the \emph{occipital unit} plotted over the dysfunction scores, along with samples from the model posterior and aligned subject data. The X-axis shows the dysfunctionality scores within the occipital unit, which represent estimated time-shifts, in months, from an arbitrary reference X=0, while the Y-axis shows biomarker values normalised to [0,1] range. The model shows a good data fit, and we can observe most PCA subjects having abnormal occipital volumes, thus leading to high occipital dysfunctionality scores, in line with the current understanding of PCA as affecting posterior regions \cite{crutch2012posterior}. Fig. \ref{fig:pcaTadDisSpace} also shows the progression of dysfunctionality scores over the disease stage for (B) typical AD and (C) PCA. In typical AD, we see that temporal dysfunction becomes abnormal earliest, while PCA shows early parietal dysfunction, again in line with previous findings in the literature \cite{crutch2012posterior,Baron2001}. In Fig. \ref{fig:PCAtrajByModality}, we plot the inferred biomarker trajectories for PCA directly across the disease progression. We do this for five different modalities: MRI Volumes, DTI, FDG, AV45 and AV1451. The results again recapitulate known patterns in PCA, where trajectories from posterior regions become abnormal first in MRI, DTI and AV1451, with the exception of FDG. This might be due to the normalisation of the FDG trajectories on the Y-axis to the [0,1] range, which results in artificially more scaling to trajectories with less disease signal. We also notice two non-monotonic trajectories in the AV45 plot, which are due to bad starting points within parameter optimisation combined with low disease signal within these biomarkers.
 
-\newcommand{\expFld}{figures}
-
 
 % PCA vs tAD disease space
 % \vspace{-2em}
@@ -159,7 +161,7 @@ Fig. \ref{fig:pcaTadDisSpace}A shows the estimated biomarker trajectories within
 \centering
 \begin{subfigure}{\textwidth}
 \centering
-\includegraphics[width=0.8\textwidth, trim=90 0 110 0, clip]{figures/unit1_allTraj_tad-drcTinyPen1_JMD.png} 
+\includegraphics[width=0.8\textwidth, trim=90 0 110 0, clip]{\expFld/unit1_allTraj.png} 
 % \caption{}
 % \label{fig:occipUnit}
 \end{subfigure}
@@ -170,7 +172,7 @@ Fig. \ref{fig:pcaTadDisSpace}A shows the estimated biomarker trajectories within
 \begin{subfigure}{0.47\textwidth}
 \centering
 % typical AD\\
-\includegraphics[width=0.8\textwidth, trim=0 0 0 20, clip]{figures/tAD_trajSameSpace_tad-drcTinyPen1_JMD.png} 
+\includegraphics[width=0.8\textwidth, trim=0 0 0 20, clip]{\expFld/dis0_tAD_allTrajZeroOne.png} 
 % \caption{C}
 \end{subfigure}
 \begin{picture}(5,5)
@@ -179,7 +181,7 @@ Fig. \ref{fig:pcaTadDisSpace}A shows the estimated biomarker trajectories within
 \begin{subfigure}{0.47\textwidth}
 \centering
 % PCA\\
-\includegraphics[width=0.8\textwidth, trim=0 0 0 20, clip]{figures/PCA_trajSameSpace_tad-drcTinyPen1_JMD.png} 
+\includegraphics[width=0.8\textwidth, trim=0 0 0 20, clip]{\expFld/dis1_PCA_allTrajZeroOne.png} 
 % \caption{PCA}
 \end{subfigure}
 \caption{(A) Estimated biomarker trajectories in the occipital functional unit. Subject data from ADNI and our local cohort are also shown. The X-axis, defined as the occipital dysfunctionality score, represents the time-shifts (in months) of each subject. Red lines represent samples from the trajectory posterior. The Y-axis measures biomarker values (normalised). (B-C) Progression of dysfunctionality scores for (B) typical AD and (C) PCA.}
@@ -190,7 +192,7 @@ Fig. \ref{fig:pcaTadDisSpace}A shows the estimated biomarker trajectories within
 
 % estimated (hypothetical) trajectories in PCA: DTI, FDG, AV45, AV1451.Volumetric trajectories were based on PCA MRI data.
 \begin{figure}
- \includegraphics[width=\textwidth, trim=0 20 0 0, clip]{figures/trajDisSpaceOverlap_PCA_tad-drcTinyPen1_JMD.png}
+ \includegraphics[width=\textwidth, trim=0 20 0 0, clip]{\expFld/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
  \caption{Estimated trajectories for the PCA cohort. The only data that were available were the MRI volumetric data. The dynamics of the other biomarkers has been inferred by the model using data from typical AD, and taking into account the different spatial distribution of pathology in PCA as compared to typical AD.}
  \label{fig:PCAtrajByModality}
 \end{figure}
@@ -202,11 +204,21 @@ We performed validation using a separate test set of 20 DTI scans from controls 
 
 % DTI validation with local dataset
 
-\begin{figure}
- \includegraphics[width=\textwidth, trim=0 0 0 0, clip]{figures/validDtiPCA.png}
- \caption{Validation of the Disease Knowledge Transfer Model using DTI data of PCA subjects from our local cohort. Each subject has been shifted along the X-axis only according to their MRI data. No DTI data from PCA subjects was used to fit the model.}
-\label{fig:DTIvalid}
-\end{figure}
+\begin{table}
+\begin{tabular}{c | c c c c c c}
+\textbf{Model} & \textbf{Cingulate} & \textbf{Frontal} & \textbf{Hippocampus} & \textbf{Occipital} & \textbf{Parietal} & \textbf{Temporal}\\
+& \multicolumn{6}{c}{\textbf{Prediction Error (MSE)}}\\
+DKT & 0.09$\pm$0.04 & 0.03$\pm$0.01 & 0.18$\pm$0.03 & 0.04$\pm$0.02 & 0.06$\pm$0.02 & 0.04$\pm$0.02\\
+Latent stage model & 0.09$\pm$0.04 & 0.03$\pm$0.01 & 0.17$\pm$0.03 & 0.04$\pm$0.02 & 0.06$\pm$0.02 & 0.04$\pm$0.02\\
+Linear Model & 0.05$\pm$0.02* & 0.15$\pm$0.04* & 0.09$\pm$0.03* & 0.07$\pm$0.03* & 0.07$\pm$0.02* & 0.07$\pm$0.02*\\
+& \multicolumn{6}{c}{\textbf{Rank Correlation (Spearman rho)}}\\
+DKT  & 0.76  & 0.48  & 0.76  & 0.55  & 0.55  & 0.33 \\
+Latent stage model  & 0.76  & 0.49  & 0.80*  & 0.56  & 0.51*  & 0.33 \\
+Linear Model  & 0.48*  & 0.31*  & 0.64*  & 0.61*  & 0.57*  & 0.27* \\
+\end{tabular}
+\caption[Performance evaluation of DKT and two simpler models]{Performance evaluation of DKT and two simpler models: a latent stage disease progression model and a linear univariate model of DTI predicted from MRI. The top table shows the prediction error (MSE) while the bottom table shows the rank correlation measured by Spearman's rho. (*) Statistically significant difference between the current model performance and DKT, based on a two-tailed t-test, Bonferroni corrected.}
+\label{sec:dktPerfMetrics}
+\end{table}
 
 \section{Discussion}
 

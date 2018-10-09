@@ -7,6 +7,8 @@ import copy
 import auxFunc
 from abc import ABC, ABCMeta, abstractmethod
 import DPMModelGeneric
+import sklearn.metrics
+import scipy.interpolate
 
 class PlotterJDM:
 
@@ -565,7 +567,6 @@ class PlotterJDM:
         replaceFig)
 
 
-
 class PlotterGP(ABC):
 
   def __init__(self, plotTrajParams):
@@ -643,8 +644,11 @@ class PlotterGP(ABC):
 
       ax.plot(newX,predBiomksYscaledXB[:,b], lw=2, color='black', label='estimated trajectory')
 
-      # ax.plot(np.array([np.min(newX), np.max(newX)]), [min_yB[b], max_yB[b]],
-      #   color=(0.5,0.5,0.5), lw=2)
+      Y_arrayPredXB = gpModel.predictBiomk(gpModel.X_array[b].reshape(-1))
+      # rSq = sklearn.metrics.r2_score(Y_arrayPredXB[:,b], gpModel.Y_array[b])
+      maeTraj = np.mean(np.abs(Y_arrayPredXB[:,b] - gpModel.Y_array[b]))
+      # ax.text(0.05, 0.9, '$R^2$ = %.2f' % rSq)
+      ax.text(0.05, 1, 'MAE = %.2f' % maeTraj)
 
       ax.set_ylim([min_yB[b]-deltaB[b], max_yB[b]+deltaB[b]])
 
@@ -688,7 +692,6 @@ class PlotterGP(ABC):
     else:
       pl.show()
     pl.pause(0.05)
-
 
     return fig
 
@@ -878,7 +881,10 @@ class PlotterGP(ABC):
     # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
 
-    fig.text(0.5, 0.04, 'Disease Progression (months)', ha='center')
+    # xLabel = 'Disease Progression (β, normalised)'
+    xLabel = 'Disease Progression (months)'
+
+    fig.text(0.5, 0.04, xLabel, ha='center')
     fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
 
     h, labels = ax.get_legend_handles_labels()
@@ -972,13 +978,27 @@ class PlotterGP(ABC):
 
       ax.plot(trueXsTrajX, trueYsTrajXB[:,b], '--', lw=3,color='black', label='true trajectory')
 
+      estimSpline = scipy.interpolate.UnivariateSpline(xsTrajX,predTrajXB[:,b])
+      trueSpline = scipy.interpolate.UnivariateSpline(trueXsTrajX,trueYsTrajXB[:,b])
+      minX, maxX = ax.get_xlim()
+      xsCommon = np.linspace(minX, maxX, 20)
+
+      maeTraj = np.mean(np.abs(estimSpline(xsCommon) - trueSpline(xsCommon)))
+      print('xsTrajX', xsTrajX)
+      print('trueXsTrajX',trueXsTrajX)
+      print('predTrajXB[:,b]', predTrajXB[:,b])
+      print('trueYsTrajXB[:,b]', trueYsTrajXB[:,b])
+      print(maeTraj)
+
       # ax.plot([np.min(xsTrajX), np.max(xsTrajX)], [min_yB[b], max_yB[b]],
       #   color=(0.5,0.5,0.5), lw=2)
 
       minY = min_yAll-delta
       maxY = max_yAll+delta
       ax.set_ylim([minY, maxY])
-      minX, maxX = ax.get_xlim()
+
+
+      ax.text(minX + (maxX - minX) * 0.07, maxY * 0.8, 'MAE = %.3f' % maeTraj)
 
       # pl.legend(ncol=1,fontsize=12)
 
@@ -1016,6 +1036,9 @@ class PlotterGP(ABC):
     else:
       pl.show()
     # pl.pause(5)
+
+
+    # print(adsa)
 
     return fig
 
@@ -1187,6 +1210,13 @@ class PlotterGP(ABC):
     min_yB = trajStruct['min_yB']
     max_yB = trajStruct['max_yB']
 
+    print('newXTrajScaledZeroOne', newXTrajScaledZeroOne)
+    print('trueXsScaledZeroOne', trueXsScaledZeroOne)
+
+    maeTraj = np.zeros(gpModel.nrBiomk)
+    for b in range(gpModel.nrBiomk):
+      maeTraj[b] = np.mean(np.abs(predTrajScaledXB[:, b] - trueTrajScaledXB[:, b]))
+
     # nrRows = self.plotTrajParams['nrRows']
     # nrCols = self.plotTrajParams['nrCols']
 
@@ -1201,6 +1231,7 @@ class PlotterGP(ABC):
         ax2.plot(trueXsScaledZeroOne, trueTrajScaledXB[:, b], '--', lw=2
                  , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
 
+      ax2.text(0.0, 0.95, 'MAE = %.3f' % np.mean(maeTraj))
       ax2.legend(loc='lower right',ncol=1)
       ax2.set_xlabel(xlabel)
       ax2.set_ylabel(ylabel)
@@ -1213,6 +1244,7 @@ class PlotterGP(ABC):
         ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-', lw=2
                  , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
 
+      ax2.text(0.0, 0.95, 'MAE = %.3f' % np.mean(maeTraj))
       ax2.legend(loc='lower right',ncol=1)
       ax2.set_xlabel(xlabel)
       ax2.set_ylabel(ylabel)
@@ -1231,6 +1263,9 @@ class PlotterGP(ABC):
       ax3.set_ylabel(ylabel)
 
       nrPlotsSoFar += 2
+
+
+    # pl.pause(200000)
 
     return nrPlotsSoFar
 
@@ -1258,7 +1293,8 @@ class PlotterGP(ABC):
 
     pl.legend(loc='lower right',ncol=1)
 
-    pl.xlabel('Disease Progression (months)')
+    xLabel = 'Disease Progression (β, normalised)'
+    pl.xlabel(xLabel)
     pl.ylabel('Dysfunctionality Scores (normalised)')
 
     pl.subplots_adjust(bottom=0.15)
@@ -1422,19 +1458,13 @@ class PlotterGP(ABC):
     # estimShifts = gpModel.params_time_shift[0,:]
 
     nrSubjLong = len(gpModel.X[0])
-
     subjShiftsEstimS = gpModel.getSubShiftsLong()
-
     ax = pl.subplot(nrRows, nrCols, nrPlotsSoFar+1)
-
 
     diagNrs = np.unique(self.plotTrajParams['diag'])
     nrDiags = diagNrs.shape[0]
-    # print('diag.shape', self.plotTrajParams['diag'].shape)
-    # print('diagNrs', diagNrs)
-    # print('subShiftsTrueS', subShiftsTrueS.shape)
-    # print('subjShiftsEstimS', subjShiftsEstimS.shape)
-    # print(adsa)
+
+    rSq = sklearn.metrics.r2_score(subjShiftsEstimS, subShiftsTrueS)
 
     for d in range(nrDiags):
       pl.scatter(subjShiftsEstimS[self.plotTrajParams['diag'] == diagNrs[d]],
@@ -1445,8 +1475,11 @@ class PlotterGP(ABC):
     pl.title('Subject shifts')
     pl.xlabel('estimated shifts')
     pl.ylabel('true shifts')
+    yMin = np.min(subShiftsTrueS)
+    yMax = np.max(subShiftsTrueS)
+    pl.text(yMin, yMax * 0.75, '$R^2$ = %.3f' % rSq)
     ax.set_ylim([np.min(subShiftsTrueS), np.max(subShiftsTrueS)])
-    ax.legend(ncol=1)
+    ax.legend(ncol=1, loc='lower right')
 
     return nrPlotsSoFar+1
 

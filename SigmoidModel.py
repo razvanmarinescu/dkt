@@ -85,6 +85,9 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   def applyScalingXForward(self, x_data, biomk=0):
     return x_data
 
+  def applyScalingXInv(self, x_data, biomk=0):
+    return x_data
+
 
   def sigFunc(self, xs, theta):
     # print('theta', theta)

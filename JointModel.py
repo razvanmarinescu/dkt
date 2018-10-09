@@ -152,7 +152,13 @@ class JointModel(DisProgBuilder.DPMInterface):
       # self.loadCheckpoint(i, 2)
       # self.makePlots(plotFigs, i, 2)
 
-      self.loadCheckpoint(0, 2) # for the real data
+      i = 0
+
+      self.loadCheckpoint(i, 2) # for the real data
+      # self.makePlots(plotFigs, i, 2)
+      # print(adsa)
+
+
 
     res = None
     return res
@@ -183,6 +189,7 @@ class JointModel(DisProgBuilder.DPMInterface):
       if self.params['plotTrajParams']['isSynth']:
         fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
         fig.savefig('%s/compTrueParams%d%d_%s.pdf' % (self.outFolder, iterNr, picNr, self.expName))
+        fig.savefig('%s/compTrueParams%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
         pl.clf()
         pl.cla()
         pl.close()
@@ -197,10 +204,10 @@ class JointModel(DisProgBuilder.DPMInterface):
         fig = self.plotter.plotAllBiomkDisSpace(self, self.params, d)
         fig.savefig('%s/trajDisSpace%s_%d%d_%s.pdf' % (self.outFolder, self.params['disLabels'][d],
           iterNr, picNr, self.expName))
+        fig.savefig('%s/trajDisSpace%s_%d%d_%s.png' % (self.outFolder, self.params['disLabels'][d],
+                                                       iterNr, picNr, self.expName))
 
-        pl.clf()
-        pl.cla()
-        pl.close()
+
 
   def initParams(self, runPartOnePass):
     paramsCopy = copy.deepcopy(self.params)

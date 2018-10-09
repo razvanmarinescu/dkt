@@ -11,7 +11,7 @@ MarcoTestADNI:
 	python3 MarcoTestADNI.py
 
 tadpoleDrc_JMD:
-	python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 14  --nrRows 4 --nrCols 6 --penalty 5 --runPartStd RR --tinyData
+	python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 14  --nrRows 4 --nrCols 6 --penalty 5 --runPartStd LL --tinyData
 
 tadpoleDrc_Sig:
 	python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 17  --nrRows 5 --nrCols 7 --runPartStd LL --tinyData
