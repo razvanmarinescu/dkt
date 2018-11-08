@@ -116,7 +116,7 @@ We propose Disease Knowledge Transfer (DKT), a generative joint model that estim
 
 Fig. \ref{fig:diagram} shows the overall diagram of the DKT framework. We assume that the progression of each disease (X-axis, top row) can be modelled as a unique evolution of dysfunction trajectories (top row) representing multimodal pathology within a specific brain region. Each dysfunction trajectory is modelled as the progression of several biomarkers within that same region, but acquired using different types of modalities (e.g. MRI, PET or DTI, see Fig. \ref{fig:diagram} bottom row). Each group of biomarkers in the bottom row will be called a \emph{disease-agnostic unit} or simply \emph{agnostic unit}, because the biomarker dynamics are assumed to be shared across all diseases modelled.
 
-The assumption that the dynamics of some biomarkers are disease-agnostic (i.e. shared across diseases), is key to DKT. There are several reasons why we can make this assumption. First of all, pathology in many related neurodegenerative diseases ( e.g. Alzheimer's variants) are hypothesized to share the same underlying mechanisms (e.g. amyloid and tau accumulation), and within one region, such accumulation leads to the same pathology dynamics across all the related disease variants: hypometabolism (FDG PET), neuronal damage (T1/DTI MRI) and region-specific cognitive decline -- the difference between these variants is that distinct regions are affected at different times and with different pathology rates and extent, which are accounted for by the disease specific models.
+The assumption that the dynamics of some biomarkers are disease-agnostic (i.e. shared across diseases), is key to DKT. There are several reasons why we can make this assumption. First of all, pathology in many related neurodegenerative diseases ( e.g. Alzheimer's variants) are hypothesized to share the same underlying mechanisms (e.g. amyloid and tau accumulation), and within one region, such accumulation leads to the same pathology dynamics across all the related disease variants: hypometabolism (FDG PET), neuronal damage (T1/DTI MRI) and region-specific cognitive decline \cite{jack2010hypothetical} -- the difference between these variants is that distinct brain regions are affected at different times and with different pathology rates and extent, likely caused by selective vulnerability of networks within these regions \cite{seeley2009neurodegenerative}. Secondly, even if the diseases share different upstream mechanisms (e.g. amyloid vs tau accumulation), downstream biomarkers measuring hypometabolism, white matter degradation and structural markers follow the same pathological cascade and will have similar dynamics across diseases.
 
 \subsection{Mathematical formulation}
 
@@ -210,9 +210,7 @@ In the second stage we jointly optimise across all agnostic units and disease mo
 \label{sec:dktMetSyn}
 
 We first test DKT on synthetic data, in order to assess the performance when ground truth is known. We generate synthetic data from two diseases as follows:
-%\begin{tabular}{c c c}
-%
-%\end{tabular}
+
 \begin{itemize}
  \item[] \textbf{Disease model}
  \item We define two agnostic units $l_0$ and $l_1$ and 6 biomarkers $k_0-k_6$, which we allocate to agnostic units as follows: $l_0:\{k_0, k_2, k_4\}$, $l_1: \{k_1, k_3, k_5\}$. Within their units, we define the trajectory of each biomarker as a sigmoidal curves with the following $\theta_k$ parameters:
@@ -227,9 +225,9 @@ We first test DKT on synthetic data, in order to assess the performance when gro
  \end{itemize}
 
  \item[] \textbf{Subject model}
- \item We generated time-shifts $\beta_i$ for 100 subjects (disease $d_0$) and 50 subjects (disease $d_1$) based on a uniform distribution with ranges $(-13, 10)$ years before/after disease onset. 
+ \item We generated time-shifts $\beta_i$ for 100 subjects (disease $d_0$) and 50 subjects (disease $d_1$), $\beta_i \sim U(-13,10)$ years before/after disease onset. 
  \item Within each disease, we generated the subjects' diagnosis (controls/patients) based on an exponential likelihood model with mean -4.5 (controls)/4.5 (patients) years before/after disease onset. 
- \item For each subject and each biomarker, we generated data for four consecutive visits, each visit one year apart, using a noise standard deviation of 0.05.
+ \item For each subject and each biomarker, we generated data for four consecutive visits, each visit one year apart. The noise standard deviation $\epsilon_k$ = 0.05.
 \end{itemize}
 
 These trajectory and subject parameters were chosen to mimic the TADPOLE and DRC cohorts, described below. Before fitting DKT on the synthetic dataset, we discarded the data from biomarkers $k_0$, $k_1$, $k_4$ and $k_5$ for all subjects within the synthetic PCA cohort, to simulate the lack of multimodal data in these subjects. Remaining biomarkers $k_2$ and $k_3$, for which data was still available in the synthetic PCA cohort, are assumed to be of the same modality (e.g. MRI volume) but to represent measurements from different brain regions (e.g. temporal and occipital). 
@@ -412,6 +410,12 @@ Cheng, B., Liu, M., Zhang, D., Munsell, B.C. and Shen, D., 2015. Domain transfer
 
 \bibitem{marinescu2018tadpole}
 Marinescu, R.V., Oxtoby, N.P., Young, A.L., Bron, E.E., Toga, A.W., Weiner, M.W., Barkhof, F., Fox, N.C., Klein, S. and Alexander, D.C., 2018. TADPOLE Challenge: Prediction of Longitudinal Evolution in Alzheimer's Disease. arXiv preprint arXiv:1805.03909.
+
+\bibitem{jack2010hypothetical}
+Jack Jr, C.R., Knopman, D.S., Jagust, W.J., Shaw, L.M., Aisen, P.S., Weiner, M.W., Petersen, R.C. and Trojanowski, J.Q., 2010. Hypothetical model of dynamic biomarkers of the Alzheimer's pathological cascade. The Lancet Neurology, 9(1), pp.119-128.
+
+\bibitem{seeley2009neurodegenerative}
+Seeley, W.W., Crawford, R.K., Zhou, J., Miller, B.L. and Greicius, M.D., 2009. Neurodegenerative diseases target large-scale human brain networks. Neuron, 62(1), pp.42-52.
 
 \bibitem{jedynak2012computational}
 Jedynak, B.M., Lang, A., Liu, B., Katz, E., Zhang, Y., Wyman, B.T., Raunig, D., Jedynak, C.P., Caffo, B., Prince, J.L. and Alzheimer's Disease Neuroimaging Initiative, 2012. A computational neurodegenerative disease progression score: method and results with the Alzheimer's disease Neuroimaging Initiative cohort. Neuroimage, 63(3), pp.1478-1486.
