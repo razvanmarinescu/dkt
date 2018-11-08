@@ -209,28 +209,30 @@ In the second stage we jointly optimise across all agnostic units and disease mo
 \subsection{Generating Synthetic Data}
 \label{sec:dktMetSyn}
 
-We first test DKT on synthetic data, in order to assess the performance when ground truth is known. We generate synthetic data from two diseases as follows:
+We first test DKT on synthetic data, in order to assess its performance when ground truth is known. More precisely, we generate data that follows the DKT model exactly, and test the model's ability to recover the disease-specific (higher-level) and disease-agnostic (lower-level) trajectories, as well as the subject time-shifts. 
+ 
+ \begin{table}
+ \begin{tabular}{c | c}
+& \textbf{Trajectory parameters} \\
+%\hline
+ Biomarker allocation &  $l_0:\{k_0, k_2, k_4\}$, $l_1: \{k_1, k_3, k_5\}$ \\
+Agnostic unit $l_0$ &  $\theta_0 = (1,5,0.2,0)$, $\theta_2 = (1,5,0.55,0)$,  $\theta_4 = (1,5,0.9,0)$  \\
+Agnostic unit $l_1$ & $\theta_1 = (1,10,0.2,0)$, $\theta_3 = (1,10,0.55,0)$, $\theta_5 = (1,10,0.9,0)$ \\
+  
+"Synthetic AD" & $\lambda_0^0 = (1, 0.3, -4, 0)$  and $\lambda_0^1 = (1, 0.2, 6, 0)$ \\
+ "Synthetic PCA" & $\lambda_1^0 = (1, 0.3, 6, 0)$ and $\lambda_1^1 = (1, 0.2, -4, 0)$ \\
+\hline
+& \textbf{Subject parameters} \\
+ Number of subjects & 100 (synthetic AD) and 50 (synthetic PCA) \\ 
+ Time-shifts $\beta_i$ & $\beta_i \sim U(-13,10)$ years \\
+ Diagnosis & $p(control) \propto Exp (-4.5)$,  $p(patient) \propto Exp (4.5)$\\
+ Data generation & 4 visits/subject, 1 year apart, $\epsilon_k = 0.05$\\ 
+\end{tabular}
+\caption{Parameters used for synthetic data generation, emulating the TADPOLE dataset and our own dataset.}
+\label{tab:synParams}
+\end{table}
 
-\begin{itemize}
- \item[] \textbf{Disease model}
- \item We define two agnostic units $l_0$ and $l_1$ and 6 biomarkers $k_0-k_6$, which we allocate to agnostic units as follows: $l_0:\{k_0, k_2, k_4\}$, $l_1: \{k_1, k_3, k_5\}$. Within their units, we define the trajectory of each biomarker as a sigmoidal curves with the following $\theta_k$ parameters:
- \begin{itemize}
-  \item agnostic unit $l_0$: $\theta_0 = (1,5,0.2,0)$, $\theta_2 = (1,5,0.55,0)$ and $\theta_4 = (1,5,0.9,0)$ 
-  \item agnostic unit $l_1$: $\theta_1 = (1,10,0.2,0)$, $\theta_3 = (1,10,0.55,0)$ and $\theta_5 = (1,10,0.9,0)$ 
- \end{itemize}
- \item We define two synthetic diseases, "synthetic AD" ($d=0$) and "synthetic PCA" ($d=1$). For each disease $d$, each agnostic unit $l$ has a distinct dysfunction trajectory defined as a sigmoidal curve with parameters $\lambda_d^l$ as follows: 
- \begin{itemize}
-  \item "synthetic AD" disease: $\lambda_0^0 = (1, 0.3, -4, 0)$  and $\lambda_0^1 = (1, 0.2, 6, 0)$.
-  \item "synthetic PCA" disease: $\lambda_1^0 = (1, 0.3, 6, 0)$ and $\lambda_1^1 = (1, 0.2, -4, 0)$.
- \end{itemize}
-
- \item[] \textbf{Subject model}
- \item We generated time-shifts $\beta_i$ for 100 subjects (disease $d_0$) and 50 subjects (disease $d_1$), $\beta_i \sim U(-13,10)$ years before/after disease onset. 
- \item Within each disease, we generated the subjects' diagnosis (controls/patients) based on an exponential likelihood model with mean -4.5 (controls)/4.5 (patients) years before/after disease onset. 
- \item For each subject and each biomarker, we generated data for four consecutive visits, each visit one year apart. The noise standard deviation $\epsilon_k$ = 0.05.
-\end{itemize}
-
-These trajectory and subject parameters were chosen to mimic the TADPOLE and DRC cohorts, described below. Before fitting DKT on the synthetic dataset, we discarded the data from biomarkers $k_0$, $k_1$, $k_4$ and $k_5$ for all subjects within the synthetic PCA cohort, to simulate the lack of multimodal data in these subjects. Remaining biomarkers $k_2$ and $k_3$, for which data was still available in the synthetic PCA cohort, are assumed to be of the same modality (e.g. MRI volume) but to represent measurements from different brain regions (e.g. temporal and occipital). 
+We generate synthetic data from two diseases (i.e. \emph{synthetic PCA} and \emph{synthetic AD}) using parameters from Table \ref{tab:synParams}, emulating the TADPOLE cohort and our own cohort. The six biomarkers ($k_1$-$k_6$) have been allocated to two agnostic units $l_0$ and $l_1$ a-priori. Before fitting DKT on the synthetic dataset, we discarded the data from biomarkers $k_0$, $k_1$, $k_4$ and $k_5$ for all subjects within the synthetic PCA cohort, to simulate the lack of multimodal data in these subjects. Remaining biomarkers $k_2$ and $k_3$, for which data was still available in the synthetic PCA cohort, are assumed to be of the same modality (e.g. MRI volume) but to represent measurements from different brain regions (e.g. temporal and occipital). 
 
 
 \subsection{Data acquisition and Preprocessing}
