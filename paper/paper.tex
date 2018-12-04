@@ -48,7 +48,17 @@ urlcolor=black
 \newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{blue}{#1}}
 \SetCommentSty{mycommfont}
 
+\setlength{\textfloatsep}{1pt}
+%\setlength{\floatsep}{1pt}
+%\setlength{\topmargin}{1pt}
 
+\renewcommand\floatpagefraction{.95}
+\renewcommand\topfraction{.95}
+\renewcommand\bottomfraction{.95}
+\renewcommand\textfraction{.05}   
+\setcounter{totalnumber}{50}
+\setcounter{topnumber}{50}
+\setcounter{bottomnumber}{50}
 
 \DeclareMathOperator*{\argmin}{arg\,min}
 \DeclareMathOperator*{\argmax}{arg\,max}
@@ -134,7 +144,7 @@ We assume that each subject $i$ at each visit $j$ has an underlying disease stag
 \label{eqDysfunctionScoreDef}
  \gamma_i^l = f(\beta_i + m_{ij}; \lambda_{d_i}^l)
 \end{equation}
-where $f$ is a smooth monotonic function mapping each disease stage to a dysfunction score, having parameters $\lambda_{d_i}^l$ corresponding to agnostic unit $l \in \Lambda$ in the disease space $d_i$ of subject $i$. We later implement $f$ using a sigmoid function, as described in section \ref{sec:dktBiomkTraj}. Moreover, $d_i \in \mathbb{D}$ represents the index of the disease space where subject $i$ belongs, where $\mathbb{D}$ is the set of all diseases modelled. For example, MCI and tAD subjects from ADNI as well as tAD subjects from our own cohort can all be assigned $d_i=1$, while PCA subjects from our own centre can be assigned $d_i=2$. Healthy controls can be assigned to either disease space, although a more precise assignment would take molecular biomarkers into account. Variable $\epsilon_k$ denotes the variance of measurements for biomarker $k$. 
+where $f$ is a smooth monotonic function mapping each disease stage to a dysfunction score, having parameters $\lambda_{d_i}^l$ corresponding to agnostic unit $l \in \Lambda$ in the disease space $d_i$ of subject $i$. We implement $f$ as a parametric sigmoidal curve similar to \cite{jedynak2012computational}, to enable a robust optimisation and because this models accounts for the floor and ceiling effects present in AD biomarkers. Moreover, $d_i \in \mathbb{D}$ represents the index of the disease space where subject $i$ belongs, where $\mathbb{D}$ is the set of all diseases modelled. For example, MCI and tAD subjects from ADNI as well as tAD subjects from our own cohort can all be assigned $d_i=1$, while PCA subjects from our own centre can be assigned $d_i=2$. Healthy controls can be assigned to either disease space, although a more precise assignment would take molecular biomarkers into account. Variable $\epsilon_k$ denotes the variance of measurements for biomarker $k$. 
 
 \subsection{Disease-Agnostic Model}
 
@@ -153,11 +163,6 @@ We extend the above model to multiple subjects, visits and biomarkers to get the
  p(\boldsymbol{y}|\theta, \lambda, \beta , \epsilon) = \\ \prod_{(i,j,k) \in \Omega} p(y_{ijk}|\theta_k, \lp, \beta_i) 
 \end{equation}
 where $\boldsymbol{y} = [y_{ijk} | \forall (i,j,k) \in \Omega ]$ is the vector of all biomarker measurements, while $\boldsymbol{\theta} = [\theta_1, ..., \theta_K]$ represents the stacked parameters for the trajectories of biomarkers in agnostic units, $\boldsymbol{\lambda} = [\lambda_d^{l}|l \in \Lambda, d \in \mathbb{D}]$ are the parameters of the dysfunction trajectories within the disease models, $\boldsymbol{\beta} =[\beta_1, ..., \beta_N]$ are the subject-specific time shifts and $\boldsymbol{\epsilon} = [\epsilon_k | k \in K]$  estimates biomarker measurement noise. Here we assumed independence across different subjects, but the biomarker measurements and visits are linked through the latent time-shift $\beta_i$ for each subject. The parameters of the model that need to be estimated are $[\boldsymbol{\theta}, \boldsymbol{\lambda}, \boldsymbol{\beta}, \boldsymbol{\epsilon}]$. It should be noted that $\gamma_i^l$ are not model parameters, as they were defined for clarity of explanation.
-
-\subsection{Modelling Biomarker Trajectories}
-\label{sec:dktBiomkTraj}
-
-So far we defined the DKT framework using generic models $g(\ .\ ; \theta_k)$ and $f(\ .\ ; \lp)$ for the biomarker trajectories within the agnostic units and the disease models. Now we choose to implement the $f$ and $g$ models as parametric sigmoidal curves similar to \cite{jedynak2012computational}, to enable a robust optimisation and because these models account for the floor and ceiling effects present in AD biomarkers. 
 
 %The sigmoidal model for $f$ is defined as:
 %
@@ -235,7 +240,7 @@ Agnostic unit $l_1$ & $\theta_1 = (1,10,0.2,0)$, $\theta_3 = (1,10,0.55,0)$, $\t
 We generate synthetic data from two diseases (i.e. \emph{synthetic PCA} and \emph{synthetic AD}) using parameters from Table \ref{tab:synParams}, emulating the TADPOLE cohort and our own cohort. The six biomarkers ($k_1$-$k_6$) have been \emph{a-priori} allocated to two agnostic units $l_0$ and $l_1$. To simulate the lack of multimodal data in the synthetic PCA subjects, we discarded the data from biomarkers $k_0$, $k_1$, $k_4$ and $k_5$ for all these subjects. Remaining biomarkers $k_2$ and $k_3$, for which data was still available in the synthetic PCA cohort, are assumed to be of the same modality (e.g. MRI volume) but to represent measurements from different brain regions (e.g. temporal and occipital). 
 
 
-\subsection{Data acquisition and Preprocessing}
+\subsection{Data Acquisition and Preprocessing}
 
 We trained DKT on ADNI data from the TADPOLE challenge (Marinescu et al., arXiv, 2018), since it contained a large number of multimodal biomarkers already pre-processed and aggregated into one table. From the TADPOLE dataset we selected a subset of 230 subjects which had at least one FDG PET, AV45, AV1451 or DTI scan. Most subjects also had MRI scans and cognitive tests. In order to model another disease, we further included 76 PCA subjects from our own centre in the training set, along with 67 tAD and 87 age-matched controls, all of which only had MRI scans.
  
@@ -243,13 +248,12 @@ For both datasets, volumetric measures for each subject have been obtained using
 
 For demonstrating DKT's performance at predicting missing biomarkers in PCA, we used a separate test set of 20 DTI scans from our own controls and PCA subjects. As this test set was acquired at a centre different from ADNI and on different scanners, we matched the FA mean and standard deviation of our own controls to be equal to the FA mean and standard deviation of the ADNI controls. No DTI data from PCA subjects was exposed to the algorithm at training time.
 
-\section{Results}
+
+
+\section{Results on Synthetic and Patient Datasets}
 \label{sec:dktRes}
 
-\subsection{Synthetic Results}
-\label{sec:dktResSyn}
-
-Fig. \ref{fig:dktSynthTrajCompTrue} shows the true and estimated subject shifts and trajectories for each agnostic unit $l$ and biomarker $k$ (see figure caption for detailed description). Results suggest that the DKT-estimated trajectories match closely (MAE $<$ 0.058) with the true trajectories, for both the unit-trajectories within the disease-specific models and the biomarker trajectories within the disease-agnostic models. Moreover, the subject time-shifts are very close ($R^2$ $>$ 0.98) to the true time-shifts. 
+Results on synthetic data are presented in Fig. \ref{fig:dktSynthTrajCompTrue}, showing the true and estimated subject shifts and trajectories for each agnostic unit $l$ and biomarker $k$ (see figure caption for detailed description). Results suggest that the DKT-estimated trajectories match closely (MAE $<$ 0.058) with the true trajectories, for both the unit-trajectories within the disease-specific models and the biomarker trajectories within the disease-agnostic models. Moreover, the subject time-shifts are very close ($R^2$ $>$ 0.98) to the true time-shifts. 
 
 %When plotted directly against the disease space, the estimated PCA trajectories also match the true trajectories, even when there is a complete lack of such data (Fig. \ref{fig:dktSynthTrajDrcSpace}, biomarkers 0,1,4 and 5). There are however small errors in  biomarkers 0 and 5 which are due to measurement noise (confirmed by experiments with smaller noise level -- not shown here). The equivalent trajectories estimated for the synthetic AD cohort also show very good agreement with the true trajectories (results not shown here).
 
@@ -261,9 +265,9 @@ Fig. \ref{fig:dktSynthTrajCompTrue} shows the true and estimated subject shifts 
 %  \label{fig:dktSynthTrajHierData}
 % \end{figure}
 
-\begin{figure}
+\begin{figure}[htp]
 \includegraphics[width=\textwidth]{\jmdFld/resfiles/synth/synth1_JMD/compTrueParams101_synth1_JMD.pdf}
- \caption[DKT Simulation Results - Comparison between true and DKT-estimated biomarker trajectories and subject time-shifts.]{Comparison between true and DKT-estimated subject time-shifts and biomarker trajectories. (top-left) Scatter plots of the true shifts (y-axis) against estimated shifts (x-axis), for the 'synthetic AD' (left) and 'synthetic PCA' (right) diseases. We also show the DKT-estimated and true trajectories of the agnostic units within the 'synthetic AD' disease (top-right) and the 'synthetic PCA' disease (middle-left). For these figures, the x-axis measures the normalised disease progression score $s_i$ while the y-axis measures the dysfunction scores $f(s_i;\lambda_d^l)$. Finally, we also show the biomarker trajectories within unit 0 (middle-right) and unit 1 (bottom), where the x-axis represents the dysfunction scores $f(s_i;\lambda_d^l)$ and the y-axis represents the biomarker value.}
+ \caption[DKT Simulation Results - Comparison between true and DKT-estimated biomarker trajectories and subject time-shifts.]{Comparison between true and DKT-estimated subject time-shifts and biomarker trajectories. (top-left) Scatter plots of the true shifts (y-axis) against estimated shifts (x-axis), for the 'synthetic AD' (left) and 'synthetic PCA' (right) diseases. We also show the DKT-estimated and true trajectories of the agnostic units within the 'synthetic AD' disease (top-right, "Dis0") and the 'synthetic PCA' disease (middle-left, "Dis1"). For these figures, the x-axis measures the normalised disease progression score $s_i$ while the y-axis measures the dysfunction scores $f(s_i;\lambda_d^l)$. Finally, we also show the biomarker trajectories within unit 0 (middle-right) and unit 1 (bottom), where the x-axis represents the dysfunction scores $f(s_i;\lambda_d^l)$ and the y-axis represents the biomarker value.}
  \label{fig:dktSynthTrajCompTrue}
 \end{figure}
 
@@ -275,17 +279,17 @@ Fig. \ref{fig:dktSynthTrajCompTrue} shows the true and estimated subject shifts 
 
 
 
-\subsection{Results on TADPOLE and our own dataset}
-\label{sec:dktResTadDrc}
+%\section{Results on TADPOLE and our own dataset}
+%\label{sec:dktResTadDrc}
 
 % Fig1: biomarker traj. over dysfunction scores in one agnostic unit -> Fig2: dysfunction trajectories over disease stage in the two disease models -> Fig3: inferred biomarker trajectories "directly" over disease stage  in PCA
-Fig. \ref{fig:pcaTadDisSpace} shows the estimated biomarker trajectories within the \emph{occipital unit} plotted over the dysfunction scores, along with samples from the model posterior and aligned subject data. The model shows an unbiased data fit (Fig. \ref{fig:pcaTadDisSpace}A), and we can observe most PCA subjects having abnormal occipital volumes, thus leading to high occipital dysfunction scores, in line with the current understanding of PCA as affecting posterior regions \cite{crutch2012posterior}. We also show the progression of dysfunction scores over the disease stage for typical AD (Fig \ref{fig:pcaTadDisSpace}B) and PCA (Fig \ref{fig:pcaTadDisSpace}C). In typical AD, we see that hippocampal dysfunction becomes abnormal earliest, while PCA shows early hippocampal dysfunction, which is later exceeded by the dysfunction in the occipital, temporal and parietal regions, which are known to be affected in PCA \cite{crutch2012posterior}. 
+Results on TADPOLE dataset and our own dataset are presented in Fig. \ref{fig:pcaTadDisSpace}, showing the estimated biomarker trajectories within the \emph{occipital unit} plotted over the dysfunction scores, along with samples from the model posterior and aligned subject data. The model shows an unbiased data fit (Fig. \ref{fig:pcaTadDisSpace}A), and we can observe most PCA subjects having abnormal occipital volumes, thus leading to high occipital dysfunction scores, in line with the current understanding of PCA as affecting posterior regions \cite{crutch2012posterior}. We also show the progression of dysfunction scores over the disease stage for typical AD (Fig \ref{fig:pcaTadDisSpace}B) and PCA (Fig \ref{fig:pcaTadDisSpace}C). In typical AD, we see that hippocampal dysfunction becomes abnormal earliest, while PCA shows early hippocampal dysfunction, which is later exceeded by the dysfunction in the occipital, temporal and parietal regions, which are known to be affected in PCA \cite{crutch2012posterior}. 
 
 In Fig. \ref{fig:PCAtrajByModality}, we plot the inferred trajectories for PCA directly across the disease progression, for all five modalities analysed. The results again recapitulate known patterns in PCA, where posterior regions are predominantly affected in all modalities. However, for MRI volumes and AV45, we also see early abnormalities, which we attribute to the models underestimating the biomarker measurement noise.
 
 % PCA vs tAD disease space
 
-\begin{figure}[H]
+\begin{figure}[htp]
 \centering
 \begin{subfigure}{\textwidth}
 \centering
@@ -322,7 +326,7 @@ In Fig. \ref{fig:PCAtrajByModality}, we plot the inferred trajectories for PCA d
 
 
 % estimated (hypothetical) trajectories in PCA: DTI, FDG, AV45, AV1451.Volumetric trajectories were based on PCA MRI data.
-\begin{figure}
+\begin{figure}[htp]
  \includegraphics[width=\textwidth, trim=0 20 0 0, clip]{\expFld/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
  \caption{Estimated trajectories for the PCA cohort. The only data that were available were the MRI volumetric data. The dynamics of the other biomarkers has been inferred by the model using data from typical AD, and taking into account the different spatial distribution of pathology in PCA as compared to typical AD.}
  \label{fig:PCAtrajByModality}
@@ -333,7 +337,6 @@ In Fig. \ref{fig:PCAtrajByModality}, we plot the inferred trajectories for PCA d
 \label{sec:dktResVal}
 
 We validated our model using a separate test set of 20 DTI scans from controls and PCA patients from our own cohort. We used DKT to predict the DTI biomarker values for the subjects within the unseen test set, using only their MRI biomarkers. Table \ref{sec:dktPerfMetrics} shows the prediction mean squared error (MSE) and rank correlation between the DKT-predicted biomarker values and the measured values. We computed the rank correlation in order to remove the effect of any systemic biases due to the completely different progressive disease and dataset that we are predicting on. We also show the same performance metrics for two simpler models: (1) a \emph{latent stage model}, as described in \cite{jedynak2012computational}, which assumes all tAD and PCA subjects follow the same progression and (2) a \emph{linear univariate model} that predicts the DTI biomarker based on the corresponding MRI biomarker, independently for each region.
-\end{itemize}
 
 The results from Table \ref{sec:dktPerfMetrics} indicate that the DKT prediction errors are relatively small for the frontal, occipital, temporal and parietal areas. Moreover, the rank correlations of the DKT predicted values are also high for the cingulate lobe and the hippocampus. In terms of model comparison, DKT has better performance than the linear model (all results significant with $p < 0.002$, Bonferroni corrected), since it uses information across all brain regions instead of assuming independence across regions. While DKT has similar performance to the latent stage model, it does not assume that the diseases have the same progression and it allows us to understand mechanisms that are shared between related diseases. 
 
@@ -364,7 +367,9 @@ We presented DKT, a framework that enables, for the first time, joint modelling 
 
 We provided an example implementation of DKT using specific models of the biomarker trajectories, measurement noise and link function (the disease progression score). However, DKT should be considered as a general framework for joint modelling of biomarker trajectories within different diseases simultaneously. The actual implementation of DKT can thus be extended to use non-parametric trajectories, or more complex link functions that estimate not only subject time-shifts but also progression speed or higher order terms.
 
-While in this work we have focused on Alzheimer's variants such as tAD and PCA, DKT can also be applied to other progressive neurodegenerative diseases of non-Alzheimer's type such as tauopathies (e.g. Frontotemporal dementia -- FTD), synucleinopathies (e.g. Parkinson's disease -- PD), other neurodegenerative diseases such as Huntington's disease (HD) or Multiple Sclerosis (MS), and even the normal ageing process. Cognitive tests can also be included in the disease-specific sub-models of DKT, or even allocated in the agnostic units of the regions that are responsible for those tasks, based on previous voxel-based morphometry studies. However, some care needs to be exercised when selecting the biomarkers and grouping them into agnostic units, as in some diseases the assumption of disease agnostic dynamics might not hold for some groups of molecular biomarkers. For example, some non-Alzheimer's tauopathies such as Frontotemporal dementia might show tau abnormalities but no corresponding amyloid abnormalities within the same region. In the case of Frontotemporal dementia, we recommend including higher-level biomarkers such as glucose metabolism from FDG, white matter degeneration from DTI or volume from structural MRI, but one should exclude amyloid markers. 
+While in this work we have focused on Alzheimer's variants such as tAD and PCA, DKT can also be applied to other progressive neurodegenerative diseases of non-Alzheimer's type such as tauopathies (e.g. Frontotemporal dementia -- FTD), synucleinopathies (e.g. Parkinson's disease -- PD), other neurodegenerative diseases such as Huntington's disease (HD) or Multiple Sclerosis (MS), and even the normal ageing process. Cognitive tests can also be included in the disease-specific sub-models of DKT, or even allocated in the agnostic units of the regions that are responsible for those tasks, based on previous voxel-based morphometry studies. 
+
+%However, some care needs to be exercised when selecting the biomarkers and grouping them into agnostic units, as in some diseases the assumption of disease agnostic dynamics might not hold for some groups of molecular biomarkers. For example, some non-Alzheimer's tauopathies such as Frontotemporal dementia might show tau abnormalities but no corresponding amyloid abnormalities within the same region. In the case of Frontotemporal dementia, we recommend including higher-level biomarkers such as glucose metabolism from FDG, white matter degeneration from DTI or volume from structural MRI, but one should exclude amyloid markers. 
 
 Our work has several limitations: 1) DKT assumes all subjects within a disease follow the same trajectory, without considering heterogeneity within the disease population, 2) the allocation of biomarkers into agnostic units has to be done using \emph{a-priori} human knowledge, 3) DKT currently works only on extracted brain features, discarding important information present in the brain morphometry, 4) for validation, the synthetic experiment we ran was limited to only one setting of parameters mimicking the datasets from TADPOLE and our own centre and 5) the validation on patient data was also done only on a small set of 20 DTI scans, due to lack of multimodal data in PCA.
 
