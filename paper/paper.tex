@@ -125,7 +125,7 @@ We propose Disease Knowledge Transfer (DKT), a generative joint model that estim
 
 \begin{figure}[h]
  \centering
- \includegraphics[width=0.9\textwidth,trim=0 0 0 0,clip]{disease_knowledge_transfer_symbols.pdf}
+ \includegraphics[width=0.8\textwidth,trim=0 0 0 0,clip]{disease_knowledge_transfer_symbols.pdf}
  \caption{Diagram of the proposed DKT framework. We assume that each disease can be modelled as the evolution of abstract dysfunction scores (Y-axis, top row), each one related to different brain regions. Each region-specific dysfunction score then further models (X-axis, bottom row) the progression of several modality-specific biomarkers within that same region. For instance, the temporal dysfunction, modelled as a biomarker in the disease specific model (top row), is the X-axis in the disease agnostic model (temporal unit, bottom row), which aggregates together abnormality from amyloid, tau and MR imaging within the temporal lobe. The biomarker relationships within the bottom units are assumed to be disease agnostic and shared across all diseases modelled. Knowledge transfer between the two diseases can then be achieved via the disease-agnostic units. Mathematical notation from section \ref{sec:method} is shown in red to ease understanding.}
  \label{fig:diagram}
 \end{figure}
@@ -147,9 +147,7 @@ We choose to model the correlations within each agnostic unit using the disease 
 
 % \subsection{Disease-Specific Model}
 
-In this section we model the biomarker dynamics that are specific to each disease, by mapping the subjects' disease stages to dysfunction scores. We model the progression of related diseases as the unique dynamics of abstract dysfunction scores, which aggregate together data from multiple biomarkers. 
-
-We assume that each subject $i$ at each visit $j$ has an underlying disease stage $s_{ij} = \beta_i + m_{ij}$, where $m_{ij}$ represents the months since baseline visit for subject $i$ at visit $j$ and $\beta_i$ represents the time shift of subject $i$. We then assume that each subject $i$ has a dysfunction score $\gamma_i^l$ corresponding to multimodal pathology in brain region $l$, which is a function of its disease stage:
+In this section we model the biomarker dynamics that are specific to each disease, by mapping the subjects' disease stages to dysfunction scores. We model the progression of related diseases as the unique dynamics of abstract dysfunction scores, which aggregate together data from multiple biomarkers. We assume that each subject $i$ at each visit $j$ has an underlying disease stage $s_{ij} = \beta_i + m_{ij}$, where $m_{ij}$ represents the months since baseline visit for subject $i$ at visit $j$ and $\beta_i$ represents the time shift of subject $i$. We then assume that each subject $i$ has a dysfunction score $\gamma_i^l$ corresponding to multimodal pathology in brain region $l$, which is a function of its disease stage:
 
 \begin{equation}
 \label{eqDysfunctionScoreDef}
@@ -298,45 +296,46 @@ Results on synthetic data are presented in Fig. \ref{fig:dktSynthTrajCompTrue}, 
 %\label{sec:dktResTadDrc}
 
 % Fig1: biomarker traj. over dysfunction scores in one agnostic unit -> Fig2: dysfunction trajectories over disease stage in the two disease models -> Fig3: inferred biomarker trajectories "directly" over disease stage  in PCA
-Results on TADPOLE and DRC datasets are presented in Fig. \ref{fig:pcaTadDisSpace}, showing the estimated biomarker trajectories within the \emph{occipital unit} plotted over the dysfunction scores, along with aligned subject data. The population model shows a good data fit (Fig. \ref{fig:pcaTadDisSpace}A, MAE $\leq$ 0.25), and we can observe most PCA subjects having abnormal occipital volumes, thus leading to high occipital dysfunction scores, in line with the current understanding of PCA as affecting posterior regions \cite{crutch2012posterior}. We also show the progression of dysfunction scores over the disease stage for typical AD (Fig \ref{fig:pcaTadDisSpace}B) and PCA (Fig \ref{fig:pcaTadDisSpace}C). While both typical AD and PCA show early hippocampal dysfunction, PCA shows higher dysfunction in the occipital, temporal and parietal regions in late stages, while tAD shows widespread dysfunction, in line with previous literature findings \cite{crutch2012posterior}. 
+
+% Results on TADPOLE and DRC datasets are presented in Fig. \ref{fig:pcaTadDisSpace}, showing the estimated biomarker trajectories within the \emph{occipital unit} plotted over the dysfunction scores, along with aligned subject data. The population model shows a good data fit (Fig. \ref{fig:pcaTadDisSpace}A, MAE $\leq$ 0.25), and we can observe most PCA subjects having abnormal occipital volumes, thus leading to high occipital dysfunction scores, in line with the current understanding of PCA as affecting posterior regions \cite{crutch2012posterior}. We also show the progression of dysfunction scores over the disease stage for typical AD (Fig \ref{fig:pcaTadDisSpace}B) and PCA (Fig \ref{fig:pcaTadDisSpace}C). While both typical AD and PCA show early hippocampal dysfunction, PCA shows higher dysfunction in the occipital, temporal and parietal regions in late stages, while tAD shows widespread dysfunction, in line with previous literature findings \cite{crutch2012posterior}. 
 
 In Fig. \ref{fig:PCAtrajByModality}, we plot the inferred trajectories for PCA directly across the disease progression, for all five modalities analysed. The results again recapitulate known patterns in PCA, where posterior regions are predominantly affected in all modalities. However, for MRI volumes and AV45, we also see early abnormalities, which we attribute to the models underestimating the biomarker measurement noise.
 
 % PCA vs tAD disease space
 
-\begin{figure}[htp]
-\centering
-\begin{subfigure}{\textwidth}
-\centering
-\begin{picture}(5,5)
-\put(-10,170){\textbf{\Large{A}}}
-\end{picture}
-\includegraphics[width=0.8\textwidth, trim=90 0 110 0, clip]{\expFld/unit1_allTraj.png} 
-% \caption{}
-% \label{fig:occipUnit}
-\end{subfigure}
-
-\begin{picture}(5,5)
-\put(0,20){\textbf{\Large{B}}}
-\end{picture}
-\begin{subfigure}{0.47\textwidth}
-\centering
-% typical AD\\
-\includegraphics[width=0.8\textwidth, trim=0 0 0 20, clip]{\expFld/dis0_tAD_allTrajZeroOne.png} 
-% \caption{C}
-\end{subfigure}
-\begin{picture}(5,5)
-\put(0,20){\textbf{\Large{C}}}
-\end{picture}
-\begin{subfigure}{0.47\textwidth}
-\centering
-% PCA\\
-\includegraphics[width=0.8\textwidth, trim=0 0 0 20, clip]{\expFld/dis1_PCA_allTrajZeroOne.png} 
-% \caption{PCA}
-\end{subfigure}
-\caption{(A) Estimated biomarker trajectories in the occipital agnostic unit, emulating the bottom-right subfigure from Fig \ref{fig:diagram}. Subject data from ADNI and DRC cohorts are also shown. The X-axis, defined as the occipital dysfunction score, represents the time-shifts (in months) of each subject. The Y-axis measures biomarker values (normalised). (B-C) Progression of dysfunction scores for (B) typical AD and (C) PCA, emulating top subfigures from Fig \ref{fig:diagram}.}
-\label{fig:pcaTadDisSpace}
-\end{figure}
+% \begin{figure}[htp]
+% \centering
+% \begin{subfigure}{\textwidth}
+% \centering
+% \begin{picture}(5,5)
+% \put(-10,170){\textbf{\Large{A}}}
+% \end{picture}
+% \includegraphics[width=0.8\textwidth, trim=90 0 110 0, clip]{\expFld/unit1_allTraj.png} 
+% % \caption{}
+% % \label{fig:occipUnit}
+% \end{subfigure}
+% 
+% \begin{picture}(5,5)
+% \put(0,20){\textbf{\Large{B}}}
+% \end{picture}
+% \begin{subfigure}{0.47\textwidth}
+% \centering
+% % typical AD\\
+% \includegraphics[width=0.8\textwidth, trim=0 0 0 20, clip]{\expFld/dis0_tAD_allTrajZeroOne.png} 
+% % \caption{C}
+% \end{subfigure}
+% \begin{picture}(5,5)
+% \put(0,20){\textbf{\Large{C}}}
+% \end{picture}
+% \begin{subfigure}{0.47\textwidth}
+% \centering
+% % PCA\\
+% \includegraphics[width=0.8\textwidth, trim=0 0 0 20, clip]{\expFld/dis1_PCA_allTrajZeroOne.png}
+% % \caption{PCA}
+% \end{subfigure}
+% \caption{(A) Estimated biomarker trajectories in the occipital agnostic unit, emulating the bottom-right subfigure from Fig \ref{fig:diagram}. Subject data from ADNI and DRC cohorts are also shown. The X-axis, defined as the occipital dysfunction score, represents the time-shifts (in months) of each subject. The Y-axis measures biomarker values (normalised). (B-C) Progression of dysfunction scores for (B) typical AD and (C) PCA, emulating top subfigures from Fig \ref{fig:diagram}.}
+% \label{fig:pcaTadDisSpace}
+% \end{figure}
 
 
 
