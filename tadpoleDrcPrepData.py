@@ -31,9 +31,6 @@ def addBiomks(biomkStruct, sourceDf, targetDf, collapseFunc):
     targetDf.loc[:, biomkLabels[b]] = pd.Series(np.sum(dataFrameCurrSubset,axis=1),
       index=targetDf.index)
     # targetDf = targetDf.assign(asd=np.sum(dataFrameCurrSubset,axis=1))
-    # print(targetDf.loc[:5, biomkLabels[b]])
-    # print(ads)
-
 
 
   return targetDf
@@ -200,6 +197,7 @@ def normaliseData(dataDfAll, validDf, allBiomkCols):
   #   # print(asda)
 
   return dataDfAll, validDf
+
 
 def prepareData(finalDataFile, tinyData, addExtraBiomk):
 
@@ -430,10 +428,7 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   # and only keep the DTI. Don't remove the MRI cols though, needs to be in
   # same format as dataDfAll
   # UPDATE May 2018: No, don't drop MRI values. I need them for prediction of DTI vals
-  # from simpler linear model
-  # print('validDf', validDf.loc[:, mriCols])
-  # validDf.loc[:,mriCols] = np.nan
-  # print('validDf', validDf.loc[:,mriCols])
+
 
   outFilePrefix = 'afterReg'
   visValidDf(validDf, outFilePrefix)

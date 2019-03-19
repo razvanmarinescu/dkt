@@ -18,3 +18,6 @@ tadpoleDrc_Sig:
 
 tadpoleDrc_ModelComparison:
 	python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 0  --nrRows 5 --nrCols 7 --runPartStd LL --tinyData
+
+tadpoleSubtypes_JMD:
+	python3 tadpoleSubtypes.py --runIndex 0 --nrProc 1 --modelToRun 14  --nrRows 4 --nrCols 6 --runPartStd RR 
