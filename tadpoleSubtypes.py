@@ -229,6 +229,14 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   # update 6 Aug 2018: moved normalisation after making the data tiny.
   dataDfTadpole = normaliseData(dataDfTadpole, allBiomkCols)
 
+  print('nan(diag)', np.sum(np.isnan(dataDfTadpole.diag)))
+  dataDfTadpole.drop(dataDfTadpole.index[
+    np.isnan(dataDfTadpole.diag)], inplace=True)
+  dataDfTadpole.reset_index(drop=True, inplace=True)
+  print('nan(diag)', np.sum(np.isnan(dataDfTadpole.diag)))
+  # print(ads)
+
+
   # fill in the missing diagnoses
   # print(np.sum(np.isnan(dataDfTadpole.diag)))
   unqRID = np.unique(dataDfTadpole.RID)
@@ -288,35 +296,83 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
     dataDfTadpole[c] = dataDfTadpole[c].astype(np.float128) # increase precision of floats to 128
 
 
+  #### make a tiny dataset for testing. When model is ready, run on full data ###
+  if tinyData:
+    print(dataDfTadpole.shape)
+    hasNonMriImgInd = ~np.isnan(dataDfTadpole['FDG Temporal']) | (~np.isnan(dataDfTadpole['DTI FA Temporal'])) \
+                      | (~np.isnan(dataDfTadpole['AV45 Temporal'])) | (~np.isnan(dataDfTadpole['AV1451 Temporal']))
+    idxToDrop = hasNonMriImgInd
+    # print('idxToDrop', np.sum(idxToDrop))
+    dataDfTadpole.drop(dataDfTadpole.index[idxToDrop], inplace=True)
+    dataDfTadpole.reset_index(drop=True, inplace=True)
+
+    print(dataDfTadpole.shape)
+    print(adsa)
+
+    unqRID = np.unique(dataDfTadpole.RID)
+    adniUnqRID = np.unique(dataDfTadpole.RID[dataDfTadpole.dataset == 1])
+    pcaUnqRID = np.unique(dataDfTadpole.RID[dataDfTadpole.dataset == 2])
+    print('unqRID', unqRID.shape)
+    print('adniUnqRID', adniUnqRID.shape)
+    print('pcaUnqRID', pcaUnqRID.shape)
+    # print(adas)
+    ridToKeep = np.random.choice(adniUnqRID, 230, replace=False)
+    ridToKeep = np.concatenate((ridToKeep, pcaUnqRID), axis=0)
+    idxToDrop = np.logical_not(np.in1d(dataDfTadpole.RID, ridToKeep))
+    dataDfTadpole.drop(dataDfTadpole.index[idxToDrop], inplace=True)
+    dataDfTadpole.reset_index(drop=True, inplace=True)
+
+
   # now generate three training datasets:
   # X1/Y1: Subtype0+1 full data, Subtypes 2&3 MRI only
   # X2/Y2: Subtype0+2 full data, Subtypes 1&3 MRI only
   # X3/Y3: Subtype0+3 full data, Subtypes 1&2 MRI only
 
-  dataDfSub01 = dataDfTadpole.copy()
-  print(dataDfSub01.columns)
-  maskSubjMisData = np.logical_not(np.in1d(dataDfSub01.dataset, [1,2]))
-  import pdb
-  pdb.set_trace()
-  dataDfSub01MisDataSubj = dataDfSub01.loc[maskSubjMisData, :]
-  dataDfSub01MisDataSubj.loc[:,'DTI FA Cingulate' : 'AV1451 Temporal'] = np.nan
-
-  print(np.sum(np.logical_not(np.isnan(dataDfSub01.loc[:,'FDG Temporal']))))
-  print(np.sum(np.logical_not(np.isnan(dataDfTadpole.loc[:,'FDG Temporal']))))
+  dataDfTrainAll = [0, 0, 0]
+  XtrainAll = [0 ,0 ,0]
+  YtrainAll = [0, 0, 0]
+  RIDtrainAll = [0, 0, 0]
+  diagTrainAll = [0, 0, 0]
+  visitIndicesTrainAll = [0, 0, 0]
+  nrSubgr = 3
+  for s in range(nrSubgr):
 
 
+    dataDfTrainAll[s] = dataDfTadpole.copy()
+    maskSubjMisData = np.logical_not(np.in1d(dataDfTrainAll[s].diag, [1,2]))
 
-  print(adsa)
+    nonMriColumns = ['DTI FA Cingulate', 'DTI FA Frontal',
+         'DTI FA Hippocampus', 'DTI FA Occipital', 'DTI FA Parietal',
+         'DTI FA Temporal', 'FDG Cingulate', 'FDG Frontal', 'FDG Hippocampus',
+         'FDG Occipital', 'FDG Parietal', 'FDG Temporal', 'AV45 Cingulate',
+         'AV45 Frontal', 'AV45 Hippocampus', 'AV45 Occipital', 'AV45 Parietal',
+         'AV45 Temporal', 'AV1451 Cingulate', 'AV1451 Frontal',
+         'AV1451 Hippocampus', 'AV1451 Occipital', 'AV1451 Parietal',
+         'AV1451 Temporal']
+    dataDfTrainAll[s].loc[maskSubjMisData, nonMriColumns] = np.nan
+
+    print(np.sum(np.logical_not(np.isnan(dataDfTrainAll[s].loc[:,'FDG Temporal']))))
+    print(np.sum(np.logical_not(np.isnan(dataDfTadpole.loc[:,'FDG Temporal']))))
+    print('dataDfSub01',dataDfTrainAll[s])
+
+    XtrainAll[s], YtrainAll[s], RIDtrainAll[s], _, diagTrainAll[s], visitIndicesTrainAll[s] = \
+      auxFunc.convert_table_marco(dataDfTrainAll[s], list_biomarkers=selectedBiomk)
+
+  # import pdb
+  # pdb.set_trace()
 
 
   Xvalid, Yvalid, RIDvalid, list_biomarkers, diagValid, visitIndicesValid = \
     auxFunc.convert_table_marco(dataDfTadpole, list_biomarkers=selectedBiomk)
 
 
-  ds = dict(X=X, Y=Y, RID=RID, list_biomarkers=list_biomarkers,visitIndices=visitIndices,
-    dataDfAll=dataDfTadpole, regParamsICV=regParamsICV,
-    regParamsAge=regParamsAge, regParamsGender=regParamsGender,
-    regParamsDataset=regParamsDataset, diag=diag)
+  ds = dict(XtrainAll=XtrainAll, YtrainAll=YtrainAll, RIDtrainAll=RIDtrainAll,
+    list_biomarkers=list_biomarkers,visitIndicesTrainAll=visitIndicesTrainAll,
+    diagTrainAll=diagTrainAll, dataDfTrainAll=dataDfTrainAll,
+    regParamsICV=regParamsICV, regParamsAge=regParamsAge,
+    regParamsGender=regParamsGender,
+    Xvalid=Xvalid, Yvalid=Yvalid, RIDvalid=RIDvalid,
+    diagValid=diagValid, visitIndicesValid=visitIndicesValid, dataDfTadpole=dataDfTadpole)
   pickle.dump(ds, open(finalDataFile, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
 
@@ -328,39 +384,45 @@ def main():
   random.seed(1)
   pd.set_option('display.max_columns', 50)
   tinyData = args.tinyData
-  finalDataFile = 'tadSubtypes.npz'
-  expName = 'tad-subtypes'
 
-  regenerateData = os.path.isfile(finalDataFile) or args.regData
+  if args.tinyData:
+    finalDataFile = 'tadSubtypesTiny.npz'
+    expName = 'tadSubtypesTiny'
+  else:
+    finalDataFile = 'tadSubtypes.npz'
+    expName = 'tadSubtypes'
+
+
+  regenerateData = (not os.path.isfile(finalDataFile)) or args.regData
   if regenerateData:
     prepareData(finalDataFile, tinyData, addExtraBiomk)
 
   ds = pickle.load(open(finalDataFile, 'rb'))
-  dataDfAll = ds['dataDfAll']
-  regParamsICV = ds['regParamsICV']
-  regParamsAge = ds['regParamsAge']
-  regParamsGender = ds['regParamsGender']
-  regParamsDataset = ds['regParamsDataset']
-  X = ds['X']
-  Y = ds['Y']
-  RID = np.array(ds['RID'], int)
+  # dataDfAll = ds['dataDfTadpole']
+  # regParamsICV = ds['regParamsICV']
+  # regParamsAge = ds['regParamsAge']
+  # regParamsGender = ds['regParamsGender']
+  # regParamsDataset = ds['regParamsDataset']
+  X = ds['XtrainAll'][0]
+  Y = ds['YtrainAll'][0]
+  RID = np.array(ds['RIDtrainAll'][0], int)
   labels = ds['list_biomarkers']
-  diag = ds['diag']
+  diag = ds['diagTrainAll']
 
   # visDataHist(dataDfAll)
-  nrUnqDiags = np.unique(dataDfAll.diag)
-  print(dataDfAll)
-  for d in nrUnqDiags:
-    idxCurrDiag = ds['diag'] == d
-    print('nr subj %s %d' % (plotTrajParams['diagLabels'][d], np.sum(idxCurrDiag)))
+  # nrUnqDiags = np.unique(dataDfAll.diag)
+  # print(dataDfAll)
+  # for d in nrUnqDiags:
+  #   idxCurrDiag = ds['diag'] == d
+  #   print('nr subj %s %d' % (plotTrajParams['diagLabels'][d], np.sum(idxCurrDiag)))
     # avgScans = []
     # print('avg scans %s %d' % plotTrajParams['diagLabels'][d])
 
   meanVols = np.array([np.mean(Y[0][s]) for s in range(RID.shape[0])])
   meanVols[diag != CTL2] = np.inf
   idxOfDRCSubjWithLowVol = np.argmin(meanVols)
-  print('idxOfDRCSubjWithLowVol', idxOfDRCSubjWithLowVol)
-  print(diag[idxOfDRCSubjWithLowVol])
+  # print('idxOfDRCSubjWithLowVol', idxOfDRCSubjWithLowVol)
+  # print(diag[idxOfDRCSubjWithLowVol])
 
   outFolder = 'resfiles/'
 
@@ -430,18 +492,21 @@ def main():
 
   # the validation set will contain everything, while the training set will
   # have missing biomarkers. X,Y will be created in runAllExpTadpoleSubtypes
-  params['Xvalid'] = X
-  params['Yvalid'] = Y
-  params['RIDvalid'] = RID
-  params['diag'] = diag
-  params['plotTrajParams']['diag'] = params['diag']
-  # params['Xvalid'] = ds['Xvalid']
-  # params['Yvalid'] = ds['Yvalid']
-  # params['RIDvalid'] = ds['RIDvalid']
-  # params['diagValid'] = ds['diagValid']
-  params['dataDfAll'] = dataDfAll
-  params['visitIndices'] = ds['visitIndices']
+  params['XtrainAll'] = ds['XtrainAll']
+  params['YtrainAll'] = ds['YtrainAll']
+  params['RIDtrainAll'] = ds['RIDtrainAll']
+  params['diagTrainAll'] = ds['diagTrainAll']
+  params['visitIndicesTrainAll'] = ds['visitIndicesTrainAll']
+  params['diag'] = params['diagTrainAll'][0]
+
+  params['Xvalid'] = ds['Xvalid']
+  params['Yvalid'] = ds['Yvalid']
+  params['RIDvalid'] = ds['RIDvalid']
+  params['diagValid'] = ds['diagValid']
   params['visitIndicesValid'] = ds['visitIndicesValid']
+  params['plotTrajParams']['diag'] = params['diagValid']
+
+  # params['dataDfAll'] = dataDfAll
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
   params['iterParamsUnit'] = 60
@@ -509,6 +574,7 @@ def main():
   # note subtype 0 are controls
   params['diagsSetInDis'] = [np.array([CTL,SBT1]), np.array([CTL,SBT2]), np.array([CTL,SBT3])]
   params['disLabels'] = ['Hippocampal', 'Cortical', 'Subcortical']
+  params['expNamesSubgr'] = [x[:2] for x in params['disLabels']]
   if addExtraBiomk:
     params['otherBiomkPerDisease'] = [[nrBiomk-3,nrBiomk-2, nrBiomk-1], []] # can also add 3 extra cognitive tests
   else:
@@ -556,7 +622,7 @@ def main():
     subShiftsS=subShiftsS, scalingBiomk2B=scalingBiomk2B)
   params['plotTrajParams']['trueParams'] = params['trueParams']
 
-  assert params['diag'].shape[0] == len(params['X'][0])
+  assert params['diag'].shape[0] == len(params['XtrainAll'][0][0])
 
 
   # params['runPartStd'] = ['L', 'L']
@@ -564,9 +630,9 @@ def main():
   params['runPartMain'] = ['R', 'I', 'I'] # [mainPart, plot, stage]
   params['masterProcess'] = args.runIndex == 0
 
-  expNameDisOne = '%s' % expName
+
   modelNames, res = evaluationFramework.runModels(params, expName,
-   args.modelToRun, runAllExpTadpoleDrc)
+   args.modelToRun, runAllExpTadpoleSubtypes)
 
   if params['masterProcess']:
     printRes(modelNames, res, plotTrajParams)
@@ -677,38 +743,24 @@ def runAllExpTadpoleSubtypes(params, expName, dpmBuilder, compareTrueParamsFunc 
   params['excludeStaging'] = [-1]
 
   params['outFolder'] = 'resfiles/%s' % expName
-  params['expName'] = expName
 
-  # create validation set by removing non-MRI data from subtypes 2 and 3
-  indBiomkInDiseaseTwo = np.array(range(nrFuncUnits,(2*nrFuncUnits)))
-  XemptyListsAllBiomk = [0 for _ in range(nrBiomk)]
-  YemptyListsAllBiomk = [0 for _ in range(nrBiomk)]
-  visitIndicesDisTwoMissing = [0 for _ in range(nrBiomk)]
-  for b in range(nrBiomk):
-    XemptyListsAllBiomk[b] = [0 for _ in range(nrSubjLongDisTwo)]
-    YemptyListsAllBiomk[b] = [0 for _ in range(nrSubjLongDisTwo)]
-    visitIndicesDisTwoMissing[b] = [0 for _ in range(nrSubjLongDisTwo)]
-
-    for s in range(nrSubjLongDisTwo):
-      if b in indBiomkInDiseaseTwo:
-        XemptyListsAllBiomk[b][s] = paramsDisTwo['Xtrue'][b][s]
-        YemptyListsAllBiomk[b][s] = paramsDisTwo['Ytrue'][b][s]
-        visitIndicesDisTwoMissing[b][s] = paramsDisTwo['visitIndices'][b][s]
-      else:
-        XemptyListsAllBiomk[b][s] = np.array([])
-        YemptyListsAllBiomk[b][s] = np.array([])
-        visitIndicesDisTwoMissing[b][s] = np.array([])
-
-  params['X'] = copy.deepcopy(params['Xvalid'])
+  nrSubgr = 3
+  for s in range(nrSubgr):
+    params['expName'] = params['expNamesSubgr'][s]
+    params['X'] = params['XtrainAll'][s]
+    params['Y'] = params['YtrainAll'][s]
+    params['RID'] = params['RIDtrainAll'][s]
+    params['diag'] = params['diagTrainAll'][s]
+    params['visitIndices'] = params['visitIndicesTrainAll'][s]
 
 
-  dpmObjStd, res['std'] = evaluationFramework.runStdDPM(params,
-    expName, dpmBuilder, params['runPartMain'])
+    dpmObjStd[s], res['std'][s] = evaluationFramework.runStdDPM(params,
+      expName, dpmBuilder, params['runPartMain'])
 
-  # dpmObjStd.plotter.plotAllBiomkDisSpace(dpmObjStd, params, disNr=0)
+    # dpmObjStd[s].plotter.plotAllBiomkDisSpace(dpmObjStd[s], params, disNr=0)
 
-  # perform the validation against DRC data
-  res['metrics'] = validateDRCBiomk(dpmObjStd, params)
+    # perform the validation against DRC data
+    res['metrics'][s] = validateDRCBiomk(dpmObjStd, params)
 
 
   return res
