@@ -124,7 +124,7 @@ class JointModel(DisProgBuilder.DPMInterface):
         self.estimSubjShifts(self.unitModels, self.disModels)
         self.makePlots(plotFigs, i, 2)
         self.saveCheckpoint(i, 2)
-        # # self.loadCheckpoint(i, 2)
+        # self.loadCheckpoint(i, 2)
         #
         # # estimate unit trajectories - disease specific
         self.estimTrajWithinDisModel(self.unitModels, self.disModels)
@@ -158,6 +158,11 @@ class JointModel(DisProgBuilder.DPMInterface):
       # self.makePlots(plotFigs, i, 2)
       # print(adsa)
 
+
+      # for SuStaIn validation
+      self.loadCheckpoint(3, 1)  # for the real data
+      # self.makePlots(plotFigs, i, 2)
+      # print(adsa)
 
 
     res = None
@@ -196,6 +201,8 @@ class JointModel(DisProgBuilder.DPMInterface):
 
       fig = self.plotter.plotHierData(self.unitModels, self.disModels, replaceFig=True)
       fig.savefig('%s/plotHierData%d%d_%s.pdf' % (self.outFolder, iterNr, picNr, self.expName))
+      fig.savefig('%s/plotHierData%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
+
       pl.clf()
       pl.cla()
       pl.close()
@@ -211,8 +218,8 @@ class JointModel(DisProgBuilder.DPMInterface):
 
   def initParams(self, runPartOnePass):
     paramsCopy = copy.deepcopy(self.params)
-    paramsCopy['nrGlobIterDis'] = 4 # set only two iterations, quick initialisation
-    paramsCopy['nrGlobIterUnit'] = 4  # set only two iterations, quick initialisation
+    paramsCopy['nrGlobIterDis'] = 1 # set only two iterations, quick initialisation
+    paramsCopy['nrGlobIterUnit'] = 0  # set only two iterations, quick initialisation
     paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
     paramsCopy['penaltyUnits'] = 1
     onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy,
@@ -529,7 +536,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     XshiftedScaledDBS = [0 for _ in range(self.nrDis)]
     XdisDBSX = [0 for _ in range(self.nrDis)]
     for d in range(self.nrDis):
-      XshiftedScaledDBS[d], XdisDBSX[d], _, _ = disModels[d].getData()
+      XshiftedScaledDBS[d], XdisDBSX[d], _, _ = disModels[d].getData(flagAllBiomkShouldBePresent=True)
 
     XdisSX = [0 for _ in range(self.unitModels[0].nrSubj)]
     nrSubj = unitModels[0].nrSubj
@@ -557,6 +564,11 @@ class JointModel(DisProgBuilder.DPMInterface):
       # get shifts for curr subj from correct disModel
       currXdataShifted = XshiftedScaledDBS[currDis][0][idxCurrSubjInDisModel]
       # predict dysf scoresf for curr subj
+      if currXdataShifted.shape[0] == 0:
+        print('currXdataShifted',currXdataShifted)
+        print('XshiftedScaledDBS[currDis][0]', XshiftedScaledDBS[currDis][0])
+        print('XdisDBSX[currDis][0][idxCurrSubjInDisModel]', XdisDBSX[currDis][0][idxCurrSubjInDisModel])
+        print(adsa)
       predScoresCurrXU = disModels[currDis].predictBiomk(currXdataShifted)
 
       for u in range(self.nrFuncUnits):
@@ -596,7 +608,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
     XshiftedScaledDBSX = [0 for _ in range(self.nrDis)]
     X_arrayScaledDB = [0 for _ in range(self.nrDis)]
-    informPriorTrajDisModels = [True, True] # set informative priors only for the first disease
+    informPriorTrajDisModels = [True for _ in range(self.nrDis)] # set informative priors only for the first disease
     for d in range(self.nrDis):
       XshiftedScaledDBSX[d], _, _, X_arrayScaledDB[d] = disModels[d].getData()
 
@@ -611,6 +623,10 @@ class JointModel(DisProgBuilder.DPMInterface):
 
         # build function that within a disease model takes a unit traj, and predicts lik of given
         # unit-traj params in corresponding unitModel.
+        # print(disModels[d])
+        # print(unitModels[u])
+        # print(X_arrayScaledDB[d])
+        # print(informPriorTrajDisModels[d])
         likJDMobjFunc = lambda paramsCurrTraj: self.ssdJDMOneUnitTraj(disModels[d], unitModels[u],
           X_arrayScaledDB[d], [paramsCurrTraj, None], u, d, Y_arrayCurDis, indFiltToMisCurDisB, informPriorTrajDisModels[d])
         initParams, initVariance = disModels[d].unpack_parameters(disModels[d].parameters[u])

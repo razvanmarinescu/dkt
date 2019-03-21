@@ -179,6 +179,22 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
           for s in range(len(xDysfunSubjCurrDisUSX[b])):
             visitIndicesCurrDisUSX[b][s] = np.array(range(xDysfunSubjCurrDisUSX[b][s].shape[0]))
 
+
+        for b in range(nrBiomkDisModel):
+          for s in range(len(xDysfunSubjCurrDisUSX[b])):
+            if xDysfunSubjCurrDisUSX[b][s].shape[0] == 0:
+              print(xDysfunSubjCurrDisUSX[0][s])
+              print([0 for b2 in range(nrBiomkDisModel)])
+              print(xDysfunSubjCurrDisUSX)
+              print([xDysfunSubjCurrDisUSX[b2] for b2 in range(nrBiomkDisModel)])
+              print([xDysfunSubjCurrDisUSX[b2][0] for b2 in range(nrBiomkDisModel)])
+              print(s)
+              print([xDysfunSubjCurrDisUSX[b2][s] for b2 in range(nrBiomkDisModel)])
+
+              import pdb
+              pdb.set_trace()
+              print(das)
+
         plotTrajParamsDis = JDMOnePass.createPlotTrajParamsDis(self.params, disNr)
         plotterCurrDis = Plotter.PlotterDis(plotTrajParamsDis)  # set separate plotter for the
 
@@ -187,9 +203,11 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         self.disModels[disNr] = self.disModelObj(xDysfunSubjCurrDisUSX, dysfuncScoresCurrDisUSX, visitIndicesCurrDisUSX,
           outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'], self.params)
         self.disModels[disNr].priors = self.priorsDisModels[disNr]
-        self.disModels[disNr].Optimize(nrGlobIterDis, Plot=True)
+        self.disModels[disNr].Optimize(nrGlobIterDis, Plot=False)
 
-        pickle.dump(self.disModels, open(disModelsFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
+        XshiftedScaledDBS, XdisDBSX, _, _ = self.disModels[disNr].getData(flagAllBiomkShouldBePresent=True)
+
+      pickle.dump(self.disModels, open(disModelsFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
 
     elif runPart[1] == 'L':
       self.disModels = pickle.load(open(disModelsFile, 'rb'))

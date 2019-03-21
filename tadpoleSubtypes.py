@@ -117,16 +117,14 @@ plotTrajParams = {}
 plotTrajParams['SubfigTrajWinSize'] = (1600,900)
 plotTrajParams['nrRows'] = args.nrRows
 plotTrajParams['nrCols'] = args.nrCols
-plotTrajParams['diagColors'] = {CTL:'g', MCI:'#FFA500', AD:'r',
-  CTL2:'y', PCA:'m', AD2:'b', CTL_OTHER_MODEL:'k', PCA_OTHER_MODEL:'b',
-  CTL_DKT:'g', PCA_DKT:'r'}
-plotTrajParams['diagScatterMarkers'] = {CTL:'s', MCI:'s', AD:'s',
-  CTL2:'s', PCA:'s', AD2:'s', CTL_OTHER_MODEL:'^', PCA_OTHER_MODEL:'^',
-  CTL_DKT: 'o', PCA_DKT: 'o'}
+plotTrajParams['diagColors'] = {CTL:'g', SBG1:'#FFA500', SBG2:'r',
+  SBG3:'y'}
+plotTrajParams['diagScatterMarkers'] = {CTL:'s', SBG1:'s', SBG2:'s',
+  SBG3:'s'}
 plotTrajParams['legendCols'] = 4
-plotTrajParams['diagLabels'] = {CTL:'CTL ADNI', MCI:'MCI ADNI', AD:'tAD ADNI',
-  CTL2:'CTL LOCAL', PCA:'PCA LOCAL', AD2:'tAD LOCAL', CTL_OTHER_MODEL:'CTL LOCAL - No DKT',
-  PCA_OTHER_MODEL:'PCA LOCAL - No DKT', CTL_DKT:'CTL - DTK', PCA_DKT:'PCA - DTK'}
+# ['Hippocampal', 'Cortical', 'Subcortical']
+plotTrajParams['diagLabels'] = {CTL:'CTL', SBG1:'G1-Hippo.', SBG2:'G2-Cortical',
+  SBG3:'G3-Subcort.'}
 
 # plotTrajParams['freesurfPath'] = freesurfPath
 # plotTrajParams['blenderPath'] = blenderPath
@@ -299,25 +297,45 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   #### make a tiny dataset for testing. When model is ready, run on full data ###
   if tinyData:
     print(dataDfTadpole.shape)
-    hasNonMriImgInd = ~np.isnan(dataDfTadpole['FDG Temporal']) | (~np.isnan(dataDfTadpole['DTI FA Temporal'])) \
-                      | (~np.isnan(dataDfTadpole['AV45 Temporal'])) | (~np.isnan(dataDfTadpole['AV1451 Temporal']))
-    idxToDrop = hasNonMriImgInd
+    nrModPerSubj = (~np.isnan(dataDfTadpole['FDG Temporal'])).astype(int) + (~np.isnan(dataDfTadpole['DTI FA Temporal'])).astype(int) \
+                      + (~np.isnan(dataDfTadpole['AV45 Temporal'])).astype(int) + (~np.isnan(dataDfTadpole['AV1451 Temporal'])).astype(int)
+
+    hasMriPlusOneOtherImgInd = np.logical_and((~np.isnan(dataDfTadpole['Volume Temporal'])), nrModPerSubj >= 1)
+
+    print('nrModPerSubj', nrModPerSubj)
+    # print(das)
+
+    idxToDrop = np.logical_not(hasMriPlusOneOtherImgInd)
     # print('idxToDrop', np.sum(idxToDrop))
     dataDfTadpole.drop(dataDfTadpole.index[idxToDrop], inplace=True)
     dataDfTadpole.reset_index(drop=True, inplace=True)
 
-    print(dataDfTadpole.shape)
-    print(adsa)
+    # print(dataDfTadpole.shape)
+    # print(adsa)
 
     unqRID = np.unique(dataDfTadpole.RID)
-    adniUnqRID = np.unique(dataDfTadpole.RID[dataDfTadpole.dataset == 1])
-    pcaUnqRID = np.unique(dataDfTadpole.RID[dataDfTadpole.dataset == 2])
-    print('unqRID', unqRID.shape)
-    print('adniUnqRID', adniUnqRID.shape)
-    print('pcaUnqRID', pcaUnqRID.shape)
-    # print(adas)
-    ridToKeep = np.random.choice(adniUnqRID, 230, replace=False)
-    ridToKeep = np.concatenate((ridToKeep, pcaUnqRID), axis=0)
+    g1RID = np.unique(dataDfTadpole.RID[dataDfTadpole.diag == 1])
+    g2RID = np.unique(dataDfTadpole.RID[dataDfTadpole.diag == 2])
+    g3RID = np.unique(dataDfTadpole.RID[dataDfTadpole.diag == 3])
+    g4RID = np.unique(dataDfTadpole.RID[dataDfTadpole.diag == 4])
+
+    print('g1RID', g1RID.shape)
+    print('g2RID', g2RID.shape)
+    print('g3RID', g3RID.shape)
+    print('g4RID', g4RID.shape)
+    # print(adsa)
+
+    minNr = np.min([g1RID.shape[0], g2RID.shape[0], g3RID.shape[0],g4RID.shape[0]])
+    nrSubjToKeep = 50
+    assert nrSubjToKeep < minNr
+
+
+    ridToKeepG1 = np.random.choice(g1RID, nrSubjToKeep, replace=False)
+    ridToKeepG2 = np.random.choice(g2RID, nrSubjToKeep, replace=False)
+    ridToKeepG3 = np.random.choice(g3RID, nrSubjToKeep, replace=False)
+    ridToKeepG4 = np.random.choice(g4RID, nrSubjToKeep, replace=False)
+
+    ridToKeep = np.concatenate((ridToKeepG1, ridToKeepG2, ridToKeepG3,ridToKeepG4), axis=0)
     idxToDrop = np.logical_not(np.in1d(dataDfTadpole.RID, ridToKeep))
     dataDfTadpole.drop(dataDfTadpole.index[idxToDrop], inplace=True)
     dataDfTadpole.reset_index(drop=True, inplace=True)
@@ -335,11 +353,15 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   diagTrainAll = [0, 0, 0]
   visitIndicesTrainAll = [0, 0, 0]
   nrSubgr = 3
+
+  diagToKeep = [[1,2], [1,3], [1,4]]
   for s in range(nrSubgr):
 
 
     dataDfTrainAll[s] = dataDfTadpole.copy()
-    maskSubjMisData = np.logical_not(np.in1d(dataDfTrainAll[s].diag, [1,2]))
+    maskSubjMisData = np.logical_not(np.in1d(dataDfTrainAll[s].diag, diagToKeep[s]))
+    print('maskSubjMisData',maskSubjMisData)
+    print(np.sum(maskSubjMisData))
 
     nonMriColumns = ['DTI FA Cingulate', 'DTI FA Frontal',
          'DTI FA Hippocampus', 'DTI FA Occipital', 'DTI FA Parietal',
@@ -351,12 +373,15 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
          'AV1451 Temporal']
     dataDfTrainAll[s].loc[maskSubjMisData, nonMriColumns] = np.nan
 
-    print(np.sum(np.logical_not(np.isnan(dataDfTrainAll[s].loc[:,'FDG Temporal']))))
-    print(np.sum(np.logical_not(np.isnan(dataDfTadpole.loc[:,'FDG Temporal']))))
-    print('dataDfSub01',dataDfTrainAll[s])
+
+    print('nr with FDG', np.sum(np.logical_not(np.isnan(dataDfTrainAll[s].loc[:,'FDG Temporal']))))
+    print('nr with FDG all data', np.sum(np.logical_not(np.isnan(dataDfTadpole.loc[:, 'FDG Temporal']))))
 
     XtrainAll[s], YtrainAll[s], RIDtrainAll[s], _, diagTrainAll[s], visitIndicesTrainAll[s] = \
       auxFunc.convert_table_marco(dataDfTrainAll[s], list_biomarkers=selectedBiomk)
+
+    assert len(XtrainAll[s]) > 0
+    assert len(YtrainAll[s]) > 0
 
   # import pdb
   # pdb.set_trace()
@@ -365,6 +390,8 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   Xvalid, Yvalid, RIDvalid, list_biomarkers, diagValid, visitIndicesValid = \
     auxFunc.convert_table_marco(dataDfTadpole, list_biomarkers=selectedBiomk)
 
+  assert len(Xvalid) > 0
+  assert len(Yvalid) > 0
 
   ds = dict(XtrainAll=XtrainAll, YtrainAll=YtrainAll, RIDtrainAll=RIDtrainAll,
     list_biomarkers=list_biomarkers,visitIndicesTrainAll=visitIndicesTrainAll,
@@ -387,6 +414,7 @@ def main():
 
   if args.tinyData:
     finalDataFile = 'tadSubtypesTiny.npz'
+    expName = 'tadSubtypesTiny'
     expName = 'tadSubtypesTiny'
   else:
     finalDataFile = 'tadSubtypes.npz'
@@ -430,7 +458,8 @@ def main():
 
   nrFuncUnits = 6
   nrBiomkInFuncUnits = 5
-  nrDis = 2 # nr of diseases
+  nrDis = 3 # nr of diseases
+  params['nrDis'] = nrDis
 
   # nrBiomk = nrBiomkInFuncUnits * nrFuncUnits
   print(labels)
@@ -508,10 +537,10 @@ def main():
 
   # params['dataDfAll'] = dataDfAll
 
-  params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
-  params['iterParamsUnit'] = 60
-  params['nrGlobIterDis'] = 10
-  params['iterParamsDis'] = 60
+  params['nrGlobIterUnit'] = 0 # these parameters are specific for the Joint Model of Disease (JMD)
+  params['iterParamsUnit'] = 0
+  params['nrGlobIterDis'] = 0
+  params['iterParamsDis'] = 0
 
   # by default we have no priors
   params['priors'] = None
@@ -536,10 +565,6 @@ def main():
   bPriorShape, bPriorRate = getGammShapeRateFromTranTime(
     transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax)
 
-  # print('bPriorShape', bPriorShape)
-  # print('bPriorRate', bPriorRate)
-  # print(adsas)
-
   params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
     shapeB=2, rateB=2, timeShiftStd=20000) for d in range(nrDis)]
   # params['priorsUnitModelsSigmoid'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
@@ -562,23 +587,19 @@ def main():
   else:
     params['plotTrajParams']['unitNames'] = unitNames
 
-  CTL = 1
-  SBT1 = 2
-  SBT2 = 3
-  SBT3 = 4
 
   # map which subtypes belong to which disease.
   # disease 1: subtype 0+1
   # disease 2: subtype 0+2
   # disease 3: subtype 0+3
   # note subtype 0 are controls
-  params['diagsSetInDis'] = [np.array([CTL,SBT1]), np.array([CTL,SBT2]), np.array([CTL,SBT3])]
+  params['diagsSetInDis'] = [np.array([CTL,SBG1]), np.array([CTL,SBG2]), np.array([CTL,SBG3])]
   params['disLabels'] = ['Hippocampal', 'Cortical', 'Subcortical']
   params['expNamesSubgr'] = [x[:2] for x in params['disLabels']]
   if addExtraBiomk:
-    params['otherBiomkPerDisease'] = [[nrBiomk-3,nrBiomk-2, nrBiomk-1], []] # can also add 3 extra cognitive tests
+    params['otherBiomkPerDisease'] = [[nrBiomk-3,nrBiomk-2, nrBiomk-1], [], []] # can also add 3 extra cognitive tests
   else:
-    params['otherBiomkPerDisease'] = [[], []]
+    params['otherBiomkPerDisease'] = [[], [], []]
 
   params['binMaskSubjForEachDisD'] = [np.in1d(params['diag'],
                                       params['diagsSetInDis'][disNr]) for disNr in range(nrDis)]
@@ -744,27 +765,400 @@ def runAllExpTadpoleSubtypes(params, expName, dpmBuilder, compareTrueParamsFunc 
 
   params['outFolder'] = 'resfiles/%s' % expName
 
-  nrSubgr = 3
-  for s in range(nrSubgr):
-    params['expName'] = params['expNamesSubgr'][s]
-    params['X'] = params['XtrainAll'][s]
-    params['Y'] = params['YtrainAll'][s]
-    params['RID'] = params['RIDtrainAll'][s]
-    params['diag'] = params['diagTrainAll'][s]
-    params['visitIndices'] = params['visitIndicesTrainAll'][s]
+  nrDis = params['nrDis']
+  dpmObjStd = [0 for d in range(nrDis)]
+  res['std'] = [0 for d in range(nrDis)]
+  res['metrics'] = [0 for d in range(nrDis)]
+  for d in range(nrDis):
+    params['expName'] = params['expNamesSubgr'][d]
+    params['X'] = params['XtrainAll'][d]
+    params['Y'] = params['YtrainAll'][d]
+    params['RID'] = params['RIDtrainAll'][d]
+    params['diag'] = params['diagTrainAll'][d]
+    params['visitIndices'] = params['visitIndicesTrainAll'][d]
 
+    # print('X', params['X'])
+    # print('Y', params['Y'])
+    # print(adsas)
 
-    dpmObjStd[s], res['std'][s] = evaluationFramework.runStdDPM(params,
+    dpmObjStd[d], res['std'][d] = evaluationFramework.runStdDPM(params,
       expName, dpmBuilder, params['runPartMain'])
 
     # dpmObjStd[s].plotter.plotAllBiomkDisSpace(dpmObjStd[s], params, disNr=0)
 
     # perform the validation against DRC data
-    res['metrics'][s] = validateDRCBiomk(dpmObjStd, params)
+    res['metrics'][d] = validateSubtypes(dpmObjStd[d], params)
 
 
   return res
 
+
+def validateSubtypes(dpmObj, params):
+  # first predict subject DTI measures
+
+  for disNr in range(params['nrDis']):
+    diag = params['diag']
+    indxSubjToKeep = dpmObj.getIndxSubjToKeep(disNr)
+
+    import DPMModelGeneric
+    Xfilt, Yfilt = DPMModelGeneric.DPMModelGeneric.filterXYsubjInd(params['X'], params['Y'], indxSubjToKeep)
+
+    diagSubjCurrDis = diag[indxSubjToKeep]
+
+    #### construct sub-shifts for each biomarker
+    XshiftedDisModelBS, ysPredBS, xsOrigPred1S = dpmObj.getDataDisOverBiomk(disNr)
+
+
+    for b in range(dpmObj.nrBiomk):
+      assert len(params['X'][b]) == len(params['Y'][b])
+      assert len(XshiftedDisModelBS[b]) == len(Yfilt[b])
+
+    # now get the validation set. This is already only for the DRC subjects
+    Xvalid = params['Xvalid']
+    Yvalid = params['Yvalid']
+    RIDvalid = params['RIDvalid']
+    diagValid = params['diagValid']
+
+
+    labels = params['labels']
+    nonMriBiomksList = [i for i in range(6,len(labels))]
+    mriBiomksList = [i for i in range(len(labels)) if labels[i].startswith('Volume')]
+
+    print('labels', labels)
+    print('nonMriBiomksList', nonMriBiomksList)
+    # print(adsa)
+
+    assert len(ysPredBS) == len(Yvalid)
+
+    nrNonMriCols = len(nonMriBiomksList)
+    mse = [0 for b in nonMriBiomksList]
+
+    # subjects who have non-MRI validation data
+    subjWithValidIndx = np.where([ys.shape[0] > 0 for ys in Yvalid[nonMriBiomksList[0]]])[0]
+    nrSubjWithValid = subjWithValidIndx.shape[0]
+    XvalidFilt, YvalidFilt = DPMModelGeneric.DPMModelGeneric.filterXYsubjInd(Xvalid, Yvalid, subjWithValidIndx)
+    diagValidFilt = diagValid[subjWithValidIndx]
+    RIDvalidFilt = RIDvalid[subjWithValidIndx]
+    ridCurrDis = params['RID'][indxSubjToKeep]
+
+    XvalidShifFilt = [[[] for s in range(nrSubjWithValid)] for b in range(dpmObj.nrBiomk)]
+
+    ###### construct the shifts of the subjects in validation set #############
+    for b in range(nrNonMriCols):
+      mseList = []
+      for s in range(RIDvalidFilt.shape[0]):
+        # for each validation subject
+        print(RIDvalidFilt[s])
+        print(ridCurrDis)
+        idxCurrDis = np.where(RIDvalidFilt[s] == ridCurrDis)[0][0]
+        xsOrigFromModel = xsOrigPred1S[idxCurrDis]
+
+        assert np.where(xsOrigFromModel == XvalidFilt[nonMriBiomksList[b]][s][0])[0].shape[0] == 1
+        idxXsWithValid = np.where(xsOrigFromModel == XvalidFilt[nonMriBiomksList[b]][s][0])[0][0]
+        ysPredCurrSubj = ysPredBS[nonMriBiomksList[b]][idxCurrDis][idxXsWithValid]
+
+        assert YvalidFilt[nonMriBiomksList[b]][s].shape[0] > 0
+
+        mseList += [(ysPredCurrSubj - YvalidFilt[nonMriBiomksList[b]][s][0]) ** 2]
+
+        # also compose the shifted Xs for the validation subjects
+        xsShiftedFromModel = XshiftedDisModelBS[0][idxCurrDis]
+        XvalidShifFilt[nonMriBiomksList[b]][s] = np.array([xsShiftedFromModel[idxXsWithValid]])
+
+        assert XvalidShifFilt[nonMriBiomksList[b]][s].shape[0] == YvalidFilt[nonMriBiomksList[b]][s].shape[0]
+
+
+      mse[b] = np.mean(mseList)
+
+
+    # part 2. plot the inferred dynamics for DRC data:
+    # every biomarker against original DPS
+    # also plot extra validation data on top
+    xsTrajX = dpmObj.getXsMinMaxRange(disNr)
+    predTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajX, disNr)
+    trajSamplesBXS = dpmObj.sampleBiomkTrajGivenXs(xsTrajX, disNr, nrSamples=100)
+
+    print('XshiftedDisModelBS', XshiftedDisModelBS)
+    print('XvalidShifFilt', XvalidShifFilt)
+    print('predTrajXB', predTrajXB[:,0])
+    print('xsTrajX', xsTrajX)
+    print('ysPredBS', ysPredBS)
+    # print(ads)
+
+
+    # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
+    #   XshiftedDisModelBS, Yfilt, diagSubjCurrDis,
+    #   XvalidShifFilt, YvalidFilt, diagValidFilt, replaceFig=True)
+    # fig.savefig('%s/validPCA.png' % params['outFolder'])
+
+
+    ### build a simpler linear predictor from MR to DTI for every ROI independently.
+    # Train it on ADNI MR+DTI data and use it to predict DRC-DTI from DRC-MR.
+
+    dataDfTadpole = params['dataDfTadpole']
+    colsList = dataDfTadpole.columns.tolist()
+    mriBiomksDf = [i for i in range(len(colsList)) if colsList[i].startswith('Volume')]
+    nonMriBiomksDf = dataDfTadpole['DTI FA Cingulate' : 'AV1451 Temporal'].columns.tolist()
+
+
+
+    dataDfAllMat = dataDfTadpole.values
+    # print('dataDfAllMat', dataDfAllMat)
+
+    nrNonMriBiomk = len(nonMriBiomksDf)
+
+    YvalidLinModelNonMri = [0 for f in range(nrNonMriBiomk)]
+    YvalidDktNonMri = [0 for f in range(nrNonMriBiomk)]
+
+    mseLin = np.zeros(nrNonMriBiomk)
+    mseDpm = np.zeros(nrNonMriBiomk)
+
+    squaredErrorsLin = [[] for f in range(nrNonMriBiomk)]
+    squaredErrorsDpm = [[] for f in range(nrNonMriBiomk)]
+
+    # select just the DTI biomarkers
+    nonMriColsArrayIndx = np.array(nonMriBiomksList)
+    mriColsArrayIndx = np.array(mriBiomksList)
+    print('nonMriColsArrayIndx', nonMriColsArrayIndx)
+    predTrajNonMriXB = predTrajXB[:,nonMriColsArrayIndx]
+    predTrajMriXB = predTrajXB[:, mriColsArrayIndx]
+    trajSamplesNonMriBXS = trajSamplesBXS[nonMriColsArrayIndx,:,:]
+    XvalidShifNonMriFilt = [XvalidShifFilt[b] for b in nonMriBiomksList]
+    YvalidFiltNonMri = [YvalidFilt[b] for b in nonMriBiomksList]
+    YvalidFiltMriClosestToNonMri = [[] for b in mriBiomksList] # only the MRI where DTI exists
+
+    nonMriValValidAll = [[] for f in range(nrNonMriBiomk)]
+    nonMriPredValidLinAll = [[] for f in range(nrNonMriBiomk)]
+    nonMriPredValidDktAll = [[] for f in range(nrNonMriBiomk)]
+
+    corrDpm = np.zeros(nrNonMriBiomk)
+    pValDpm = np.zeros(nrNonMriBiomk)
+    corrLin = np.zeros(nrNonMriBiomk)
+    pValLin = np.zeros(nrNonMriBiomk)
+
+    for f in range(nrNonMriBiomk):
+
+      mriDataCurrCol = dataDfAllMat[:, mriBiomksDf[f]]
+      nonMriDataCurrCol = dataDfAllMat[:, nonMriBiomksDf[f]]
+
+      nnMask = ~np.isnan(mriDataCurrCol) & ~np.isnan(nonMriDataCurrCol)
+      linModel = sklearn.linear_model.LinearRegression(fit_intercept=True)
+
+      print('mriDataCurrCol', mriDataCurrCol)
+      print('nonMriDataCurrCol', nonMriDataCurrCol)
+
+      linModel.fit(mriDataCurrCol[nnMask].reshape(-1,1),
+        nonMriDataCurrCol[nnMask].reshape(-1,1))
+
+      YvalidLinModelNonMri[f] = [] # Non-MRI predictions of linear model for subj in validation set
+      YvalidDktNonMri[f] = [] # Non-MRI predictions of DKT model for subj in validation set
+
+      # print('dataDfTadpole.loc[mriBiomksDf[f]].iloc[nnMask]', dataDfTadpole.loc[mriBiomksDf[f]].iloc[nnMask])
+      # print('dataDfTadpole.loc[nonMriBiomksDf[f]].iloc[nnMask]', dataDfTadpole.loc[nonMriBiomksDf[f]].iloc[nnMask])
+
+      # print('YvalidFilt[nonMriBiomksList[f]]', YvalidFilt[nonMriBiomksList[f]])
+      # print('Yvalid[mriBiomksList[f]]', Yvalid[mriBiomksList[f]])
+      for s in range(nrSubjWithValid):
+        mrValsValidCurrSubj = np.array(YvalidFilt[mriBiomksList[f]][s]).reshape(-1,1)
+        nonMriValValidCurrSubj = YvalidFilt[nonMriBiomksList[f]][s][0]
+
+        xMriCurr = np.array(XvalidFilt[mriBiomksList[f]][s])
+        xDTICurr = XvalidFilt[nonMriBiomksList[f]][s][0]
+
+        closestMriIdx = np.argmin(np.abs(xMriCurr - xDTICurr))
+
+        YvalidFiltMriClosestToNonMri[f] += [np.array(mrValsValidCurrSubj[closestMriIdx])]
+
+        # print('mrValsValidCurrSubj', mrValsValidCurrSubj)
+        # print('xMriCurr', xMriCurr)
+        # print('xDTICurr', xDTICurr)
+        # print('closestMriIdx', closestMriIdx)
+        nonMriPredValidLin = linModel.predict(mrValsValidCurrSubj[closestMriIdx].reshape(-1,1))
+
+        nonMriPredValidLin = nonMriPredValidLin[0][0]
+
+        YvalidLinModelNonMri[f] += [np.array([nonMriPredValidLin])]
+
+        indOfXTrajClosestToCurrSubj = np.argmin(np.abs(XvalidShifNonMriFilt[f][s][0] - xsTrajX))
+        nonMriPredValidDkt = predTrajNonMriXB[indOfXTrajClosestToCurrSubj, f]
+
+        YvalidDktNonMri[f] += [np.array(nonMriPredValidDkt)]
+        # print('XvalidShifNonMriFilt[f][s][0]', XvalidShifNonMriFilt[f][s][0])
+        # print('xsTrajX', xsTrajX)
+
+        if diagValidFilt[s] > CTL: # don't include CTLs for validation
+          squaredErrorsLin[f] += [(nonMriValValidCurrSubj - nonMriPredValidLin) ** 2]
+          squaredErrorsDpm[f]  += [(nonMriValValidCurrSubj - nonMriPredValidDkt) ** 2]
+
+        nonMriValValidAll[f] += [nonMriValValidCurrSubj]
+        nonMriPredValidLinAll[f] += [nonMriPredValidLin]
+        nonMriPredValidDktAll[f] += [nonMriPredValidDkt]
+
+      nonMriValValidAll[f] = np.array(nonMriValValidAll[f]).reshape(-1, 1).astype(float)
+      nonMriPredValidLinAll[f] = np.array(nonMriPredValidLinAll[f]).reshape(-1, 1).astype(float)
+      nonMriPredValidDktAll[f] = np.array(nonMriPredValidDktAll[f]).reshape(-1, 1).astype(float)
+
+      # print('nonMriValValidAll', nonMriValValidAll[f].shape, nonMriValValidAll[f])
+      # print('nonMriPredValidLinAll', nonMriPredValidLinAll[f].shape, nonMriPredValidLinAll[f])
+      # print('nonMriPredValidDktAll', nonMriPredValidDktAll[f].shape, nonMriPredValidDktAll[f])
+
+      corrDpm[f], pValDpm[f] = scipy.stats.spearmanr(nonMriValValidAll[f],
+        nonMriPredValidDktAll[f])
+      corrLin[f], pValLin[f] = scipy.stats.spearmanr(nonMriValValidAll[f],
+        nonMriPredValidLinAll[f])
+
+    for f in range(nrNonMriBiomk):
+      squaredErrorsLin[f] = np.array(squaredErrorsLin[f])
+      squaredErrorsDpm[f] = np.array(squaredErrorsDpm[f])
+
+      # nonMriValValidAll[f] = nonMriValValidAll[f]
+      # nonMriPredValidDktAll[f] = nonMriPredValidDktAll[f]
+      # nonMriPredValidLinAll[f] = nonMriPredValidLinAll[f]
+
+    nrBootStraps = 500
+    mseDpmUB = np.zeros((nrNonMriBiomk, nrBootStraps), float)
+    mseLinUB = np.zeros((nrNonMriBiomk, nrBootStraps), float)
+    nrSubjWithValidAndChosen = len(squaredErrorsLin[0])
+    corrDpmUB = np.zeros((nrNonMriBiomk, nrBootStraps), float)
+    corrLinUB = np.zeros((nrNonMriBiomk, nrBootStraps), float)
+    for f in range(nrNonMriBiomk):
+      for b in range(nrBootStraps):
+        idxBootCurr = np.array(np.random.choice(nrSubjWithValidAndChosen,nrSubjWithValidAndChosen), int)
+        # print(len(squaredErrorsLin[f]))
+        # print(idxBootCurr)
+        mseDpmUB[f, b] = np.mean(squaredErrorsLin[f][idxBootCurr])
+        mseLinUB[f, b] = np.mean(squaredErrorsDpm[f][idxBootCurr])
+
+        idxBootCorrCurr = np.array(np.random.choice(nrSubjWithValid, nrSubjWithValid), int)
+        corrDpmUB[f, b], _ = scipy.stats.spearmanr(nonMriValValidAll[f][idxBootCorrCurr],
+          nonMriPredValidDktAll[f][idxBootCorrCurr])
+        corrLinUB[f, b], _ = scipy.stats.spearmanr(nonMriValValidAll[f][idxBootCorrCurr],
+          nonMriPredValidLinAll[f][idxBootCorrCurr])
+
+        # print('corrDpmUB[f, b]', corrDpmUB[f, b])
+        # print('nonMriPredValidDktAll[f]', nonMriPredValidDktAll[f])
+        # print('nonMriValValidAll[f][idxBootCurr]', nonMriValValidAll[f][idxBootCurr])
+        # print('nonMriPredValidDktAll[f][idxBootCurr]', nonMriPredValidDktAll[f][idxBootCurr])
+
+
+
+    # print('corrDpmUB', corrDpmUB)
+    # print('xsTrajX.shape', xsTrajX.shape)
+    # print(adsa)
+    # print('mseLin', mseLin)
+    # print('mseDpm', mseDpm)
+    # print('corrLin', np.mean(corrLin), corrLin, pValLin)
+    # print('corrDpm', np.mean(corrDpm), corrDpm, pValDpm)
+    # print([params['labels'][b] for b in nonMriBiomksList])
+    # print(adsa)
+
+    metrics = {}
+    metrics['dpm'] = {}
+    metrics['dpm']['corrUB'] = corrDpmUB
+    # metrics['dpm']['pValsU'] = pValDpm
+    metrics['dpm']['mseUB'] = mseDpmUB
+    metrics['lin'] = {}
+    metrics['lin']['corrUB'] = corrLinUB
+    # metrics['lin']['pValsU'] = pValLin
+    metrics['lin']['mseUB'] = mseLinUB
+
+    # plot against MRI vals instead of DPS time-shifts
+
+    # also plot training data DTI[f] in MRI[f] space
+    YNonMri = [params['Y'][b] for b in nonMriBiomksList]
+    YMriClosestToNonMri = [[0 for s in range(len(YNonMri[b]))] for b in mriBiomksList]  # only the MRI where DTI exists
+    # idxWithDti = [s for s in range(len(YNonMri)) ]
+    # print('YNonMri', YNonMri)
+    # print(adsa)
+
+    for f in range(nrNonMriBiomk):
+
+      for s in range(len(YNonMri[f])):
+
+        YMriClosestToNonMri[f][s] = np.array([])
+
+        if YNonMri[f][s].shape[0] > 0:
+
+          xsMriCurrSubj = params['X'][mriBiomksList[f]][s]
+          xsDtiCurrSubj = params['X'][nonMriBiomksList[f]][s]
+
+          mriValsCorrespToDtiCurrSubj = []
+          for t in range(xsDtiCurrSubj.shape[0]):
+            mriIndClosestToCurrDtiScan = np.argmin(np.abs(xsDtiCurrSubj[t] - xsMriCurrSubj))
+
+            mriValsCorrespToDtiCurrSubj += [params['Y'][mriBiomksList[f]][s][mriIndClosestToCurrDtiScan]]
+
+            YMriClosestToNonMri[f][s] = np.array(mriValsCorrespToDtiCurrSubj)
+
+
+        # print(YMriClosestToNonMri[f][s].shape[0])
+        # print(YNonMri[f][s].shape[0])
+        assert YMriClosestToNonMri[f][s].shape[0] == YNonMri[f][s].shape[0]
+
+    print(ads)
+
+    labelsNonMri = [params['labels'][b] for b in nonMriBiomksList]
+    metrics['labelsNonMri'] = labelsNonMri
+    # change diagnosis numbers to get different plotting behaviour (specific labels, colors and markers)
+    diagValidFiltLinModel = copy.deepcopy(diagValidFilt)
+    diagValidFiltLinModel[diagValidFiltLinModel == CTL2] = CTL_OTHER_MODEL
+    diagValidFiltLinModel[diagValidFiltLinModel == PCA] = PCA_OTHER_MODEL
+
+    diagValidFiltDktModel = copy.deepcopy(diagValidFilt)
+    diagValidFiltDktModel[diagValidFiltDktModel == CTL2] = CTL_DKT
+    diagValidFiltDktModel[diagValidFiltDktModel == PCA] = PCA_DKT
+
+    # plot just the trajectories by modality groups
+    # for d in range(dpmObj.nrDis):
+    #   fig = dpmObj.plotter.plotTrajInDisSpaceOverlap(dpmObj, d, params, replaceFig=True)
+    #   fig.savefig('%s/trajDisSpaceOverlap_%s_%s.png' % (params['outFolder'],
+    #     params['disLabels'][d], params['expName']))
+
+    plotFigs = True
+    if plotFigs:
+
+      for u in range(dpmObj.nrFuncUnits):
+        trajStructUnitModel = dpmObj.unitModels[u].plotter.getTrajStructWithTrueParams(dpmObj.unitModels[u])
+        fig = dpmObj.unitModels[u].plotter.plotTraj(dpmObj.unitModels[u], trajStructUnitModel,
+          legendExtraPlot=True, rowsAuto=True)
+        fig.savefig('%s/unit%d_allTraj.png' % (params['outFolder'], u))
+
+
+      # for d in range(dpmObj.nrDis):
+      #   # yNormMode = dpmObj.params['plotTrajParams']['yNormMode']
+      #   yNormMode = 'unscaled'
+      #   trajStructDisModel = dpmObj.disModels[d].plotter.getTrajStructWithTrueParams(dpmObj.disModels[d], yNormMode)
+      #   fig = dpmObj.disModels[d].plotter.plotAllTrajZeroOne(dpmObj.disModels[d], trajStructDisModel)
+      #   fig.savefig('%s/dis%d_%s_allTrajZeroOne.png' % (params['outFolder'], d, dpmObj.params['disLabels'][d]))
+
+
+      # plot DTI over MRI space: traj, validation data, predictions of linear model, training data.
+      fig = dpmObj.plotter.plotTrajInBiomkSpace(dpmObj=dpmObj,
+        xsTrajXB=predTrajMriXB, predTrajXB=predTrajNonMriXB, trajSamplesBXS=trajSamplesNonMriBXS,
+        XsubjData1BSX=YvalidFiltMriClosestToNonMri, YsubjData1BSX=YvalidFiltNonMri, diagData1S=diagValidFilt,
+        XsubjData2BSX=YvalidFiltMriClosestToNonMri, YsubjData2BSX=YvalidLinModelNonMri, diagData2S=diagValidFiltLinModel,
+        XsubjData3BSX=YMriClosestToNonMri, YsubjData3BSX=YNonMri, diagData3S=params['diag'],
+        labels=labelsNonMri,
+        ssdDKT=mseDpm, ssdNoDKT=mseLin, replaceFig=True)
+      fig.savefig('%s/validTrajDtiOverMriPCA.png' % params['outFolder'])
+
+      # plot DTI over MRI space: DKT predictions, predictions of linear model, validation data.
+      fig = dpmObj.plotter.plotTrajInBiomkSpace(dpmObj=dpmObj,
+        xsTrajXB=None, predTrajXB=None, trajSamplesBXS=None,
+        XsubjData1BSX=YvalidFiltMriClosestToNonMri, YsubjData1BSX=YvalidFiltNonMri, diagData1S=diagValidFilt,
+        XsubjData2BSX=YvalidFiltMriClosestToNonMri, YsubjData2BSX=YvalidLinModelNonMri, diagData2S=diagValidFiltLinModel,
+        XsubjData3BSX=YvalidFiltMriClosestToNonMri, YsubjData3BSX=YvalidDktNonMri, diagData3S=diagValidFiltDktModel,
+        labels=labelsNonMri,
+        ssdDKT=None, ssdNoDKT=None, replaceFig=True)
+      fig.savefig('%s/validPredDtiOverMriPCA.png' % params['outFolder'])
+
+      # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajNonMriXB, trajSamplesNonMriBXS,
+      #   XvalidShifNonMriFilt, YvalidFiltNonMri, diagValidFilt,
+      #   XvalidShifNonMriFilt, YvalidLinModelNonMri, diagValidFiltLinModel, labelsNonMri, mseDpm, mseLin,
+      #   replaceFig=False)
+      # fig.savefig('%s/validDtiPCA.png' % params['outFolder'])
+
+  return metrics
 
 
 if __name__ == '__main__':

@@ -31,9 +31,11 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     #   variance = np.var(self.Y_array[b])
     #   self.parameters[b] = [trajParams, variance]
 
+    # print('Y_array', self.Y_array)
+    # print(ads)
+
     self.parameters = [0 for b in range(self.nrBiomk)]
     self.initialiseParams()
-
 
     scaledYarrayB = [self.applyScalingY(self.Y_array[b], b) for b in range(self.nrBiomk)]
     self.min_yB = np.array([np.min(scaledYarrayB[b].reshape(-1)) for b in range(self.nrBiomk)])
@@ -149,7 +151,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   def estimTrajParams(self):
     # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
 
-    nrPerturbMax = 5
+    nrPerturbMax = 15
 
     for b in range(self.nrBiomk):
       objectiveFun = lambda params: self.ssdTrajOneBiomk([params, None], self.X_array[b],
@@ -159,10 +161,13 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
 
       resStruct = scipy.optimize.minimize(objectiveFun, initParams, method='Nelder-Mead',
                                           options={'disp': True, 'maxiter': len(initParams) * 500})
+
+
+
       # keep trying perturbed initial points until fitting is successful, up to a max nr of perturbations
       p = 0
       # perturbParams = copy.deepcopy(initParams)
-      stdPerturb = [0, 1, 1, 0]
+      stdPerturb = [0, 0.3, 10, 0]
       while not resStruct.success and p < nrPerturbMax:
         print('optimisation not worked ... trying perturbation %d' % p)
         perturbParams = [np.random.normal(initParams[i], stdPerturb[i])
@@ -173,6 +178,13 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
         p += 1
 
 
+
+      if not resStruct.success:
+        print(resStruct)
+        print('self.Y_array[b]', self.Y_array[b])
+        print('self.X_array[b]', self.X_array[b])
+
+        print(das)
 
       variance = self.estimVariance(resStruct.x, self.X_array[b], self.Y_array[b])
       # variance = self.varianceCTL

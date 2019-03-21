@@ -40,6 +40,8 @@ class DPMModelGeneric(object):
     self.minScX = self.minX
     self.maxScX = self.maxX
 
+
+
   def updateTimeShifts(self, optimal_params):
     # for l in range(1):
     self.params_time_shift[0,:] = self.params_time_shift[0,:] + optimal_params[0,:]
@@ -146,6 +148,12 @@ class DPMModelGeneric(object):
 
       indFullToMissingArrayB[b] = np.array([i for subIdx in indFullToMissingArrayS for i in subIdx])
 
+    for s in range(len(Z[0])):
+        if np.sum([Z[b][s].shape[0] for b in range(nrBiomk)]) == 0:
+          print('Z[b][s]', [Z[b][s].shape[0] for b in range(nrBiomk)])
+          print('s', s)
+
+
     return Z_array, N_obs_per_sub, indFullToMissingArrayB
 
   def filterLongArray(self, Z_array, N_obs_per_sub, indSubj, visitIndices):
@@ -250,7 +258,7 @@ class DPMModelGeneric(object):
   def applyGivenScalingY(self, y_data, meanY, stdY):
     return (y_data - meanY) / stdY
 
-  def getData(self):
+  def getData(self, flagAllBiomkShouldBePresent = False):
     nrBiomk = len(self.X)
     nrSubj = len(self.X[0])
     XshiftedScaled = [[] for b in range(nrBiomk)]
@@ -265,6 +273,12 @@ class DPMModelGeneric(object):
 
         assert XshiftedScaled[b][s].shape[0] == self.X[b][s].shape[0]
         assert XshiftedScaled[b][s].shape[0] == self.Y[b][s].shape[0]
+
+        if flagAllBiomkShouldBePresent:
+          print([self.X[b2][s] for b2 in range(nrBiomk)])
+          assert self.X[b][s].shape[0] > 0
+          assert self.Y[b][s].shape[0] > 0
+
 
       X_arrayScaled[b] = self.applyScalingX(self.X_array[b])
 

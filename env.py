@@ -27,5 +27,8 @@ PCA_DKT = 11
 DECR = 1
 INCR = 2
 
-
-
+# TADPOLE SuStain Subgroups
+CTL = 1
+SBG1 = 2
+SBG2 = 3
+SBG3 = 4

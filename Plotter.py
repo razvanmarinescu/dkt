@@ -720,7 +720,8 @@ class PlotterGP(ABC):
 
     trajStruct = self.getTrajStructWithTrueParams(gpModel)
 
-    nrPlotsSoFar = self.subplotAllTrajZeroOne(gpModel, trajStruct, nrPlotsSoFar, nrRows, nrCols)
+    nrPlotsSoFar = self.subplotAllTrajZeroOne(gpModel, trajStruct, nrPlotsSoFar,
+      nrRows, nrCols, xlabel='disease progression score', ylabel='dysfunctionality score')
 
     ######### compare biomarker trajectories one by one ##########
 
