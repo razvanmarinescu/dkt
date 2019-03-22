@@ -187,7 +187,9 @@ class JointModel(DisProgBuilder.DPMInterface):
     for u in range(self.nrFuncUnits):
       self.unitModels[u].priors = self.priorsUnitModels[u]
       self.unitModels[u].plotter.plotTrajParams['allTrajOverlap'] = self.params['plotTrajParams']['allTrajOverlap']
-
+      self.unitModels[u].plotter.plotTrajParams['diagLabels'] = self.params['plotTrajParams']['diagLabels']
+      self.unitModels[u].plotter.plotTrajParams['diagColors'] = self.params['plotTrajParams']['diagColors']
+      self.unitModels[u].plotter.plotTrajParams['diagScatterMarkers'] = self.params['plotTrajParams']['diagScatterMarkers']
 
   def makePlots(self, plotFigs, iterNr, picNr):
     if plotFigs:

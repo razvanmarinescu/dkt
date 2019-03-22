@@ -100,11 +100,13 @@ class SigmoidModelWrapper(DisProgBuilder.DPMInterface):
     return trajSamplesBXS
 
   def getIndxSubjToKeep(self, disNr):
+    # listOfLists = [np.where(self.binMaskSubjForEachDisD[disNr])[0] for disNr in disNrs]
+    # return np.sort([l for l2 in listOfLists for l in l2])
     return np.where(self.binMaskSubjForEachDisD[disNr])[0]
 
   def getDataDis(self, disNr):
     XshiftedBS, X_BS, _, _ =  self.model.getData()
-    indCurrDis = self.indSubjForEachDisD[disNr]
+    indCurrDis = self.getIndxSubjToKeep(disNr)
     XshiftedCurrDisBS, XcurrDis_BS = DPMModelGeneric.DPMModelGeneric.filterXYsubjInd(XshiftedBS, X_BS, indCurrDis)
     return XshiftedCurrDisBS, XcurrDis_BS
 
@@ -112,7 +114,7 @@ class SigmoidModelWrapper(DisProgBuilder.DPMInterface):
 
     """
     get sub-shifts for each biomarker (not for functional units or dis units),
-    only for the disease disNr
+    only for the diseases disNr
 
     :param disNr:
     :return:
@@ -138,8 +140,10 @@ class SigmoidModelWrapper(DisProgBuilder.DPMInterface):
       # print('XshiftedAllTimeptsBS', XshiftedAllTimeptsBS[0][s])
       # print('XshiftedCurrDisBS[b][s]', [XshiftedCurrDisBS[b][s] for b in range(self.nrBiomk)])
       # print(dasa)
+      disNrCurrSubj = self.disIdxForEachSubjS[indxSubjToKeep][s]
+      assert disNrCurrSubj == disNr
 
-      ysCurrSubXB = self.predictBiomkSubjGivenXs(XshiftedAllTimeptsBS[0][s], disNr)
+      ysCurrSubXB = self.predictBiomkSubjGivenXs(XshiftedAllTimeptsBS[0][s], disNrCurrSubj)
 
       for b in range(self.nrBiomk):
         ysPredBS[b] += [ysCurrSubXB[:, b]]

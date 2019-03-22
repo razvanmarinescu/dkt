@@ -1080,19 +1080,23 @@ class PlotterGP(ABC):
       listsMin = []
       listsMax = []
 
-      print('YsubjData2BSX[b]', YsubjData2BSX[b])
-      print([ys.shape for ys in YsubjData2BSX[b]])
+
 
       if predTrajXB is not None:
         listsMin = [np.min(predTrajXB[:, b])]
         listsMax = [np.max(predTrajXB[:, b])]
       if YsubjData1BSX is not None:
-        listsMin = [np.min(yS) for yS in YsubjData1BSX[b] if yS.shape[0] > 0]
-        listsMax = [np.max(yS) for yS in YsubjData1BSX[b] if yS.shape[0] > 0]
+        listsMin += [np.min(yS) for yS in YsubjData1BSX[b] if yS.shape[0] > 0]
+        listsMax += [np.max(yS) for yS in YsubjData1BSX[b] if yS.shape[0] > 0]
       if YsubjData2BSX is not None:
         listsMin += [np.min(yS) for yS in YsubjData2BSX[b] if yS.shape[0] > 0]
         listsMax += [np.max(yS) for yS in YsubjData2BSX[b] if yS.shape[0] > 0]
 
+
+      print('b', b)
+      print('predTrajXB[:, b]', predTrajXB[:, b])
+
+      print('listsMin', listsMin)
       min_yB[b] = np.min(listsMin)
       max_yB[b] = np.max(listsMax)
 
@@ -1174,6 +1178,7 @@ class PlotterGP(ABC):
 
       diagCurrSubj = diag[sub]
       currLabel = None
+      # print('self.plotTrajParams[diagLabels]', self.plotTrajParams['diagLabels'])
       if diagCounters[diagCurrSubj] == 0:
         currLabel = labelExtra + self.plotTrajParams['diagLabels'][diagCurrSubj]
 
