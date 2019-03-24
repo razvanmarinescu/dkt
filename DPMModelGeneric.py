@@ -41,7 +41,6 @@ class DPMModelGeneric(object):
     self.maxScX = self.maxX
 
 
-
   def updateTimeShifts(self, optimal_params):
     # for l in range(1):
     self.params_time_shift[0,:] = self.params_time_shift[0,:] + optimal_params[0,:]

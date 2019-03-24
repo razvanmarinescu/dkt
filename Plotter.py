@@ -150,10 +150,10 @@ class PlotterJDM:
     # nrCols = self.plotTrajParams['nrCols']
 
     # nrRows, nrCols = auxFunc.findOptimalRowsCols(1+nrFuncUnits*2+len(self.plotTrajParams['labels']))
-    print(nrDis + nrFuncUnits * 2 + len(self.plotTrajParams['labels']))
-    nrRows, nrCols = auxFunc.findOptimalRowsCols(nrDis + nrFuncUnits * 2 + len(self.plotTrajParams['labels']))
+    print(nrDis + nrFuncUnits * nrDis + len(self.plotTrajParams['labels']))
+    nrRows, nrCols = auxFunc.findOptimalRowsCols(nrDis + nrFuncUnits * nrDis + len(self.plotTrajParams['labels']))
 
-    if (nrDis*2 + nrFuncUnits*2) > nrRows * nrCols:
+    if (nrDis + nrFuncUnits*nrDis + len(self.plotTrajParams['labels'])) > nrRows * nrCols:
       print('nrRows', nrRows)
       print('nrCols', nrCols)
       print('nrDis', nrDis)
@@ -208,7 +208,8 @@ class PlotterJDM:
     # nrRows = self.plotTrajParams['nrRows']
     # nrCols = self.plotTrajParams['nrCols']
 
-    nrRows, nrCols = auxFunc.findOptimalRowsCols(nrDis * 2 + nrFuncUnits * 2 + 5)
+    nrRows, nrCols = auxFunc.findOptimalRowsCols(nrDis * 2 + nrFuncUnits * nrDis + 5)
+    # nrRows, nrCols = auxFunc.findOptimalRowsCols(nrDis + nrFuncUnits * nrDis + len(self.plotTrajParams['labels']))
 
     if (nrDis*2 + nrFuncUnits*2) > nrRows * nrCols:
       print('nrRows', nrRows)
@@ -1092,13 +1093,16 @@ class PlotterGP(ABC):
         listsMin += [np.min(yS) for yS in YsubjData2BSX[b] if yS.shape[0] > 0]
         listsMax += [np.max(yS) for yS in YsubjData2BSX[b] if yS.shape[0] > 0]
 
+      if len(listsMin) == 0:
+        min_yB[b] = 0
+        max_yB[b] = 1
+      else:
+        # print('b', b)
+        # print('predTrajXB[:, b]', predTrajXB[:, b])
 
-      print('b', b)
-      print('predTrajXB[:, b]', predTrajXB[:, b])
-
-      print('listsMin', listsMin)
-      min_yB[b] = np.min(listsMin)
-      max_yB[b] = np.max(listsMax)
+        # print('listsMin', listsMin)
+        min_yB[b] = np.min(listsMin)
+        max_yB[b] = np.max(listsMax)
 
     deltaB = (max_yB - min_yB)/5
     legendEntries = 3
@@ -1448,6 +1452,8 @@ class PlotterGP(ABC):
     trajStruct = dict(newXTrajScaledZeroOne=newXTrajScaledZeroOne, trueXsScaledZeroOne=trueXsScaledZeroOne,
                       predTrajScaledXB=predTrajScaledXB, trueTrajScaledXB=trueTrajScaledXB,
                       yMinAll=yMinAll, yMaxAll=yMaxAll, min_yB=min_yB, max_yB=max_yB)
+
+
 
     # print(trajStruct)
     # print(predTrajXB, trueTrajCopyXB, self.plotTrajParams['yNormMode'], self.plotTrajParams['diag'], nrBiomk, subjShiftsEstimS)

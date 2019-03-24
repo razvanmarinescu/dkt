@@ -107,7 +107,8 @@ class SigmoidModelWrapper(DisProgBuilder.DPMInterface):
   def getDataDis(self, disNr):
     XshiftedBS, X_BS, _, _ =  self.model.getData()
     indCurrDis = self.getIndxSubjToKeep(disNr)
-    XshiftedCurrDisBS, XcurrDis_BS = DPMModelGeneric.DPMModelGeneric.filterXYsubjInd(XshiftedBS, X_BS, indCurrDis)
+    XshiftedCurrDisBS, XcurrDis_BS = DPMModelGeneric.DPMModelGeneric.filterXYsubjInd(
+      XshiftedBS, X_BS, indCurrDis)
     return XshiftedCurrDisBS, XcurrDis_BS
 
   def getDataDisOverBiomk(self, disNr):
@@ -137,10 +138,12 @@ class SigmoidModelWrapper(DisProgBuilder.DPMInterface):
       for b in range(self.nrBiomk):
         XshiftedAllTimeptsBS[b] += [np.sort(np.unique(allXsCurrSubj))]
 
-      # print('XshiftedAllTimeptsBS', XshiftedAllTimeptsBS[0][s])
-      # print('XshiftedCurrDisBS[b][s]', [XshiftedCurrDisBS[b][s] for b in range(self.nrBiomk)])
-      # print(dasa)
-      disNrCurrSubj = self.disIdxForEachSubjS[indxSubjToKeep][s]
+
+      disNrCurrSubj = self.disIdxForEachSubjS[indxSubjToKeep[s]]
+      print('self.disIdxForEachSubjS', self.disIdxForEachSubjS)
+      print('disNrCurrSubj', disNrCurrSubj)
+      print('disNr', disNr)
+      print('self.binMaskSubjForEachDisD[disNr][indxSubjToKeep[s]]',self.binMaskSubjForEachDisD[disNr][indxSubjToKeep[s]])
       assert disNrCurrSubj == disNr
 
       ysCurrSubXB = self.predictBiomkSubjGivenXs(XshiftedAllTimeptsBS[0][s], disNrCurrSubj)

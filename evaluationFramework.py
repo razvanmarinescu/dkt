@@ -67,7 +67,7 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
     modelNames += [modelName]
 
   if np.any(modelToRun == 0) or np.any(modelToRun == 17):
-    # Sigmoid Model
+    # Latent Space - Sigmoid Model (Jedynak, 2012, Neuroimage)
     dpmBuilder = SigmoidWrapper.SigmoidModelBuilder(params['plotTrajParams'])
     modelName = 'Sig'
     expNameCurrModel = '%s_%s' % (expName, modelName)

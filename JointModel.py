@@ -57,6 +57,12 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.binMaskSubjForEachDisD = [np.in1d(self.params['plotTrajParams']['diag'],
       self.params['diagsSetInDis'][disNr]) for disNr in range(self.nrDis)]
 
+    for s in range(self.binMaskSubjForEachDisD[0].shape[0]):
+      disMaskForCurrSubj = [self.binMaskSubjForEachDisD[disNr][s] for disNr in range(self.nrDis)]
+      print('disMaskForCurrSubj',disMaskForCurrSubj)
+      assert np.sum(disMaskForCurrSubj) == 1
+      # print(adsa)
+
     self.plotter = Plotter.PlotterJDM(self.params['plotTrajParams'])
 
     # integer arrays
@@ -111,6 +117,12 @@ class JointModel(DisProgBuilder.DPMInterface):
         i = 10
         nrIt = 11
         self.loadCheckpoint(i-1, 5)
+
+      # estimate subject latent variables
+      self.estimSubjShifts(self.unitModels, self.disModels)
+      self.makePlots(plotFigs, i, 0)
+      self.saveCheckpoint(i, 0)
+      # self.loadCheckpoint(i, 0)
 
       while i < nrIt:
 
@@ -583,7 +595,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     for u in range(self.nrFuncUnits):
       print('--------------updating traj for func unit %d/%d--------------' % (u+1, self.nrFuncUnits))
       # now update the X-values in each unitModel to the updated dysfunc scores
-      # not that the X-vals are the same for every biomk within func units,
+      # note that the X-vals are the same for every biomk within func units,
       # but initial missing values within each biomk are kept
       if iterNr == 0:
         self.unitModels[u].updateXvals(predScoresCurrUSX[u], XdisSX)
@@ -635,6 +647,8 @@ class JointModel(DisProgBuilder.DPMInterface):
 
         resStruct = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
           options={'disp': True, 'maxiter':1000})
+
+
 
         print('resStruct', resStruct)
 

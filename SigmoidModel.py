@@ -49,6 +49,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     print('avgStdX', avgStdX)
     for b in range(self.nrBiomk):
 
+      print('self.Y_array[b]', self.Y_array[b])
       minY = np.min(self.Y_array[b])
       maxY = np.max(self.Y_array[b])
       transitionTime = 20 * np.std(self.X_array[b])
@@ -151,7 +152,7 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   def estimTrajParams(self):
     # Method for optimization of GP parameters (weights, length scale, amplitude and noise term)
 
-    nrPerturbMax = 15
+    nrPerturbMax = 5
 
     for b in range(self.nrBiomk):
       objectiveFun = lambda params: self.ssdTrajOneBiomk([params, None], self.X_array[b],
@@ -159,43 +160,50 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
       initParams, initVariance = self.unpack_parameters(self.parameters[b])
       print('initParams', initParams)
 
-      resStruct = scipy.optimize.minimize(objectiveFun, initParams, method='Nelder-Mead',
+      resStructMin = scipy.optimize.minimize(objectiveFun, initParams, method='Nelder-Mead',
                                           options={'disp': True, 'maxiter': len(initParams) * 500})
 
 
 
       # keep trying perturbed initial points until fitting is successful, up to a max nr of perturbations
-      p = 0
+      # p = 0
       # perturbParams = copy.deepcopy(initParams)
-      stdPerturb = [0, 0.3, 10, 0]
-      while not resStruct.success and p < nrPerturbMax:
-        print('optimisation not worked ... trying perturbation %d' % p)
+      stdPerturb = [0, 0.3, 10, 0.3]
+      successList = np.zeros(nrPerturbMax, bool)
+      # resStructMin = resStruct
+      for p in range(nrPerturbMax):
+        print('trying perturbation %d' % p)
         perturbParams = [np.random.normal(initParams[i], stdPerturb[i])
           for i in range(len(initParams))]
         resStruct = scipy.optimize.minimize(objectiveFun, perturbParams, method='Nelder-Mead',
                                               options={'disp': True, 'maxiter':len(initParams)*500})
 
-        p += 1
+        # p += 1
+        successList += [resStruct.success]
+        if resStruct.success and resStruct.fun < resStructMin.fun:
+          resStructMin = resStruct
 
+      # print(resStruct)
+      # print(resStructMin)
+      # print(adsa)
 
-
-      if not resStruct.success:
-        print(resStruct)
+      if not resStructMin.success:
+        print(resStructMin)
         print('self.Y_array[b]', self.Y_array[b])
         print('self.X_array[b]', self.X_array[b])
 
         print(das)
 
-      variance = self.estimVariance(resStruct.x, self.X_array[b], self.Y_array[b])
+      variance = self.estimVariance(resStructMin.x, self.X_array[b], self.Y_array[b])
       # variance = self.varianceCTL
 
-      print('resStruct', resStruct)
+      # print('resStruct', resStruct)
 
       # if p >= 1:
       #   import pdb
       #   pdb.set_trace()
 
-      self.parameters[b] = [resStruct.x, variance]
+      self.parameters[b] = [resStructMin.x, variance]
 
   def shiftObjFunc(self, params, time_shift_one_sub, sub):
     # Input: X, Y and a biomarker's parameters, current time-shift estimates
