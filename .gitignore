@@ -16,3 +16,8 @@ resfiles/
 *.pyc
 *__pycache__*
 GP_model_repo/
+paper/llncs/
+paper/paper.bbl
+paper/paper.blg
+valid_*
+
