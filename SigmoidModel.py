@@ -6,6 +6,7 @@ import DPMModelGeneric
 import scipy.stats
 
 
+
 class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
   plt.interactive(False)
 
@@ -319,10 +320,12 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
       if Plot:
         fig = self.plotter.plotTraj(self)
         fig.savefig('%s/allTraj%d1_%s.png' % (self.outFolder, i + 1, self.expName))
-        fig2 = self.plotter.plotCompWithTrueParams(self)
-        fig2.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i + 1, self.expName))
+        if self.plotter.plotTrajParams['isSynth']:
+          fig2 = self.plotter.plotCompWithTrueParams(self)
+          fig2.savefig('%s/compTrueParams%d1_%s.png' % (self.outFolder, i + 1, self.expName))
 
   def predictBiomkWithParams(self, newX, params):
+
 
     deltaX = 5 * (self.maxScX - self.minScX)
     if not (self.minScX - deltaX <= np.min(newX) <= self.maxScX + deltaX):
@@ -334,6 +337,8 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     xsScaled = self.applyScalingXForward(newX.reshape(-1), biomk=0)  # arbitrary space ->[0,1]
 
     predictedBiomksXB = np.zeros((xsScaled.shape[0], self.nrBiomk))
+    print('self.nrBiomk',self.nrBiomk)
+    print(dasa)
     for b in range(self.nrBiomk):
       trajParams, variance = self.unpack_parameters(params[b])
       predictedBiomksXB[:, b] = self.sigFunc(xsScaled, trajParams)

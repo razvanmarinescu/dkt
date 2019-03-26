@@ -185,8 +185,8 @@ def main():
   params['nrGlobIterDis'] = 10
   params['iterParamsDis'] = 50
 
-  # # params['unitModelObj'] = MarcoModel.GP_progression_model
-  # params['unitModelObj'] = SigmoidModel.SigmoidModel
+  # # params['unitModelObjList'] = MarcoModel.GP_progression_model
+  # params['unitModelObjList'] = SigmoidModel.SigmoidModel
   # params['disModelObj'] = SigmoidModel.SigmoidModel
 
   # by default we have no priors
@@ -212,10 +212,10 @@ def main():
   bPriorShape, bPriorRate = getGammShapeRateFromTranTime(
     transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax)
 
-  params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5,
+  params['priorsDisModels'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5,
     shapeB=bPriorShape, rateB=bPriorRate, timeShiftStd=15)
     for d in range(nrDis)]
-  params['priorsUnitModelsSigmoid'] = [None for d in range(nrDis)]
+  params['priorsUnitModels'] = [None for d in range(nrDis)]
 
 
   ##### disease agnostic parameters ###########

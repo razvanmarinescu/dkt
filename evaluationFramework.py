@@ -23,6 +23,7 @@ import Plotter
 import MarcoModel
 import SigmoidModel
 import SigmoidWrapper
+import LinearModel
 
 from importlib.machinery import SourceFileLoader
 from sklearn import linear_model
@@ -33,11 +34,12 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
 
   if np.any(modelToRun == 0) or np.any(modelToRun == 14):
     # JMD - Joint Model of Diseases
-    unitModelObj = SigmoidModel.SigmoidModel
+    unitModelObjList = [SigmoidModel.SigmoidModel for b in range(params['nrFuncUnitsImgOnly'])] + \
+                       [LinearModel.LinearModel for b in range(params['nrExtraBiomk'])]
     disModelObj = SigmoidModel.SigmoidModel
-    dpmBuilder = JointModel.JMDBuilder(unitModelObj,
-      disModelObj, params['priorsUnitModelsSigmoid'],
-      params['priorsDisModelsSigmoid'])
+    dpmBuilder = JointModel.JMDBuilder(unitModelObjList,
+      disModelObj, params['priorsUnitModels'],
+      params['priorsDisModels'])
     modelName = 'JMD'
     expNameCurrModel = '%s_%s' % (expName, modelName)
     params['currModel'] = 14
@@ -55,11 +57,12 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
 
   if np.any(modelToRun == 16):
     # Joint Model of Diseases - One Pass
-    unitModelObj = MarcoModel.MarcoModel
+    unitModelObjList = [SigmoidModel.SigmoidModel for b in range(params['nrFuncUnitsImgOnly'])] + \
+                       [LinearModel.LinearModel for b in range(params['nrExtraBiomk'])]
     disModelObj = SigmoidModel.SigmoidModel
-    dpmBuilder = JointModelOnePass.JMDBuilderOnePass(unitModelObj,
+    dpmBuilder = JointModelOnePass.JMDBuilderOnePass(unitModelObjList,
       disModelObj, params['priorsUnitModelsMarcoModel'],
-      params['priorsDisModelsSigmoid'])
+      params['priorsDisModels'])
     modelName = 'JDMOnePass'
     expNameCurrModel = '%s_%s' % (expName, modelName)
     params['currModel'] = 16

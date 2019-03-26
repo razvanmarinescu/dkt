@@ -344,11 +344,11 @@ def main():
   # print('bPriorRate', bPriorRate)
   # print(adsas)
 
-  params['priorsDisModelsSigmoid'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
+  params['priorsDisModels'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
     shapeB=2, rateB=2, timeShiftStd=20000) for d in range(nrDis)]
-  # params['priorsUnitModelsSigmoid'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
+  # params['priorsUnitModels'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
   #  shapeB=2, rateB=2, timeShiftStd=20000) for d in range(nrDis)]
-  params['priorsUnitModelsSigmoid'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5,
+  params['priorsUnitModels'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5,
     shapeB=bPriorShape, rateB=bPriorRate, timeShiftStd=20000) for u in range(nrFuncUnits)]
 
   bPriorShapeNoDKT, bPriorRateNoDKT = getGammShapeRateFromTranTime(

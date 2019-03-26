@@ -63,9 +63,10 @@ class DPMModelGeneric(object):
     for b in range(self.nrBiomk):
       self.Y_array[b] = self.predictBiomk(self.X_array[b])[b].reshape(-1, 1)
       for s in range(self.nrSubj):
-        dysScoresXU = self.predictBiomk(XshiftedBSX[b][s])
-        ysNewBSX[b][s] = dysScoresXU[:, b]
-        assert ysNewBSX[b][s].shape[0] == self.Y[b][s].shape[0]
+        if XshiftedBSX[b][s].shape[0] > 0:
+          dysScoresXU = self.predictBiomk(XshiftedBSX[b][s])
+          ysNewBSX[b][s] = dysScoresXU[:, b]
+          assert ysNewBSX[b][s].shape[0] == self.Y[b][s].shape[0]
 
     self.Y = ysNewBSX
 

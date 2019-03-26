@@ -19,19 +19,19 @@ import DisProgBuilder
 class JMDBuilderOnePass(DisProgBuilder.DPMBuilder):
   # builds a Joint Disease model
 
-  def __init__(self, unitModelObj, disModelObj, priorsUnitModels, priorsDisModels):
-    self.unitModelObj = unitModelObj
+  def __init__(self, unitModelObjList, disModelObj, priorsUnitModels, priorsDisModels):
+    self.unitModelObjList = unitModelObjList
     self.disModelObj = disModelObj
     self.priorsUnitModels = priorsUnitModels
     self.priorsDisModels = priorsDisModels
 
   def generate(self, dataIndices, expName, params):
     return JDMOnePass(dataIndices, expName, params,
-      self.unitModelObj, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
+      self.unitModelObjList, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
 
 class JDMOnePass(DisProgBuilder.DPMInterface):
 
-  def __init__(self, dataIndices, expName, params, unitModelObj, disModelObj, priorsUnitModels, priorsDisModels):
+  def __init__(self, dataIndices, expName, params, unitModelObjList, disModelObj, priorsUnitModels, priorsDisModels):
     self.dataIndices = dataIndices
     self.expName = expName
     self.params = params
@@ -51,7 +51,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
     self.binMaskSubjForEachDisD = params['binMaskSubjForEachDisD']
 
-    self.unitModelObj = unitModelObj
+    self.unitModelObjList = unitModelObjList
     self.disModelObj = disModelObj
 
     self.priorsUnitModels = priorsUnitModels
@@ -66,7 +66,6 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
     if runPart[0] == 'R':
       nrGlobIterUnit = self.params['nrGlobIterUnit']
-      iterParamsUnit = self.params['iterParamsUnit']
 
       Xfilt, Yfilt, visitIndicesFilt = filterDataListFormat(self.params, self.dataIndices)
 
@@ -82,12 +81,10 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         visitIndicesCurrUnit = [visitIndicesFilt[b] for b in self.biomkInFuncUnit[u]]
         outFolderCurrUnit = '%s/unit%d' % (self.outFolder, u)
         os.system('mkdir -p %s' % outFolderCurrUnit)
-        self.unitModels[u] = self.unitModelObj(XfiltCurrUnit, YfiltCurrUnit, visitIndicesCurrUnit, outFolderCurrUnit,
+        self.unitModels[u] = self.unitModelObjList[u](XfiltCurrUnit, YfiltCurrUnit, visitIndicesCurrUnit, outFolderCurrUnit,
           plotterObjCurrFuncUnit, plotTrajParamsFuncUnit['labels'], self.params)
         self.unitModels[u].priors = self.priorsUnitModels[u]
 
-        # self.unitModels[u].Set_penalty(self.params['penaltyUnits'])
-        # self.unitModels[u].Optimize(nrGlobIterUnit, iterParamsUnit, Plot=True)
         self.unitModels[u].Optimize(nrGlobIterUnit, Plot=True)
 
       pickle.dump(self.unitModels, open(filePath, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
@@ -112,7 +109,6 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
     if runPart[1] == 'R':
       nrGlobIterDis = self.params['nrGlobIterDis']
-      iterParamsDis = self.params['iterParamsDis']
       dysfuncScoresU = [0 for x in range(self.nrFuncUnits)]
       xDysfunSubjU = [0 for x in range(self.nrFuncUnits)]
 
@@ -154,14 +150,15 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
       informPriorTrajDisModels = [True, False] # make informed prior only for the first disease
       for disNr in range(nrDis):
-        nrBiomkDisModel = len(xDysfunSubjU) + len(self.params['otherBiomkPerDisease'][disNr])
+        # nrBiomkDisModel = len(xDysfunSubjU) + len(self.params['otherBiomkPerDisease'][disNr])
+        nrBiomkDisModel = len(xDysfunSubjU)
 
         xDysfunSubjUCopy = copy.deepcopy(xDysfunSubjU)
         dysfuncScoresUCopy = copy.deepcopy(dysfuncScoresU)
 
-        if 'otherBiomkPerDisease' in self.params.keys():
-          xDysfunSubjUCopy += [self.params['X'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
-          dysfuncScoresUCopy += [self.params['Y'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
+        # if 'otherBiomkPerDisease' in self.params.keys():
+        #   xDysfunSubjUCopy += [self.params['X'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
+        #   dysfuncScoresUCopy += [self.params['Y'][i] for i in self.params['otherBiomkPerDisease'][disNr]]
 
 
         # first filter the data .. keep only subj in current disease
@@ -180,7 +177,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
             visitIndicesCurrDisUSX[b][s] = np.array(range(xDysfunSubjCurrDisUSX[b][s].shape[0]))
 
 
-        for b in range(nrBiomkDisModel):
+        for b in range(self.nrFuncUnits - self.params['nrExtraBiomk']):
           for s in range(len(xDysfunSubjCurrDisUSX[b])):
             if xDysfunSubjCurrDisUSX[b][s].shape[0] == 0:
               print(xDysfunSubjCurrDisUSX[0][s])
@@ -191,8 +188,8 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
               print(s)
               print([xDysfunSubjCurrDisUSX[b2][s] for b2 in range(nrBiomkDisModel)])
 
-              import pdb
-              pdb.set_trace()
+              # import pdb
+              # pdb.set_trace()
               print(das)
 
         plotTrajParamsDis = JDMOnePass.createPlotTrajParamsDis(self.params, disNr)
@@ -203,9 +200,9 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         self.disModels[disNr] = self.disModelObj(xDysfunSubjCurrDisUSX, dysfuncScoresCurrDisUSX, visitIndicesCurrDisUSX,
           outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'], self.params)
         self.disModels[disNr].priors = self.priorsDisModels[disNr]
-        self.disModels[disNr].Optimize(nrGlobIterDis, Plot=False)
+        self.disModels[disNr].Optimize(nrGlobIterDis, Plot=True)
 
-        XshiftedScaledDBS, XdisDBSX, _, _ = self.disModels[disNr].getData(flagAllBiomkShouldBePresent=True)
+        XshiftedScaledDBS, XdisDBSX, _, _ = self.disModels[disNr].getData(flagAllBiomkShouldBePresent=False)
 
       pickle.dump(self.disModels, open(disModelsFile, 'wb'), protocol = pickle.HIGHEST_PROTOCOL)
 
@@ -312,6 +309,9 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
     plotTrajParamsFuncUnit['labels'] = labels
     plotTrajParamsFuncUnit['colorsTraj'] =  [params['plotTrajParams']['colorsTrajBiomkB'][b]
                                              for b in params['biomkInFuncUnit'][unitNr]]
+
+    print(params['unitNames'])
+    print(unitNr)
     plotTrajParamsFuncUnit['title'] = params['unitNames'][unitNr]
 
     return plotTrajParamsFuncUnit
@@ -327,8 +327,9 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
       plotTrajParamsDis['trueParams'] = params['trueParamsDis'][disNr]
 
 
-    plotTrajParamsDis['labels'] = params['unitNames'] + [plotTrajParamsDis['labels'][i]
-      for i in params['otherBiomkPerDisease'][disNr]]
+    # plotTrajParamsDis['labels'] = params['unitNames'] + [plotTrajParamsDis['labels'][i]
+    #   for i in params['otherBiomkPerDisease'][disNr]]
+    plotTrajParamsDis['labels'] = params['unitNames']
     plotTrajParamsDis['colorsTraj'] =  plotTrajParamsDis['colorsTrajUnitsU']
     # if False, plot estimated traj. in separate plot from true traj. If True, use only one plot
     plotTrajParamsDis['allTrajOverlap'] = False

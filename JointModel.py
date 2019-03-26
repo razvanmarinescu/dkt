@@ -20,19 +20,19 @@ import DPMModelGeneric
 class JMDBuilder(DisProgBuilder.DPMBuilder):
   # builds a Joint Disease model
 
-  def __init__(self, unitModelObj, disModelObj, priorsUnitModels, priorsDisModels):
-    self.unitModelObj = unitModelObj
+  def __init__(self, unitModelObjList, disModelObj, priorsUnitModels, priorsDisModels):
+    self.unitModelObjList = unitModelObjList
     self.disModelObj = disModelObj
     self.priorsUnitModels = priorsUnitModels
     self.priorsDisModels = priorsDisModels
 
   def generate(self, dataIndices, expName, params):
     return JointModel(dataIndices, expName, params,
-      self.unitModelObj, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
+      self.unitModelObjList, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
 
 class JointModel(DisProgBuilder.DPMInterface):
 
-  def __init__(self, dataIndices, expName, params, unitModelObj, disModelObj, priorsUnitModels, priorsDisModels):
+  def __init__(self, dataIndices, expName, params, unitModelObjList, disModelObj, priorsUnitModels, priorsDisModels):
     self.dataIndices = dataIndices
     self.expName = expName
     self.params = params
@@ -91,7 +91,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     self.priorsUnitModels = priorsUnitModels
     self.priorsDisModels = priorsDisModels
 
-    self.unitModelObj = unitModelObj
+    self.unitModelObjList = unitModelObjList
     self.disModelObj = disModelObj
 
   def runStd(self, runPart):
@@ -237,7 +237,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     paramsCopy['outFolder'] = '%s/init' % paramsCopy['outFolder']
     paramsCopy['penaltyUnits'] = 1
     onePassModel = JointModelOnePass.JDMOnePass(self.dataIndices, self.expName, paramsCopy,
-      self.unitModelObj, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
+      self.unitModelObjList, self.disModelObj, self.priorsUnitModels, self.priorsDisModels)
 
     onePassModel.run(runPart = runPartOnePass)
 

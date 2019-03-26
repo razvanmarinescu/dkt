@@ -376,7 +376,8 @@ def validateDRCBiomk(dpmObj, params):
 
   # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
   #   XshiftedDisModelBS, Yfilt, diagSubjCurrDis,
-  #   XvalidShifFilt, YvalidFilt, diagValidFilt, replaceFig=True)
+  #   XvalidShifFilt, YvalidFilt, diagValidFilt,
+  #   XsubjData3BSX=None, YsubjData3BSX=None, diagData3S=None, labels=self.plotTrajParams['labels'], replaceFig=True)
   # fig.savefig('%s/validPCA.png' % params['outFolder'])
 
 
@@ -640,7 +641,9 @@ def validateDRCBiomk(dpmObj, params):
 
     # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajDtiXB, trajSamplesDtiBXS,
     #   XvalidShifDtiFilt, YvalidFiltDti, diagValidFilt,
-    #   XvalidShifDtiFilt, YvalidLinModelDti, diagValidFiltLinModel, labelsDti, mseDpm, mseLin,
+    #   XvalidShifDtiFilt, YvalidLinModelDti, diagValidFiltLinModel,
+    #   XsubjData3BSX=None, YsubjData3BSX=None, diagData3S=None,
+    #   labelsDti, mseDpm, mseLin,
     #   replaceFig=False)
     # fig.savefig('%s/validDtiPCA.png' % params['outFolder'])
 

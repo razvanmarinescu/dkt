@@ -321,7 +321,6 @@ class PlotterJDM:
     return fig
 
   def plotAllBiomkDisSpace(self, dpmObj, params, disNr):
-    # first predict subject DTI measures
 
     diag = params['diag']
     indxSubjToKeep = np.where(dpmObj.binMaskSubjForEachDisD[disNr])[0]
@@ -404,8 +403,10 @@ class PlotterJDM:
       ylabel='Biomarker Value')
     else:
       fig = gpPlotter.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
-         XshiftedDisModelBS, Yfilt, diagSubjCurrDis, XsubjValidBSX=None, YsubjValidBSX=None,
-         diagValidS=None,  labels=self.plotTrajParams['labels'], ssdDKT=None, ssdNoDKT=None,
+         XsubjData1BSX=XshiftedDisModelBS, YsubjData1BSX=Yfilt, diagData1S=diagSubjCurrDis,
+         XsubjData2BSX=None, YsubjData2BSX=None, diagData2S=None,
+         XsubjData3BSX=None, YsubjData3BSX=None, diagData3S=None,
+         labels=self.plotTrajParams['labels'], ssdDKT=None, ssdNoDKT=None,
          replaceFig=True)
 
     pl.pause(1)
@@ -649,9 +650,10 @@ class PlotterGP(ABC):
       # rSq = sklearn.metrics.r2_score(Y_arrayPredXB[:,b], gpModel.Y_array[b])
       maeTraj = np.mean(np.abs(Y_arrayPredXB[:,b] - gpModel.Y_array[b]))
       # ax.text(0.05, 0.9, '$R^2$ = %.2f' % rSq)
-      ax.text(0.05, 1, 'MAE = %.2f' % maeTraj)
 
       ax.set_ylim([min_yB[b]-deltaB[b], max_yB[b]+deltaB[b]])
+
+      ax.text(0.05, max_yB[b], 'MAE = %.2f' % maeTraj)
 
     if legendExtraPlot:
       ax = pl.subplot(nrRows, nrCols, nrBiomk+1)
@@ -684,9 +686,11 @@ class PlotterGP(ABC):
       ax.legend(ncol=1, loc='upper left')
 
 
-    fig.text(0.5, 0.04, 'Dysfunctionality Score', ha='center')
-    fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
+    pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+    pl.subplots_adjust(left=0.04, bottom=0.08, top=0.9)
 
+    fig.text(0.5, 0.015, 'Dysfunctionality Score', ha='center')
+    fig.text(0.005, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
 
     if replaceFig:
       fig.show()
@@ -793,23 +797,9 @@ class PlotterGP(ABC):
     return fig
 
   def plotTrajInDisSpace(self, xsTrajX, predTrajXB, trajSamplesBXS,
-      XsubjBSX, YsubjBSX, diagS, XsubjValidBSX, YsubjValidBSX, diagValidS, labels,
-      ssdDKT=None, ssdNoDKT=None, replaceFig=True):
-    """
-    plot biomarker traj and subject data in disease space. function doesn't do any scaling of xs or ys
-
-    :param xsTrajX:
-    :param predTrajXB:
-    :param trajSamplesBXS:
-    :param XsubjBSX:
-    :param YsubjBSX:
-    :param diagS:
-    :param XsubjValidBSX:
-    :param YsubjValidBSX:
-    :param diagValidS:
-    :param replaceFig:
-    :return:
-    """
+     XsubjData1BSX, YsubjData1BSX, diagData1S, XsubjData2BSX, YsubjData2BSX, diagData2S,
+     XsubjData3BSX, YsubjData3BSX, diagData3S, labels, ssdDKT=None, ssdNoDKT=None,
+      replaceFig=True):
 
     font = {'family': 'normal',
       'size': 13}
@@ -823,33 +813,42 @@ class PlotterGP(ABC):
     pl.clf()
     # fig.show()
 
-    diagNrs = np.unique(diagS)
-    nrDiags = diagNrs.shape[0]
-
-    nrBiomk = len(XsubjBSX)
+    nrBiomk = len(XsubjData1BSX)
     # nrBiomk = 18
     nrRows, nrCols = auxFunc.findOptimalRowsCols(nrBiomk)
 
     nrSamples = trajSamplesBXS.shape[2]
-
     min_yB = np.zeros(nrBiomk)
     max_yB = np.zeros(nrBiomk)
-    for b in range(nrBiomk):
-      # print([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0])
-      # print([np.min(predTrajXB[:,b])])
-      # print([np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.min(predTrajXB[:,b])])
-      listsMin = [np.min(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.min(predTrajXB[:,b])]
-      listsMax = [np.max(yS) for yS in YsubjBSX[b] if len(yS) > 0] + [np.max(predTrajXB[:,b])]
-      if YsubjValidBSX is not None:
-        listsMin += [np.min(yS) for yS in YsubjValidBSX[b] if len(yS) > 0]
-        listsMax += [np.max(yS) for yS in YsubjValidBSX[b] if len(yS) > 0]
-
-      min_yB[b] = np.min(listsMin)
-      max_yB[b] = np.max(listsMax)
-
-    deltaB = (max_yB - min_yB)/5
+    legendEntries = 0
 
     for b in range(nrBiomk):
+
+      listsMin = []
+      listsMax = []
+      if predTrajXB is not None:
+        listsMin = [np.min(predTrajXB[:, b])]
+        listsMax = [np.max(predTrajXB[:, b])]
+      if YsubjData1BSX is not None:
+        listsMin += [np.min(yS) for yS in YsubjData1BSX[b] if yS.shape[0] > 0]
+        listsMax += [np.max(yS) for yS in YsubjData1BSX[b] if yS.shape[0] > 0]
+      if YsubjData2BSX is not None:
+        listsMin += [np.min(yS) for yS in YsubjData2BSX[b] if yS.shape[0] > 0]
+        listsMax += [np.max(yS) for yS in YsubjData2BSX[b] if yS.shape[0] > 0]
+
+      if len(listsMin) == 0:
+        min_yB[b] = 0
+        max_yB[b] = 1
+      else:
+        # print('b', b)
+        # print('predTrajXB[:, b]', predTrajXB[:, b])
+
+        # print('listsMin', listsMin)
+        min_yB[b] = np.min(listsMin)
+        max_yB[b] = np.max(listsMax)
+
+      deltaB = (max_yB - min_yB) / 5
+
       ax = pl.subplot(nrRows, nrCols, b + 1)
       pl.title(labels[b])
       # print('--------------b', b)
@@ -858,10 +857,23 @@ class PlotterGP(ABC):
         ax.plot(xsTrajX, trajSamplesBXS[b,:,i], lw = 0.05,
           color = 'red', alpha=1)
 
-      self.plotSubjData(ax, XsubjBSX[b], YsubjBSX[b], diagS, labelExtra = '')
+      # self.plotSubjData(ax, XsubjBSX[b], YsubjBSX[b], diagS, labelExtra = '')
+      # # print('-------------- validation data')
+      # if XsubjValidBSX is not None:
+      #   self.plotSubjData(ax, XsubjValidBSX[b], YsubjValidBSX[b], diagValidS, labelExtra = '')
+
+      if XsubjData1BSX is not None:
+        self.plotSubjData(ax, XsubjData1BSX[b], YsubjData1BSX[b], diagData1S, labelExtra ='')
+        legendEntries += np.unique(diagData1S).shape[0]
+
       # print('-------------- validation data')
-      if XsubjValidBSX is not None:
-        self.plotSubjData(ax, XsubjValidBSX[b], YsubjValidBSX[b], diagValidS, labelExtra = '')
+      if XsubjData2BSX is not None:
+        self.plotSubjData(ax, XsubjData2BSX[b], YsubjData2BSX[b], diagData2S, labelExtra ='')
+        legendEntries += np.unique(diagData2S).shape[0]
+
+      if XsubjData3BSX is not None:
+        self.plotSubjData(ax, XsubjData3BSX[b], YsubjData3BSX[b], diagData3S, labelExtra ='')
+        legendEntries += np.unique(diagData3S).shape[0]
 
       ax.plot(xsTrajX,predTrajXB[:,b],
         lw=2, color='black', label='estim. traj.')
@@ -883,17 +895,19 @@ class PlotterGP(ABC):
     # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
 
-    # xLabel = 'Disease Progression (β, normalised)'
-    xLabel = 'Disease Progression (months)'
+    pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+    pl.subplots_adjust(left=0.04, bottom=0.08, top=0.9)
 
-    fig.text(0.5, 0.04, xLabel, ha='center')
-    fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
 
+    fig.text(0.5, 0.015, 'Disease Progression (months)', ha='center')
+    fig.text(0.005, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
+
+    ax = pl.gca()
     h, labels = ax.get_legend_handles_labels()
     print(h, labels)
     # legend =  pl.legend(handles=h, bbox_to_anchor=plotTrajParams['legendPos'], loc='upper center', ncol=plotTrajParams['legendCols'])
 
-    legend = pl.figlegend(h[:5], labels[:5], loc='upper center', ncol=5, labelspacing=0.)
+    legend = pl.figlegend(h[:legendEntries], labels[:legendEntries], loc='upper center', ncol=5, labelspacing=0.)
     # set the linewidth of each legend object
     for legobj in legend.legendHandles:
       legobj.set_linewidth(4.0)
@@ -1146,13 +1160,14 @@ class PlotterGP(ABC):
 
       if ssdDKT is not None:
         ax.text(minX + 0.1*(maxX-minX), minY + 0.9*(maxY-minY), 'SSD DKT=%.3f' % ssdDKT[b])
-        ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD no-DKT=%.3f' % ssdNoDKT[b])
+        ax.text(minX + 0.1 * (maxX - minX), minY + 0.8 * (maxY - minY), 'SSD Lin=%.3f' % ssdNoDKT[b])
 
-    # pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+    pl.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+    pl.subplots_adjust(left=0.04, bottom=0.08, top=0.9)
 
 
-    fig.text(0.5, 0.04, 'Disease Progression (months)', ha='center')
-    fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
+    fig.text(0.5, 0.015, 'MRI value (normalised)', ha='center')
+    fig.text(0.005, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
 
     h, labels = ax.get_legend_handles_labels()
     print(h, labels)
@@ -1340,13 +1355,18 @@ class PlotterGP(ABC):
       ax2 = pl.subplot(nrRows, nrCols, nrPlotsSoFar + 1)
       pl.title(self.plotTrajParams['labels'][b])
       ax2.set_ylim([yMinAll, yMaxAll])
+      print('predTrajXB',predTrajXB.shape)
+      print(len(self.plotTrajParams['colorsTraj']))
+      print(len(self.plotTrajParams['labels']))
+      assert predTrajXB.shape[1] == len(self.plotTrajParams['colorsTraj'])
+      assert predTrajXB.shape[1] == len(self.plotTrajParams['labels'])
+
       ax2.plot(newXTraj, predTrajXB[:, b], '-', lw=2
-               , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
+               ,c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
 
       self.plotSubjData(ax2, xsShiftedBSX[b], ysBSX[b], self.plotTrajParams['diag'], labelExtra='')
 
       nrPlotsSoFar += 1
-
 
     return nrPlotsSoFar
 
