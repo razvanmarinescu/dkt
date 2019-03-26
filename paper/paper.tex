@@ -302,11 +302,13 @@ The results from Table \ref{sec:dktPerfMetrics} indicate that the DKT prediction
 \fontsize{8}{10}\selectfont
 \begin{tabular}{c | c c c c c c}
 \textbf{Model} & \textbf{Cingulate} & \textbf{Frontal} & \textbf{Hippo.} & \textbf{Occip.} & \textbf{Parietal} & \textbf{Temporal}\\
-& \multicolumn{6}{c}{\textbf{Prediction Error (MSE)}}\\
-DKT & 0.09$\pm$0.04 & 0.03$\pm$0.01 & 0.18$\pm$0.03 & 0.04$\pm$0.02 & 0.06$\pm$0.02 & 0.04$\pm$0.02\\
-Latent stage & 0.09$\pm$0.04 & 0.03$\pm$0.01 & 0.17$\pm$0.03 & 0.04$\pm$0.02 & 0.06$\pm$0.02 & 0.04$\pm$0.02\\
-Linear & 0.05$\pm$0.02* & 0.15$\pm$0.04* & 0.09$\pm$0.03* & 0.07$\pm$0.03* & 0.07$\pm$0.02* & 0.07$\pm$0.02*\\
-& \multicolumn{6}{c}{\textbf{Rank Correlation (Spearman rho)}}\\
+& \multicolumn{6}{c}{\textbf{ADNI Subtypes: Hippocampal to Cortical}}\\
+DKT &      0.56 $\pm$ 0.23 &    0.35 $\pm$ 0.17 &        0.58 $\pm$ 0.14 &     -0.10 $\pm$ 0.29 &     0.71 $\pm$ 0.11 &     0.34 $\pm$ 0.26 \\
+Latent stage &      0.44 $\pm$ 0.25 &    0.34 $\pm$ 0.21 &       0.34 $\pm$ 0.24* &     -0.07 $\pm$ 0.22 &     0.64 $\pm$ 0.16 &    0.08 $\pm$ 0.24* \\
+Multivariate &      0.60 $\pm$ 0.18 &   0.11 $\pm$ 0.22* &       0.12 $\pm$ 0.29* &     -0.22 $\pm$ 0.22 &   -0.44 $\pm$ 0.14* &   -0.32 $\pm$ 0.29* \\
+Spline &    -0.24 $\pm$ 0.25* &  -0.06 $\pm$ 0.27* &        0.58 $\pm$ 0.17 &     -0.16 $\pm$ 0.27 &    0.23 $\pm$ 0.25* &    0.10 $\pm$ 0.25* \\
+Linear &    -0.24 $\pm$ 0.25* &   0.20 $\pm$ 0.25* &        0.58 $\pm$ 0.17 &     -0.16 $\pm$ 0.27 &    0.23 $\pm$ 0.25* &    0.13 $\pm$ 0.23* \\
+& \multicolumn{6}{c}{\textbf{tAD to Posterior Cortical Atrophy}}\\
 DKT  & 0.76  & 0.48  & 0.76  & 0.55  & 0.55  & 0.33 \\
 Latent stage & 0.76  & 0.49  & 0.80*  & 0.56  & 0.51*  & 0.33 \\
 Linear & 0.48*  & 0.31*  & 0.64*  & 0.61*  & 0.57*  & 0.27* \\

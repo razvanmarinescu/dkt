@@ -835,6 +835,9 @@ class PlotterGP(ABC):
       if YsubjData2BSX is not None:
         listsMin += [np.min(yS) for yS in YsubjData2BSX[b] if yS.shape[0] > 0]
         listsMax += [np.max(yS) for yS in YsubjData2BSX[b] if yS.shape[0] > 0]
+      if YsubjData3BSX is not None:
+        listsMin += [np.min(yS) for yS in YsubjData3BSX[b] if yS.shape[0] > 0]
+        listsMax += [np.max(yS) for yS in YsubjData3BSX[b] if yS.shape[0] > 0]
 
       if len(listsMin) == 0:
         min_yB[b] = 0

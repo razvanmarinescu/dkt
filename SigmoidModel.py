@@ -326,7 +326,6 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
 
   def predictBiomkWithParams(self, newX, params):
 
-
     deltaX = 5 * (self.maxScX - self.minScX)
     if not (self.minScX - deltaX <= np.min(newX) <= self.maxScX + deltaX):
       print('newX', newX)
@@ -337,8 +336,8 @@ class SigmoidModel(DPMModelGeneric.DPMModelGeneric):
     xsScaled = self.applyScalingXForward(newX.reshape(-1), biomk=0)  # arbitrary space ->[0,1]
 
     predictedBiomksXB = np.zeros((xsScaled.shape[0], self.nrBiomk))
-    print('self.nrBiomk',self.nrBiomk)
-    print(dasa)
+    # print('self.nrBiomk',self.nrBiomk)
+    # print(dasa)
     for b in range(self.nrBiomk):
       trajParams, variance = self.unpack_parameters(params[b])
       predictedBiomksXB[:, b] = self.sigFunc(xsScaled, trajParams)

@@ -527,8 +527,6 @@ class JointModel(DisProgBuilder.DPMInterface):
             print(unitModels[u].X[b][s].shape[0])
             raise ValueError('Shape of new array doesnt match')
 
-
-
       # dimension check
       assert newXarray[0].shape[0] == unitModels[u].X_array[0].shape[0]
 
@@ -550,7 +548,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     XshiftedScaledDBS = [0 for _ in range(self.nrDis)]
     XdisDBSX = [0 for _ in range(self.nrDis)]
     for d in range(self.nrDis):
-      XshiftedScaledDBS[d], XdisDBSX[d], _, _ = disModels[d].getData(flagAllBiomkShouldBePresent=True)
+      XshiftedScaledDBS[d], XdisDBSX[d], _, _ = disModels[d].getData(flagAllBiomkShouldBePresent=False)
 
     XdisSX = [0 for _ in range(self.unitModels[0].nrSubj)]
     nrSubj = unitModels[0].nrSubj
@@ -602,9 +600,6 @@ class JointModel(DisProgBuilder.DPMInterface):
         # reset the traj parameters, so that they don't end up with decreasing trajectories
         self.unitModels[u].initialiseParams()
 
-      # self.unitModels[u].priors = self.params['priorsUnitModels'][u]
-      # self.unitModels[u].Set_penalty(2)
-      # self.unitModels[u].estimTrajParams(Niterat = 70)
       self.unitModels[u].estimTrajParams()
 
       # fig = self.unitModels[u].plotter.plotTraj(self.unitModels[u])

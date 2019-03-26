@@ -366,20 +366,6 @@ def validateDRCBiomk(dpmObj, params):
   predTrajXB = dpmObj.predictBiomkSubjGivenXs(xsTrajX, disNr)
   trajSamplesBXS = dpmObj.sampleBiomkTrajGivenXs(xsTrajX, disNr, nrSamples=100)
 
-  print('XshiftedDisModelBS', XshiftedDisModelBS)
-  print('XvalidShifFilt', XvalidShifFilt)
-  print('predTrajXB', predTrajXB[:,0])
-  print('xsTrajX', xsTrajX)
-  print('ysPredBS', ysPredBS)
-  # print(ads)
-
-
-  # fig = dpmObj.plotterObj.plotTrajInDisSpace(xsTrajX, predTrajXB, trajSamplesBXS,
-  #   XshiftedDisModelBS, Yfilt, diagSubjCurrDis,
-  #   XvalidShifFilt, YvalidFilt, diagValidFilt,
-  #   XsubjData3BSX=None, YsubjData3BSX=None, diagData3S=None, labels=self.plotTrajParams['labels'], replaceFig=True)
-  # fig.savefig('%s/validPCA.png' % params['outFolder'])
-
 
   ### build a simpler linear predictor from MR to DTI for every ROI independently.
   # Train it on ADNI MR+DTI data and use it to predict DRC-DTI from DRC-MR.
@@ -389,8 +375,10 @@ def validateDRCBiomk(dpmObj, params):
   mriBiomksDf = [i for i in range(len(colsList)) if colsList[i].startswith('Volume')]
   dtiBiomksDf = [i for i in range(len(colsList)) if colsList[i].startswith('DTI')]
 
-  dataDfAllMat = dataDfAll.values
-  # print('dataDfAllMat', dataDfAllMat)
+  dataAllTrainDf = dataDfAll[dataDfAll.dataset == 1,:]
+
+  dataAllTrain = dataAllTrainDf.values
+  # print('dataAllTrain', dataAllTrain)
 
   nrDtiBiomk = len(mriBiomksDf)
 
@@ -425,14 +413,11 @@ def validateDRCBiomk(dpmObj, params):
 
   for f in range(nrDtiBiomk):
 
-    mriDataCurrCol = dataDfAllMat[:, mriBiomksDf[f]]
-    dtiDataCurrCol = dataDfAllMat[:, dtiBiomksDf[f]]
+    mriDataCurrCol = dataAllTrain[:, mriBiomksDf[f]]
+    dtiDataCurrCol = dataAllTrain[:, dtiBiomksDf[f]]
 
     nnMask = ~np.isnan(mriDataCurrCol) & ~np.isnan(dtiDataCurrCol)
     linModel = sklearn.linear_model.LinearRegression(fit_intercept=True)
-
-    print('mriDataCurrCol', mriDataCurrCol)
-    print('dtiDataCurrCol', dtiDataCurrCol)
 
     linModel.fit(mriDataCurrCol[nnMask].reshape(-1,1),
       dtiDataCurrCol[nnMask].reshape(-1,1))
@@ -440,11 +425,7 @@ def validateDRCBiomk(dpmObj, params):
     YvalidLinModelDti[f] = [] # DTI predictions of linear model for subj in validation set
     YvalidDktDti[f] = [] # DTI predictions of DKT model for subj in validation set
 
-    # print('dataDfAll.loc[mriBiomksDf[f]].iloc[nnMask]', dataDfAll.loc[mriBiomksDf[f]].iloc[nnMask])
-    # print('dataDfAll.loc[dtiBiomksDf[f]].iloc[nnMask]', dataDfAll.loc[dtiBiomksDf[f]].iloc[nnMask])
 
-    # print('YvalidFilt[dtiBiomksList[f]]', YvalidFilt[dtiBiomksList[f]])
-    # print('Yvalid[mriBiomksList[f]]', Yvalid[mriBiomksList[f]])
     for s in range(nrSubjWithValid):
       mrValsValidCurrSubj = np.array(YvalidFilt[mriBiomksList[f]][s]).reshape(-1,1)
       dtiValValidCurrSubj = YvalidFilt[dtiBiomksList[f]][s][0]
@@ -522,22 +503,7 @@ def validateDRCBiomk(dpmObj, params):
       corrLinUB[f, b], _ = scipy.stats.spearmanr(dtiValValidAll[f][idxBootCorrCurr],
         dtiPredValidLinAll[f][idxBootCorrCurr])
 
-      # print('corrDpmUB[f, b]', corrDpmUB[f, b])
-      # print('dtiPredValidDktAll[f]', dtiPredValidDktAll[f])
-      # print('dtiValValidAll[f][idxBootCurr]', dtiValValidAll[f][idxBootCurr])
-      # print('dtiPredValidDktAll[f][idxBootCurr]', dtiPredValidDktAll[f][idxBootCurr])
 
-
-
-  # print('corrDpmUB', corrDpmUB)
-  # print('xsTrajX.shape', xsTrajX.shape)
-  # print(adsa)
-  # print('mseLin', mseLin)
-  # print('mseDpm', mseDpm)
-  # print('corrLin', np.mean(corrLin), corrLin, pValLin)
-  # print('corrDpm', np.mean(corrDpm), corrDpm, pValDpm)
-  # print([params['labels'][b] for b in dtiBiomksList])
-  # print(adsa)
 
   metrics = {}
   metrics['dpm'] = {}
