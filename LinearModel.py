@@ -174,6 +174,7 @@ class LinearModel(DPMModelGeneric.DPMModelGeneric):
     loglik = 0
     timeShiftPriorMean = 0
     if self.priors is not None:
+      print('self.priors', self.priors)
       timeShiftPriorStd = self.priors['timeShiftStd']
     else:
       timeShiftPriorStd = 20

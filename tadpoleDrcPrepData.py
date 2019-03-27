@@ -146,10 +146,27 @@ def normaliseData(dataDfAll, validDf, allBiomkCols):
   # dataDfAll[allBiomkCols] = (np.array(dataDfAll[allBiomkCols]) - meanCtl[None, :]) / (stdCtl[None, :])
 
   # convert biomarkers to [0,1] interval
-  minB = np.nanmin(dataDfAll[allBiomkCols], axis=0)
-  maxB = np.nanmax(dataDfAll[allBiomkCols], axis=0)
+  nrBiomk = len(allBiomkCols)
+  minB = np.zeros(nrBiomk)
+  maxB = np.zeros(nrBiomk)
+  for b in range(nrBiomk):
+
+    x = dataDfAll[allBiomkCols[b]].values
+    x = x[~np.isnan(x)]
+    sortedVals = np.sort(x, axis=0)
+    nrSortedVals = sortedVals.shape[0]
+    if sortedVals.shape[0] < 5:
+      minB[b] = np.nanmin(sortedVals)
+      maxB[b] = np.nanmax(sortedVals)
+    else:
+      minB[b] = sortedVals[max(1, int(0.03 * nrSortedVals))]
+      maxB[b] = sortedVals[min(nrSortedVals - 1, int(0.97 * nrSortedVals))]
+      # print(adsa)
+
   dataDfAll[allBiomkCols] = (np.array(dataDfAll[allBiomkCols]) - minB[None, :]) / (maxB - minB)[None, :]
   validDf[allBiomkCols] = (np.array(validDf[allBiomkCols]) - minB[None, :]) / (maxB - minB)[None, :]
+
+
 
   # bring the validation set in the same space as the training dataset.
   # match means and stds of controls in each datasets
@@ -377,16 +394,15 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   dataDfAll.drop(dataDfAll.index[np.logical_not(idxToKeepDiffAge)], inplace=True)
   dataDfAll.reset_index(drop=True, inplace=True)
 
+
+  # print(dasda)
   # print(np.sum(np.isnan(dataDfAll.diag)))
   # print(dataDfAll)
   # print(ads)
 
-  if tinyData:
-    dataDfAll.to_csv('tadpoleDrcRegDataTiny.csv')
-  else:
-    dataDfAll.to_csv('tadpoleDrcRegData.csv')
+  dataDfAll.to_csv(finalDataFile.split('.')[0] + '.csv')
 
-  validDf.to_csv('validDfReg.csv')
+  validDf.to_csv(finalDataFile.split('.')[0] + 'Valid.csv')
 
   # print(dataDfAll.shape)
   # print(ads)
@@ -403,13 +419,17 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
 
   selectedBiomk = dataDfAll.loc[:, 'Volume Cingulate' : ].columns.tolist()
   if addExtraBiomk:
-    selectedBiomk += ['ADAS13', 'CDRSB', 'RAVLT_immediate']
+    selectedBiomk += ['ADAS13', 'CDRSB', 'RAVLT_immediate', 'MMSE', 'FAQ']
 
   # print(dataDfAll.dtypes)
   for c in selectedBiomk:
     dataDfAll[c] = dataDfAll[c].astype(np.float128) # increase precision of floats to 128
     validDf[c] = validDf[c].astype(np.float128)
 
+  print(len(selectedBiomk))
+  print(np.sum(~np.isnan(dataDfAll.loc[:, selectedBiomk]), axis=1))
+  imagingBiomk = dataDfAll.loc[:, 'Volume Cingulate':].columns.tolist()
+  assert (np.sum(~np.isnan(dataDfAll.loc[:, imagingBiomk]), axis=1) > 0).all()
 
 
 
@@ -422,6 +442,12 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
     auxFunc.convert_table_marco(dataDfAll, list_biomarkers=selectedBiomk)
 
 
+  for s in range(len(X[0])):
+    entriesCurrSubj = [X[b][s].shape[0] > 0 for b in range(30)]
+    nrEntriesPerSubj = np.sum(entriesCurrSubj)
+    if nrEntriesPerSubj == 0:
+      print(s, entriesCurrSubj)
+      print(dadsa)
 
 
   # now drop all the mri values, which were used for testing consistency

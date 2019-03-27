@@ -520,38 +520,17 @@ def main():
     finalDataFile = finalDataFile.split('.')[0] + 'Cog.npz'
     expName = expName.split('.')[0] + 'Cog'
 
-
-
   regenerateData = (not os.path.isfile(finalDataFile)) or args.regData
   if regenerateData:
     prepareData(finalDataFile, tinyData, addExtraBiomk)
 
   ds = pickle.load(open(finalDataFile, 'rb'))
-  # dataDfAll = ds['dataDfTadpole']
-  # regParamsICV = ds['regParamsICV']
-  # regParamsAge = ds['regParamsAge']
-  # regParamsGender = ds['regParamsGender']
-  # regParamsDataset = ds['regParamsDataset']
+
   X = ds['XtrainAll'][0]
   Y = ds['YtrainAll'][0]
   RID = np.array(ds['RIDtrainAll'][0], int)
   labels = ds['list_biomarkers']
   diag = ds['diagTrainAll']
-
-  # visDataHist(dataDfAll)
-  # nrUnqDiags = np.unique(dataDfAll.diag)
-  # print(dataDfAll)
-  # for d in nrUnqDiags:
-  #   idxCurrDiag = ds['diag'] == d
-  #   print('nr subj %s %d' % (plotTrajParams['diagLabels'][d], np.sum(idxCurrDiag)))
-    # avgScans = []
-    # print('avg scans %s %d' % plotTrajParams['diagLabels'][d])
-
-  meanVols = np.array([np.mean(Y[0][s]) for s in range(RID.shape[0])])
-  # meanVols[diag != CTL2] = np.inf
-  # idxOfDRCSubjWithLowVol = np.argmin(meanVols)
-  # print('idxOfDRCSubjWithLowVol', idxOfDRCSubjWithLowVol)
-  # print(diag[idxOfDRCSubjWithLowVol])
 
   outFolder = 'resfiles/'
 
@@ -565,9 +544,6 @@ def main():
   nrDis = 3 # nr of diseases
   params['nrDis'] = nrDis
 
-  print(labels)
-
-
   # change the order of the functional units so that the hippocampus and occipital are fitted first
   unitPermutation = [5,3,2,1,4,0]
 
@@ -577,9 +553,9 @@ def main():
 
   if addExtraBiomk:
     nrExtraBiomk = 5
-    nrFuncUnits = 6 + nrExtraBiomk  # add the 3 extra cog markers to a unique functional unit
+    nrFuncUnits += nrExtraBiomk  # add the 3 extra cog markers to a unique functional unit
     mapBiomkToFuncUnits = np.array((unitPermutation * nrBiomkInFuncUnits)
-                                   + list(range(6, 6+nrExtraBiomk)))
+                                   + list(range(nrFuncUnits-nrExtraBiomk, nrFuncUnits)))
 
   unitNames = [l.split(' ')[-1] for l in labels]
   unitNames = [unitNames[i] for i in unitPermutation]
@@ -607,7 +583,8 @@ def main():
     np.linspace(0, 1, num=nrBiomk, endpoint=False)]
   plotTrajParams['colorsTrajUnitsU'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
     np.linspace(0, 1, num=nrFuncUnits, endpoint=False)]
-  # plotTrajParams['nrBiomk'] = 3
+  plotTrajParams['nrBiomk'] = nrBiomk
+  params['nrBiomk'] = nrBiomk
 
   plotTrajParams['yNormMode'] = 'zScoreTraj'
   # plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
@@ -617,7 +594,6 @@ def main():
   plotTrajParams['allTrajOverlap'] = False
 
   params['nrFuncUnitsImgOnly'] = nrFuncUnits - nrExtraBiomk
-
   params['unitNames'] = unitNames
   params['runIndex'] = args.runIndex
   params['nrProc'] = args.nrProc
@@ -680,7 +656,7 @@ def main():
     shapeB=bPriorShape, rateB=bPriorRate, timeShiftStd=20000) for u in range(nrFuncUnits-nrExtraBiomk)]
 
   if nrExtraBiomk > 0:
-    params['priorsUnitModelsLinear'] = [dict(meanA=1, stdA=0.1, meanB=0, stdB=0.1) for u in
+    params['priorsUnitModelsLinear'] = [dict(meanA=1, stdA=0.1, meanB=0, stdB=0.1, timeShiftStd=20000) for u in
                                        range(nrExtraBiomk)]
     params['priorsUnitModels'] += params['priorsUnitModelsLinear']
 
@@ -1226,11 +1202,6 @@ def validateSubtypes(dpmObj, params, disNrTrain, disNrValid):
             mrValsToPredictCurrSubj[2], mrValsToPredictCurrSubj[3], mrValsToPredictCurrSubj[4],
             mrValsToPredictCurrSubj[5])
 
-          # print('mrValsValidCurrSubj[closestMriIdx]', mrValsValidCurrSubj[closestMriIdx])
-          # print('nonMriPredValidLin',nonMriPredValidLin)
-          # print('nonMriPredValidSpline', nonMriPredValidSpline)
-          # print('nonMriValValidCurrSubj', nonMriValValidCurrSubj)
-          # print(dasda)
 
           YvalidLinModelNonMri[b][s] += [nonMriPredValidLin]
           YvalidSplineModelNonMri[b][s] += [nonMriPredValidSpline]

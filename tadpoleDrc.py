@@ -81,26 +81,6 @@ from tadpoleDataLoader import *
 from drcDataLoader import *
 from tadpoleDrcPrepData import *
 
-hostName = gethostname()
-if hostName == 'razvan-Inspiron-5547':
-  freesurfPath = '/usr/local/freesurfer-5.3.0'
-  homeDir = '/home/razvan'
-  blenderPath = 'blender'
-elif hostName == 'razvan-Precision-T1700':
-  freesurfPath = '/usr/local/freesurfer-5.3.0'
-  homeDir = '/home/razvan'
-  blenderPath = 'blender'
-elif args.cluster:
-  freesurfPath = '/share/apps/freesurfer-5.3.0'
-  homeDir = '/home/rmarines'
-  blenderPath = '/share/apps/blender-2.75/blender'
-elif hostName == 'planell-VirtualBox':
-  homeDir = '/home/planell'
-  freesurfPath = ""
-  blenderPath = ""
-else:
-  raise ValueError('Wrong hostname. If running on new machine, add '
-                   'application paths in python code above')
 
 
 #                      DKT     OTHER_MODEL        VALID           TRAINING
@@ -128,8 +108,8 @@ plotTrajParams['diagLabels'] = {CTL:'CTL ADNI', MCI:'MCI ADNI', AD:'tAD ADNI',
   CTL2:'CTL LOCAL', PCA:'PCA LOCAL', AD2:'tAD LOCAL', CTL_OTHER_MODEL:'CTL LOCAL - No DKT',
   PCA_OTHER_MODEL:'PCA LOCAL - No DKT', CTL_DKT:'CTL - DTK', PCA_DKT:'PCA - DTK'}
 
-plotTrajParams['freesurfPath'] = freesurfPath
-plotTrajParams['blenderPath'] = blenderPath
+# plotTrajParams['freesurfPath'] = freesurfPath
+# plotTrajParams['blenderPath'] = blenderPath
 plotTrajParams['isSynth'] = False
 plotTrajParams['padTightLayout'] = 0.0
 
@@ -144,21 +124,7 @@ if hostName == 'razvan-Inspiron-5547':
 else: #if hostName == 'razvan-Precision-T1700':
   height = 450
 
-if hostName == 'razvan-Inspiron-5547':
-  homeDir = '/home/razvan'
-  freesurfPath = '/usr/local/freesurfer-6.0.0'
-elif hostName == 'razvan-Precision-T1700':
-  homeDir = '/home/razvan'
-  freesurfPath = '/usr/local/freesurfer-6.0.0'
-elif args.cluster:
-  homeDir = '/home/rmarines'
-  freesurfPath = '/home/rmarines/src/freesurfer-6.0.0'
-elif hostName == 'planell-VirtualBox':
-  homeDir = '/home/planell'
-  freesurfPath = ""
-  blenderPath = ""
-else:
-  raise ValueError('wrong hostname or cluster flag')
+
 
 
 
@@ -184,22 +150,31 @@ def visDataHist(dataDfAll):
 
 def main():
 
+  # don't turn this on unless I add cognitive markers in the DRC dataset.
   addExtraBiomk = False
 
   np.random.seed(1)
   random.seed(1)
   pd.set_option('display.max_columns', 50)
   tinyData = args.tinyData
-  regenerateData = args.regData
-  if tinyData:
-    finalDataFile = 'tadpoleDrcTiny.npz'
-    expName = 'tad-drcTiny'
-  else:
-    finalDataFile = 'tadpoleDrcFinalDataWithRegParams.npz'
-    expName = 'tad-drc'
 
+  finalDataFile = 'tadDrc.npz'
+  expName = 'tadDrc'
+
+  if args.tinyData:
+    finalDataFile = finalDataFile.split('.')[0] + 'Tiny.npz'
+    expName = expName.split('.')[0] + 'Tiny'
+
+  if addExtraBiomk:
+    finalDataFile = finalDataFile.split('.')[0] + 'Cog.npz'
+    expName = expName.split('.')[0] + 'Cog'
+
+  regenerateData = (not os.path.isfile(finalDataFile)) or args.regData
   if regenerateData:
     prepareData(finalDataFile, tinyData, addExtraBiomk)
+    # print(dada)
+
+
 
   ds = pickle.load(open(finalDataFile, 'rb'))
   dataDfAll = ds['dataDfAll']
@@ -213,58 +188,58 @@ def main():
   labels = ds['list_biomarkers']
   diag = ds['diag']
 
-  # visDataHist(dataDfAll)
-  nrUnqDiags = np.unique(dataDfAll.diag)
-  print(dataDfAll)
-  for d in nrUnqDiags:
-    idxCurrDiag = ds['diag'] == d
-    print('nr subj %s %d' % (plotTrajParams['diagLabels'][d], np.sum(idxCurrDiag)))
-    # avgScans = []
-    # print('avg scans %s %d' % plotTrajParams['diagLabels'][d])
-
-  meanVols = np.array([np.mean(Y[0][s]) for s in range(RID.shape[0])])
-  meanVols[diag != CTL2] = np.inf
-  idxOfDRCSubjWithLowVol = np.argmin(meanVols)
-  print('idxOfDRCSubjWithLowVol', idxOfDRCSubjWithLowVol)
-  print(diag[idxOfDRCSubjWithLowVol])
-
   outFolder = 'resfiles/'
 
   params = {}
 
-  nrFuncUnits = 6
-  nrBiomkInFuncUnits = 5
+  av45InListBiomk = np.array([True for x in ds['list_biomarkers'] if x.startswith('AV1451')]).any()
+  if av45InListBiomk:
+    nrBiomkInFuncUnits = 5
+  else:
+    nrBiomkInFuncUnits = 4
+
+  # print('dataDfAll', dataDfAll)
+
+
+
   nrDis = 2 # nr of diseases
-
-  # nrBiomk = nrBiomkInFuncUnits * nrFuncUnits
-  # print(labels)
-  # print(adss)
-  # mapBiomkToFuncUnits = np.array(list(range(nrFuncUnits)) * nrBiomkInFuncUnits)
-  # should give smth like [0,1,2,3,0,1,2,3,0,1,2,3]
-
-
+  params['nrDis'] = nrDis
 
   # change the order of the functional units so that the hippocampus and occipital are fitted first
   unitPermutation = [5,3,2,1,4,0]
+
+  nrFuncUnits = 6
+  mapBiomkToFuncUnits = np.array((unitPermutation * nrBiomkInFuncUnits))
+  nrExtraBiomk = 0
+
   if addExtraBiomk:
-    mapBiomkToFuncUnits = np.array((unitPermutation * nrBiomkInFuncUnits) + [-1,-1,-1])
-  else:
-    mapBiomkToFuncUnits = np.array((unitPermutation * nrBiomkInFuncUnits))
+    nrExtraBiomk = 5
+    nrFuncUnits += nrExtraBiomk  # add the 3 extra cog markers to a unique functional unit
+
+    mapBiomkToFuncUnits = np.array((unitPermutation * nrBiomkInFuncUnits) + list(range(nrFuncUnits-nrExtraBiomk, nrFuncUnits)))
+
+  # print(mapBiomkToFuncUnits)
+  # print(dasdas)
 
   unitNames = [l.split(' ')[-1] for l in labels]
   unitNames = [unitNames[i] for i in unitPermutation]
+  if addExtraBiomk:
+    extraBiomkNames = ['ADAS13', 'CDRSB', 'RAVLT', 'MMSE', 'FAQ']
+    unitNames += extraBiomkNames
+    assert len(extraBiomkNames) == nrExtraBiomk
+
   nrBiomk = mapBiomkToFuncUnits.shape[0]
   biomkInFuncUnit = [0 for u in range(nrFuncUnits + 1)]
   for u in range(nrFuncUnits):
     biomkInFuncUnit[u] = np.where(mapBiomkToFuncUnits == u)[0]
 
-  if addExtraBiomk:
-    # add extra entry with other biomks to be added in the disease models
-    biomkInFuncUnit[nrFuncUnits] = np.array([nrBiomk-3, nrBiomk-2, nrBiomk-1])
-  else:
-    biomkInFuncUnit[nrFuncUnits] = np.array([])  # need to leave this as empty list
+  # if addExtraBiomk:
+  #   # add extra entry with other biomks to be added in the disease models
+  #   extraBiomkNames = ['ADAS13', 'CDRSB', 'RAVLT', 'MMSE', 'FAQ']
+  #   biomkInFuncUnit[nrFuncUnits] = np.array([nrBiomk-3, nrBiomk-2, nrBiomk-1])
+  # else:
 
-  nrExtraBiomkInDisModel = biomkInFuncUnit[-1].shape[0]
+  biomkInFuncUnit[nrFuncUnits] = np.array([])  # need to leave this as empty list
 
   plotTrajParams['biomkInFuncUnit'] = biomkInFuncUnit
   plotTrajParams['labels'] = labels
@@ -273,8 +248,9 @@ def main():
   plotTrajParams['colorsTrajBiomkB'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
     np.linspace(0, 1, num=nrBiomk, endpoint=False)]
   plotTrajParams['colorsTrajUnitsU'] = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
-    np.linspace(0, 1, num=nrFuncUnits + nrExtraBiomkInDisModel, endpoint=False)]
-  plotTrajParams['nrBiomk'] = 3
+    np.linspace(0, 1, num=nrFuncUnits, endpoint=False)]
+  plotTrajParams['nrBiomk'] = nrBiomk
+  params['nrBiomk'] = nrBiomk
 
   # plotTrajParams['yNormMode'] = 'zScoreTraj'
   # plotTrajParams['yNormMode'] = 'zScoreEarlyStageTraj'
@@ -283,6 +259,7 @@ def main():
   # if False, plot estimated traj. in separate plot from true traj.
   plotTrajParams['allTrajOverlap'] = False
 
+  params['nrFuncUnitsImgOnly'] = nrFuncUnits - nrExtraBiomk
   params['unitNames'] = unitNames
   params['runIndex'] = args.runIndex
   params['nrProc'] = args.nrProc
@@ -294,6 +271,7 @@ def main():
   params['biomkInFuncUnit'] = biomkInFuncUnit
   params['mapBiomkToFuncUnits'] = mapBiomkToFuncUnits
   params['labels'] = labels
+  params['nrExtraBiomk'] = nrExtraBiomk
 
   params['X'] = X
   params['Y'] = Y
@@ -310,13 +288,26 @@ def main():
   params['visitIndices'] = ds['visitIndices']
   params['visitIndicesValid'] = ds['visitIndicesValid']
 
-  params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
-  params['iterParamsUnit'] = 60
-  params['nrGlobIterDis'] = 10
-  params['iterParamsDis'] = 60
+  # params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)
+  # params['iterParamsUnit'] = 60
+  # params['nrGlobIterDis'] = 10
+  # params['iterParamsDis'] = 60
 
   # by default we have no priors
   params['priors'] = None
+
+  # print([params['X'][b2][subjIndCurrDis[s]] for b2 in range(params['nrBiomk'])])
+  # print([params['Y'][b2][subjIndCurrDis[s]] for b2 in range(params['nrBiomk'])])
+
+  for s in range(len(X[0])):
+    entriesCurrSubj = [X[b][s].shape[0] > 0 for b in range(30)]
+    nrEntriesPerSubj = np.sum(entriesCurrSubj)
+    if nrEntriesPerSubj == 0:
+      print(s, entriesCurrSubj)
+      print(dadsa)
+
+  print(labels)
+  # print(dasda)
 
   ############# set priors for specific models ################
 
@@ -338,16 +329,29 @@ def main():
   bPriorShape, bPriorRate = getGammShapeRateFromTranTime(
     transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax)
 
+  transitionTimePriorMeanDis = 300 # in DPS 0-1 space, prior mean
+  transitionTimePriorMinDis = 50
+  transitionTimePriorMaxDis = 500
+
+  bPriorShapeDis, bPriorRateDis = getGammShapeRateFromTranTime(
+    transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax)
+
   # print('bPriorShape', bPriorShape)
   # print('bPriorRate', bPriorRate)
   # print(adsas)
 
   params['priorsDisModels'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
-    shapeB=2, rateB=2, timeShiftStd=20000) for d in range(nrDis)]
+    shapeB=bPriorShapeDis, rateB=bPriorRateDis, timeShiftStd=20000) for d in range(nrDis)]
   # params['priorsUnitModels'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
   #  shapeB=2, rateB=2, timeShiftStd=20000) for d in range(nrDis)]
   params['priorsUnitModels'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5,
-    shapeB=bPriorShape, rateB=bPriorRate, timeShiftStd=20000) for u in range(nrFuncUnits)]
+    shapeB=bPriorShape, rateB=bPriorRate, timeShiftStd=20000) for u in range(nrFuncUnits-nrExtraBiomk)]
+
+  if nrExtraBiomk > 0:
+    params['priorsUnitModelsLinear'] = [dict(meanA=1, stdA=0.1, meanB=0, stdB=0.1, timeShiftStd=20000)
+        for u in range(nrExtraBiomk)]
+    params['priorsUnitModels'] += params['priorsUnitModelsLinear']
+
 
   bPriorShapeNoDKT, bPriorRateNoDKT = getGammShapeRateFromTranTime(
     transitionTimePriorMean=50, transitionTimePriorMin=40, transitionTimePriorMax=60)
@@ -356,7 +360,7 @@ def main():
 
   ######################
 
-  nrBiomkDisModel = nrFuncUnits + nrExtraBiomkInDisModel
+  nrBiomkDisModel = nrFuncUnits
   params['nrBiomkDisModel'] = nrBiomkDisModel
 
   if addExtraBiomk:
@@ -368,10 +372,10 @@ def main():
   # first disease has CTL+AD, second disease has CTL2+PCA
   params['diagsSetInDis'] = [np.array([CTL, MCI, AD, AD2]), np.array([CTL2, PCA])]
   params['disLabels'] = ['tAD', 'PCA']
-  if addExtraBiomk:
-    params['otherBiomkPerDisease'] = [[nrBiomk-3,nrBiomk-2, nrBiomk-1], []] # can also add 3 extra cognitive tests
-  else:
-    params['otherBiomkPerDisease'] = [[], []]
+  # if addExtraBiomk:
+  #   params['otherBiomkPerDisease'] = [[nrBiomk-3,nrBiomk-2, nrBiomk-1], []] # can also add 3 extra cognitive tests
+  # else:
+  #   params['otherBiomkPerDisease'] = [[], []]
 
   params['binMaskSubjForEachDisD'] = [np.in1d(params['diag'],
                                       params['diagsSetInDis'][disNr]) for disNr in range(nrDis)]

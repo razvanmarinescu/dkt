@@ -78,6 +78,8 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
 
         XfiltCurrUnit = [Xfilt[b] for b in self.biomkInFuncUnit[u]]
         YfiltCurrUnit = [Yfilt[b] for b in self.biomkInFuncUnit[u]]
+        # print(len(XfiltCurrUnit))
+        # print(dads)
         visitIndicesCurrUnit = [visitIndicesFilt[b] for b in self.biomkInFuncUnit[u]]
         outFolderCurrUnit = '%s/unit%d' % (self.outFolder, u)
         os.system('mkdir -p %s' % outFolderCurrUnit)
@@ -107,6 +109,16 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
     disModelsFile = '%s/disModels.npz' % self.outFolder
     nrSubj = self.unitModels[0].nrSubj
 
+    for s in range(len(self.params['X'][0])):
+      entriesCurrSubj = [self.params['X'][b][s].shape[0] > 0 for b in range(30)]
+      nrEntriesPerSubj = np.sum(entriesCurrSubj)
+      if nrEntriesPerSubj == 0:
+        print(s, entriesCurrSubj)
+        print(dadsa)
+
+    # print(labels)
+    # print(dasda)
+
     if runPart[1] == 'R':
       nrGlobIterDis = self.params['nrGlobIterDis']
       dysfuncScoresU = [0 for x in range(self.nrFuncUnits)]
@@ -130,7 +142,13 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
           xDysfunSubjU[u][sub] = np.sort(np.unique(xDysfunSubjU[u][sub]))
           dysfuncScoresU[u][sub] = np.sort(np.unique(dysfuncScoresU[u][sub]))
 
-          assert len(dysfuncScoresU[u][sub]) == len(xDysfunSubjU[u][sub])
+          # assert len(dysfuncScoresU[u][sub]) == len(xDysfunSubjU[u][sub])
+          # if dysfuncScoresU[u][sub].shape[0] == 0:
+          #   print('u, sub', u, sub)
+          #   print('dysfuncScoresU[u][sub]', dysfuncScoresU[u][sub])
+          #   print('self.unitModels[u].nrBiomk', self.unitModels[u].nrBiomk)
+          #   print('XshiftedUnitModel[b][sub]', [XshiftedUnitModel[b][sub] for b in range(self.unitModels[u].nrBiomk)])
+          #   print(dasda)
 
         dysfuncScoresSerial = [x2 for x in dysfuncScoresU[u] for x2 in x]
         minDys[u] = np.min(dysfuncScoresSerial)
@@ -151,7 +169,7 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
       informPriorTrajDisModels = [True, False] # make informed prior only for the first disease
       for disNr in range(nrDis):
         # nrBiomkDisModel = len(xDysfunSubjU) + len(self.params['otherBiomkPerDisease'][disNr])
-        nrBiomkDisModel = len(xDysfunSubjU)
+        nrBiomkDisModel = self.nrFuncUnits
 
         xDysfunSubjUCopy = copy.deepcopy(xDysfunSubjU)
         dysfuncScoresUCopy = copy.deepcopy(dysfuncScoresU)
@@ -166,16 +184,19 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         dysfuncScoresCurrDisUSX = [_ for _ in range(nrBiomkDisModel)]
         visitIndicesCurrDisUSX = [[] for b in range(nrBiomkDisModel)]
 
+        subjIndCurrDis = np.where(self.binMaskSubjForEachDisD[disNr])[0]
         for b in range(nrBiomkDisModel):
           xDysfunSubjCurrDisUSX[b] = [xDysfunSubjUCopy[b][s] for s in
-            np.where(self.binMaskSubjForEachDisD[disNr])[0]]
+            subjIndCurrDis]
           dysfuncScoresCurrDisUSX[b] = [dysfuncScoresUCopy[b][s] for s in
-            np.where(self.binMaskSubjForEachDisD[disNr])[0]]
+            subjIndCurrDis]
 
           visitIndicesCurrDisUSX[b] = [_ for _ in range(len(xDysfunSubjCurrDisUSX[b]))]
           for s in range(len(xDysfunSubjCurrDisUSX[b])):
             visitIndicesCurrDisUSX[b][s] = np.array(range(xDysfunSubjCurrDisUSX[b][s].shape[0]))
 
+        for s in range(len(self.params['X'])):
+          assert [self.params['X'][b2][subjIndCurrDis[s]] for b2 in range(self.params['nrBiomk'])]
 
         for b in range(self.nrFuncUnits - self.params['nrExtraBiomk']):
           for s in range(len(xDysfunSubjCurrDisUSX[b])):
@@ -185,12 +206,14 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
               print(xDysfunSubjCurrDisUSX)
               print([xDysfunSubjCurrDisUSX[b2] for b2 in range(nrBiomkDisModel)])
               print([xDysfunSubjCurrDisUSX[b2][0] for b2 in range(nrBiomkDisModel)])
-              print(s)
+              print(b, s, self.params['RID'][subjIndCurrDis[s]])
               print([xDysfunSubjCurrDisUSX[b2][s] for b2 in range(nrBiomkDisModel)])
 
+              print([self.params['X'][b2][subjIndCurrDis[s]] for b2 in range(self.params['nrBiomk'])])
+              print([self.params['Y'][b2][subjIndCurrDis[s]]  for b2 in range(self.params['nrBiomk'])])
               # import pdb
               # pdb.set_trace()
-              print(das)
+              raise ValueError('subj should contain dysfunction scores for all imaging functional units')
 
         plotTrajParamsDis = JDMOnePass.createPlotTrajParamsDis(self.params, disNr)
         plotterCurrDis = Plotter.PlotterDis(plotTrajParamsDis)  # set separate plotter for the
@@ -305,6 +328,9 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         # set the params for plotting true trajectories - the Xs and f(Xs), i.e. trueTraj
       plotTrajParamsFuncUnit['trueParams'] = params['trueParamsFuncUnits'][unitNr]
 
+    print(params['labels'])
+    print(params['biomkInFuncUnit'][unitNr])
+    print(unitNr)
     labels = [params['labels'][b] for b in params['biomkInFuncUnit'][unitNr]]
     plotTrajParamsFuncUnit['labels'] = labels
     plotTrajParamsFuncUnit['colorsTraj'] =  [params['plotTrajParams']['colorsTrajBiomkB'][b]

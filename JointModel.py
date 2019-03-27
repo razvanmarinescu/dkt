@@ -119,24 +119,24 @@ class JointModel(DisProgBuilder.DPMInterface):
         self.loadCheckpoint(i-1, 5)
 
       # estimate subject latent variables
-      self.estimSubjShifts(self.unitModels, self.disModels)
-      self.makePlots(plotFigs, i, 0)
-      self.saveCheckpoint(i, 0)
+      # self.estimSubjShifts(self.unitModels, self.disModels)
+      # self.makePlots(plotFigs, i, 0)
+      # self.saveCheckpoint(i, 0)
       # self.loadCheckpoint(i, 0)
 
       while i < nrIt:
 
         # estimate biomk trajectories - disease agnostic
-        self.estimBiomkTraj(self.unitModels, self.disModels, i)
-        self.makePlots(plotFigs, i, 1)
-        self.saveCheckpoint(i, 1)
-        # self.loadCheckpoint(i, 1)
-
-        # estimate subject latent variables
-        self.estimSubjShifts(self.unitModels, self.disModels)
-        self.makePlots(plotFigs, i, 2)
-        self.saveCheckpoint(i, 2)
-        # self.loadCheckpoint(i, 2)
+        # self.estimBiomkTraj(self.unitModels, self.disModels, i)
+        # self.makePlots(plotFigs, i, 1)
+        # self.saveCheckpoint(i, 1)
+        # # self.loadCheckpoint(i, 1)
+        #
+        # # estimate subject latent variables
+        # self.estimSubjShifts(self.unitModels, self.disModels)
+        # self.makePlots(plotFigs, i, 2)
+        # self.saveCheckpoint(i, 2)
+        self.loadCheckpoint(i, 2)
         #
         # # estimate unit trajectories - disease specific
         self.estimTrajWithinDisModel(self.unitModels, self.disModels)
@@ -270,7 +270,7 @@ class JointModel(DisProgBuilder.DPMInterface):
     X_arrayScaledDB = [0 for _ in range(self.nrDis)]
     optimalShiftsDisModels = [0 for _ in range(self.nrDis)]
     bestScalingIndD = np.zeros(self.nrDis, int)
-    informPriorTrajDisModels = [True, True] # set informative priors only for the first disease
+    informPriorTrajDisModels = [True for _ in range(self.nrDis)] # set informative priors only for the first disease
     nrSubjAllDis = unitModels[0].nrSubj
     optimalShiftsAll = np.zeros(nrSubjAllDis)
     for d in range(self.nrDis):
@@ -640,16 +640,30 @@ class JointModel(DisProgBuilder.DPMInterface):
           X_arrayScaledDB[d], [paramsCurrTraj, None], u, d, Y_arrayCurDis, indFiltToMisCurDisB, informPriorTrajDisModels[d])
         initParams, initVariance = disModels[d].unpack_parameters(disModels[d].parameters[u])
 
-        resStruct = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
+        resStructMin = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
           options={'disp': True, 'maxiter':1000})
 
+        stdPerturb = [0, 0.3, 100, 0]
+        successList = np.zeros(nrPerturbMax, bool)
+        # resStructMin = resStruct
+        for p in range(nrPerturbMax):
+          print('trying perturbation %d' % p)
+          perturbParams = [np.random.normal(initParams[i], stdPerturb[i])
+                           for i in range(len(initParams))]
+          resStruct = scipy.optimize.minimize(likJDMobjFunc, perturbParams, method='Nelder-Mead',
+          options={'disp': True, 'maxiter':1000})
 
+          # p += 1
+          successList += [resStruct.success]
+          if resStruct.success and resStruct.fun < resStructMin.fun:
+            resStructMin = resStruct
 
         print('resStruct', resStruct)
 
         # print('finalLik', likJDMobjFunc(resStruct.x))
         disModels[d].parameters[u] = [resStruct.x, initVariance]
 
+    # print(dasd)
 
   def ssdJDMOneUnitTraj(self, disModel, unitModel, X_arrayScaledDisB, params, unitNr, disNr, Y_arrayCurDis,
                         indFiltToMisCurDisB, informPriorTraj, breakPoint=False):
