@@ -109,12 +109,12 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
     disModelsFile = '%s/disModels.npz' % self.outFolder
     nrSubj = self.unitModels[0].nrSubj
 
-    for s in range(len(self.params['X'][0])):
-      entriesCurrSubj = [self.params['X'][b][s].shape[0] > 0 for b in range(30)]
-      nrEntriesPerSubj = np.sum(entriesCurrSubj)
-      if nrEntriesPerSubj == 0:
-        print(s, entriesCurrSubj)
-        print(dadsa)
+    # for s in range(len(self.params['X'][0])):
+    #   entriesCurrSubj = [self.params['X'][b][s].shape[0] > 0 for b in range(30)]
+    #   nrEntriesPerSubj = np.sum(entriesCurrSubj)
+    #   if nrEntriesPerSubj == 0:
+    #     print(s, entriesCurrSubj)
+    #     print(dadsa)
 
     # print(labels)
     # print(dasda)
@@ -223,6 +223,9 @@ class JDMOnePass(DisProgBuilder.DPMInterface):
         self.disModels[disNr] = self.disModelObj(xDysfunSubjCurrDisUSX, dysfuncScoresCurrDisUSX, visitIndicesCurrDisUSX,
           outFolderCurDis, plotterCurrDis, plotTrajParamsDis['labels'], self.params)
         self.disModels[disNr].priors = self.priorsDisModels[disNr]
+        # manually set limits on Y axis for the disease models
+        self.disModels[disNr].min_yB = [0 for b in range(self.disModels[disNr].nrBiomk)]
+        self.disModels[disNr].min_yB = [1 for b in range(self.disModels[disNr].nrBiomk)]
         self.disModels[disNr].Optimize(nrGlobIterDis, Plot=True)
 
         XshiftedScaledDBS, XdisDBSX, _, _ = self.disModels[disNr].getData(flagAllBiomkShouldBePresent=False)

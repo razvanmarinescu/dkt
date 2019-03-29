@@ -219,8 +219,8 @@ def main():
         XemptyListsAllBiomk[b][s] = paramsDisTwo['Xtrue'][b][s]
         YemptyListsAllBiomk[b][s] = paramsDisTwo['Ytrue'][b][s]
       else:
-        XemptyListsAllBiomk[b][s] = []
-        YemptyListsAllBiomk[b][s] = []
+        XemptyListsAllBiomk[b][s] = np.array([])
+        YemptyListsAllBiomk[b][s] = np.array([])
 
   paramsDisTwo['XemptyListsAllBiomk'] = XemptyListsAllBiomk
   paramsDisTwo['YemptyListsAllBiomk'] = YemptyListsAllBiomk

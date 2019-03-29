@@ -111,7 +111,7 @@ plotTrajParams['diagLabels'] = {CTL:'CTL ADNI', MCI:'MCI ADNI', AD:'tAD ADNI',
 # plotTrajParams['freesurfPath'] = freesurfPath
 # plotTrajParams['blenderPath'] = blenderPath
 plotTrajParams['isSynth'] = False
-plotTrajParams['padTightLayout'] = 0.0
+plotTrajParams['padTightLayout'] = 0.4
 
 if args.agg:
   plotTrajParams['agg'] = True
@@ -125,7 +125,9 @@ else: #if hostName == 'razvan-Precision-T1700':
   height = 450
 
 
-
+pd.set_option('display.max_rows', 100)
+pd.set_option('display.max_columns', 50)
+pd.set_option('display.width', 5000)
 
 
 def visDataHist(dataDfAll):
@@ -329,19 +331,34 @@ def main():
   bPriorShape, bPriorRate = getGammShapeRateFromTranTime(
     transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax)
 
-  transitionTimePriorMeanDis = 300 # in DPS 0-1 space, prior mean
-  transitionTimePriorMinDis = 50
-  transitionTimePriorMaxDis = 500
+  transitionTimePriorMeanAD = 0.1 # using months instead of years
+  transitionTimePriorMinAD = 0.09
+  transitionTimePriorMaxAD = 0.11
 
-  bPriorShapeDis, bPriorRateDis = getGammShapeRateFromTranTime(
-    transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax)
+  bPriorShapeDisAD, bPriorRateDisAD = getGammShapeRateFromTranTime(
+    transitionTimePriorMeanAD, transitionTimePriorMinAD, transitionTimePriorMaxAD)
 
-  # print('bPriorShape', bPriorShape)
-  # print('bPriorRate', bPriorRate)
-  # print(adsas)
+  _, bPriorStdAD = getMeanStdBFromTranTime(
+    transitionTimePriorMeanAD, transitionTimePriorMinAD, transitionTimePriorMaxAD)
 
-  params['priorsDisModels'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
-    shapeB=bPriorShapeDis, rateB=bPriorRateDis, timeShiftStd=20000) for d in range(nrDis)]
+  transitionTimePriorMeanPCA = 500
+  transitionTimePriorMinPCA = 400
+  transitionTimePriorMaxPCA = 600
+
+  bPriorShapeDisPCA, bPriorRateDisPCA = getGammShapeRateFromTranTime(
+    transitionTimePriorMeanPCA, transitionTimePriorMinPCA, transitionTimePriorMaxPCA)
+
+  _, bPriorStdPCA = getMeanStdBFromTranTime(
+    transitionTimePriorMeanPCA, transitionTimePriorMinPCA, transitionTimePriorMaxPCA)
+
+  params['priorsDisModels'] = [0, 0]
+  # priors for tAD
+  params['priorsDisModels'][0] = dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
+    shapeB=bPriorShapeDisAD, rateB=bPriorRateDisAD, stdPerturbB=bPriorStdAD, timeShiftStd=20000)
+  # priors for PCA
+  params['priorsDisModels'][1] = dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
+    shapeB=bPriorShapeDisPCA, rateB=bPriorRateDisPCA, stdPerturbB=bPriorStdPCA, timeShiftStd=20000)
+
   # params['priorsUnitModels'] = [dict(meanA=1, stdA=1e-20, meanD=0, stdD=1e-20,
   #  shapeB=2, rateB=2, timeShiftStd=20000) for d in range(nrDis)]
   params['priorsUnitModels'] = [dict(meanA=1, stdA=1e-5, meanD=0, stdD=1e-5,
@@ -441,94 +458,123 @@ def main():
   modelNames, res = evaluationFramework.runModels(params, expName,
    args.modelToRun, runAllExpTadpoleDrc)
 
-  from tadpoleSubtypes import printRes
 
   if params['masterProcess']:
     printRes(modelNames, res, plotTrajParams, params)
 
 
-# def printRes(modelNames, res, plotTrajParams):
-#   #nrModels = len(modelNames)
-#
-#   print(modelNames)
-#
-#   modelNames += ['Lin']
-#
-#   dktModelName = 'JMD'
-#   sigModelName = 'Sig'
-#   linModelName = 'Lin'
-#
-#   officialNames = {'JMD' :  'DKT', 'Sig' : 'Latent stage model', 'Lin' : 'Linear Model'}
-#
-#   dktIndex = 0
-#   sigIndex = 1
-#   linIndex = 2
-#
-#   # print('##### biomk prediction ######')
-#   nrModels = len(officialNames)
-#   mseMUB = list(range(nrModels))
-#   mseMeanMU = list(range(nrModels))
-#   mseStdMU = list(range(nrModels))
-#
-#   corrMUB = list(range(nrModels))
-#   corrMeanMU = list(range(nrModels))
-#   corrStdMU = list(range(nrModels))
-#   pvalsMU = list(range(nrModels))
-#
-#   for m in range(nrModels-1):
-#     mseMUB[m] = res[m]['metrics']['dpm']['mseUB']
-#     mseMeanMU[m] = np.nanmean(mseMUB[m], axis=1)
-#     mseStdMU[m] = np.nanstd(mseMUB[m], axis=1)
-#
-#     corrMUB[m] = res[m]['metrics']['dpm']['corrUB']
-#     # pvalsMU[m] = res[m]['metrics']['dpm']['pValsUB']
-#
-#     corrMeanMU[m] = np.nanmean(corrMUB[m], axis=1)
-#     corrStdMU[m] = np.nanstd(corrMUB[m], axis=1)
-#
-#   mseMUB[linIndex] = res[0]['metrics']['lin']['mseUB']
-#   mseMeanMU[linIndex] = np.nanmean(mseMUB[linIndex], axis=1)
-#   mseStdMU[linIndex] = np.nanstd(mseMUB[linIndex], axis=1)
-#
-#   corrMUB[linIndex] = res[0]['metrics']['lin']['corrUB']
-#   corrMeanMU[linIndex] = np.nanmean(corrMUB[linIndex], axis=1)
-#   corrStdMU[linIndex] = np.nanstd(corrMUB[linIndex], axis=1)
-#   # pvalsMU[linIndex] = res[0]['metrics']['lin']['pValsU']
-#
-#   biomkNames = [x.split(' ')[-1] for x in res[0]['metrics']['labelsDti']]
-#
-#   # Perform Bonferroni correction
-#   sigLevel = 0.05/(6*2*2)
-#
-#   # print('mseMUB[dktIndex][u, :]', np.nanmean(mseMUB[dktIndex][1, :]), mseMUB[dktIndex][1, :])
-#   # print('mseMUB[linIndex][u, :]', np.nanmean(mseMUB[linIndex][1, :]), mseMUB[linIndex][1, :])
-#   # pl.figure(1)
-#   # pl.hist(mseMUB[dktIndex][1, :], color='g', label='dkt')
-#   # pl.hist(mseMUB[linIndex][1, :], color='r', label='lin')
-#   # pl.show()
-#
-#   print('##### mean squared error and rank correlation ######')
-#   print(r'''\textbf{Model} & ''' + ' & '.join(['\\textbf{%s}' % b for b in biomkNames]) + '\\\\')
-#   print('& \multicolumn{6}{c}{\\textbf{Prediction Error (MSE)}}\\\\')
-#   for m in [dktIndex, sigIndex, linIndex]:
-#     print('%s' % officialNames[modelNames[m]], end='')
-#
-#     for u in range(mseMeanMU[m].shape[0]):
-#       sigLabel = getSigLabel(mseMUB[m][u, :], mseMUB[dktIndex][u, :], sigLevel)
-#       print(' & %.2f$\pm$%.2f%s' % (mseMeanMU[m][u], mseStdMU[m][u], sigLabel), end='')
-#
-#     print('\\\\')
-#
-#   print('& \multicolumn{6}{c}{\\textbf{Rank Correlation (Spearman rho)}}\\\\')
-#   for m in [dktIndex, sigIndex, linIndex]:
-#     print('%s ' % officialNames[modelNames[m]], end='')
-#
-#
-#     for u in range(mseMeanMU[m].shape[0]):
-#       sigLabel = getSigLabel(corrMUB[m][u,:], corrMUB[dktIndex][u,:], sigLevel)
-#       print(' & %.2f%s ' % (corrMeanMU[m][u], sigLabel), end='')
-#
-#     print('\\\\' )
+def printRes(modelNames, res, plotTrajParams, params):
+  #nrModels = len(modelNames)
+
+  nrDis = params['nrDis']
+  modelNames += ['Lin', 'Spline', 'Multivar']
+  officialNames = {'JMD': 'DKT', 'Sig': 'Latent stage', 'Lin': 'Linear',
+                   'Spline': 'Spline', 'Multivar': 'Multivariate'}
+
+  d = 0
+
+  disNrValid = 1
+  disNrsValid = [disNrValid]
+
+  biomkNames = res[0]['metrics']['labelsNonMri']
+
+
+  resDf = pd.DataFrame(index=range(12 * len(disNrsValid)), columns=['Model'] + biomkNames)
+
+  c = 0
+
+  # dpmObjStd[s].plotter.plotAllBiomkDisSpace(dpmObjStd[s], params, disNr=0)
+  # for disNrValid in disNrsValid:
+  print('%d-%d training on dis %s   validation on disease %s' % (d, disNrValid,
+    params['disLabels'][0], params['disLabels'][1]))
+
+  dktIndex = 0
+  sigIndex = 1
+  linIndex = 2
+  splineIndex = 3
+  multivarIndex = 4
+
+  # print('##### biomk prediction ######')
+  nrModels = len(officialNames)
+  mseMUB = list(range(nrModels))
+  mseMeanMU = list(range(nrModels))
+  mseStdMU = list(range(nrModels))
+
+  corrMUB = list(range(nrModels))
+  corrMeanMU = list(range(nrModels))
+  corrStdMU = list(range(nrModels))
+  pvalsMU = list(range(nrModels))
+
+  for m in range(len(res)):
+    # print(res[m]['metrics'])
+    # print(res[m]['metrics'][d])
+    mseMUB[m] = res[m]['metrics']['dpm']['mseUB']
+    mseMeanMU[m] = np.nanmean(mseMUB[m], axis=1)
+    mseStdMU[m] = np.nanstd(mseMUB[m], axis=1)
+
+    corrMUB[m] = res[m]['metrics']['dpm']['corrUB']
+    corrMeanMU[m] = np.nanmean(corrMUB[m], axis=1)
+    corrStdMU[m] = np.nanstd(corrMUB[m], axis=1)
+
+  mseMUB[linIndex] = res[0]['metrics']['lin']['mseUB']
+  mseMeanMU[linIndex] = np.nanmean(mseMUB[linIndex], axis=1)
+  mseStdMU[linIndex] = np.nanstd(mseMUB[linIndex], axis=1)
+
+  mseMUB[splineIndex] = res[0]['metrics']['spline']['mseUB']
+  mseMeanMU[splineIndex] = np.nanmean(mseMUB[splineIndex], axis=1)
+  mseStdMU[splineIndex] = np.nanstd(mseMUB[splineIndex], axis=1)
+
+  mseMUB[multivarIndex] = res[0]['metrics']['multivar']['mseUB']
+  mseMeanMU[multivarIndex] = np.nanmean(mseMUB[multivarIndex], axis=1)
+  mseStdMU[multivarIndex] = np.nanstd(mseMUB[multivarIndex], axis=1)
+
+
+  corrMUB[linIndex] = res[0]['metrics']['lin']['corrUB']
+  corrMeanMU[linIndex] = np.nanmean(corrMUB[linIndex], axis=1)
+  corrStdMU[linIndex] = np.nanstd(corrMUB[linIndex], axis=1)
+
+  corrMUB[splineIndex] = res[0]['metrics']['spline']['corrUB']
+  corrMeanMU[splineIndex] = np.nanmean(corrMUB[splineIndex], axis=1)
+  corrStdMU[splineIndex] = np.nanstd(corrMUB[splineIndex], axis=1)
+
+  corrMUB[multivarIndex] = res[0]['metrics']['multivar']['corrUB']
+  corrMeanMU[multivarIndex] = np.nanmean(corrMUB[multivarIndex], axis=1)
+  corrStdMU[multivarIndex] = np.nanstd(corrMUB[multivarIndex], axis=1)
+
+  # Perform Bonferroni correction
+  sigLevel = 0.05/(6*2*nrModels)
+
+  print('##### mean squared error and rank correlation ######')
+  resDf.iloc[c, 0] = 'Prediction Error (MSE)'
+  c += 1
+  modelIndxs = [dktIndex, sigIndex, multivarIndex, splineIndex, linIndex]
+
+  for m in modelIndxs:
+    resDf.iloc[c,0] = officialNames[modelNames[m]]
+
+    for u in range(mseMeanMU[m].shape[0]):
+      sigLabel = getSigLabel(mseMUB[m][u, :], mseMUB[dktIndex][u, :], sigLevel)
+      resDf.iloc[c, u+1] = '%.2f +/- %.2f%s' % (mseMeanMU[m][u], mseStdMU[m][u], sigLabel)
+
+    c += 1
+
+  resDf.iloc[c, 0] = 'Rank Correlation (Spearman rho)'
+  c += 1
+
+  for m in modelIndxs:
+    resDf.iloc[c, 0] = officialNames[modelNames[m]]
+    # c += 1
+
+    for u in range(mseMeanMU[m].shape[0]):
+      sigLabel = getSigLabel(corrMUB[m][u,:], corrMUB[dktIndex][u,:], sigLevel)
+      resDf.iloc[c, u+1] = '%.2f +/- %.2f%s' % (corrMeanMU[m][u], corrStdMU[m][u], sigLabel)
+
+    c += 1
+
+
+  print(resDf)
+  resDf.to_html('drcRes.html')
+  resDf.loc[:, 'Model' : 'DTI FA Temporal'].to_latex('drcRes.tex', index=False)
 
 
 def getSigLabel(xs, xsMyModel, sigLevel):

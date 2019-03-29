@@ -178,6 +178,7 @@ class PlotterJDM:
       trajStruct = plotterDis.getTrajStruct(disModels[d])
       nrPlotsSoFar = plotterDis.subplotAllTrajWithModelData(disModels[d], trajStruct, nrPlotsSoFar, nrRows, nrCols)
 
+
     ######### compare biomk traj within functional units ##########
 
     for f in range(nrFuncUnits):
@@ -185,8 +186,8 @@ class PlotterJDM:
       trajStruct = plotterFunc.getTrajStruct(unitModels[f])
       nrPlotsSoFar = plotterFunc.subplotAllTrajWithModelData(unitModels[f], trajStruct, nrPlotsSoFar, nrRows, nrCols)
 
-    pl.tight_layout(pad=self.plotTrajParams['padTightLayout'])
-    pl.subplots_adjust(wspace=0, hspace=0)
+    pl.tight_layout(pad=self.plotTrajParams['padTightLayout'], w_pad=0.5, h_pad=1.0)
+    pl.subplots_adjust(wspace=0.3, hspace=0.6)
 
     if replaceFig:
       fig.show()

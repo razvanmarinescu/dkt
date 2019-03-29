@@ -767,8 +767,8 @@ def printRes(modelNames, res, plotTrajParams, params):
 
     disNrsValid = [d2 for d2 in range(nrDis) if d2 not in [d]]
     biomkNames = res[0]['metrics'][d][disNrsValid[0]]['labelsNonMri']
-
-    resDf = pd.DataFrame(index=range(24), columns=['Model'] + biomkNames)
+    nrBiomk = len(biomkNames)
+    resDf = pd.DataFrame(index=range(12 * len(disNrsValid)), columns=['Model'] + biomkNames)
 
     c = 0
 
@@ -833,7 +833,7 @@ def printRes(modelNames, res, plotTrajParams, params):
       corrStdMU[multivarIndex] = np.nanstd(corrMUB[multivarIndex], axis=1)
 
       # Perform Bonferroni correction
-      sigLevel = 0.05/(6*2*2)
+      sigLevel = 0.05/(6*2*nrModels)
 
       # print('mseMUB[dktIndex][u, :]', np.nanmean(mseMUB[dktIndex][1, :]), mseMUB[dktIndex][1, :])
       # print('mseMUB[linIndex][u, :]', np.nanmean(mseMUB[linIndex][1, :]), mseMUB[linIndex][1, :])

@@ -119,24 +119,24 @@ class JointModel(DisProgBuilder.DPMInterface):
         self.loadCheckpoint(i-1, 5)
 
       # estimate subject latent variables
-      # self.estimSubjShifts(self.unitModels, self.disModels)
-      # self.makePlots(plotFigs, i, 0)
-      # self.saveCheckpoint(i, 0)
+      self.estimSubjShifts(self.unitModels, self.disModels)
+      self.makePlots(plotFigs, i, 0)
+      self.saveCheckpoint(i, 0)
       # self.loadCheckpoint(i, 0)
 
       while i < nrIt:
 
         # estimate biomk trajectories - disease agnostic
-        # self.estimBiomkTraj(self.unitModels, self.disModels, i)
-        # self.makePlots(plotFigs, i, 1)
-        # self.saveCheckpoint(i, 1)
-        # # self.loadCheckpoint(i, 1)
-        #
-        # # estimate subject latent variables
-        # self.estimSubjShifts(self.unitModels, self.disModels)
-        # self.makePlots(plotFigs, i, 2)
-        # self.saveCheckpoint(i, 2)
-        self.loadCheckpoint(i, 2)
+        self.estimBiomkTraj(self.unitModels, self.disModels, i)
+        self.makePlots(plotFigs, i, 1)
+        self.saveCheckpoint(i, 1)
+        # self.loadCheckpoint(i, 1)
+
+        # estimate subject latent variables
+        self.estimSubjShifts(self.unitModels, self.disModels)
+        self.makePlots(plotFigs, i, 2)
+        self.saveCheckpoint(i, 2)
+        # self.loadCheckpoint(i, 2)
         #
         # # estimate unit trajectories - disease specific
         self.estimTrajWithinDisModel(self.unitModels, self.disModels)
@@ -172,7 +172,7 @@ class JointModel(DisProgBuilder.DPMInterface):
 
 
       # for SuStaIn validation
-      self.loadCheckpoint(3, 1)  # for the real data
+      # self.loadCheckpoint(3, 1)  # for the real data
       # self.makePlots(plotFigs, i, 2)
       # print(adsa)
 
@@ -194,7 +194,8 @@ class JointModel(DisProgBuilder.DPMInterface):
     for d in range(self.nrDis):
       self.disModels[d].priors = self.priorsDisModels[d]
       self.disModels[d].plotter.plotTrajParams['allTrajOverlap'] = self.params['plotTrajParams']['allTrajOverlap']
-
+      self.disModels[d].min_yB = np.array([0 for b in range(self.disModels[d].nrBiomk)])
+      self.disModels[d].max_yB = np.array([1 for b in range(self.disModels[d].nrBiomk)])
 
     for u in range(self.nrFuncUnits):
       self.unitModels[u].priors = self.priorsUnitModels[u]
@@ -618,8 +619,10 @@ class JointModel(DisProgBuilder.DPMInterface):
     XshiftedScaledDBSX = [0 for _ in range(self.nrDis)]
     X_arrayScaledDB = [0 for _ in range(self.nrDis)]
     informPriorTrajDisModels = [True for _ in range(self.nrDis)] # set informative priors only for the first disease
+    liks = [[0 for u in range(self.nrFuncUnits)] for d in range(self.nrDis)]
     for d in range(self.nrDis):
       XshiftedScaledDBSX[d], _, _, X_arrayScaledDB[d] = disModels[d].getData()
+
 
       # update each unit-traj independently
       for u in range(self.nrFuncUnits):
@@ -643,26 +646,33 @@ class JointModel(DisProgBuilder.DPMInterface):
         resStructMin = scipy.optimize.minimize(likJDMobjFunc, initParams, method='Nelder-Mead',
           options={'disp': True, 'maxiter':1000})
 
-        stdPerturb = [0, 0.3, 100, 0]
+        nrPerturbMax = 5
+        print(disModels[d].priors)
+        stdPerturbBSigmoid = disModels[d].priors['stdPerturbB']
+        stdPerturb = [0, stdPerturbBSigmoid, 50, 0]
+        # stdPerturb = [0, stdPerturbBSigmoid, 50, 0.3]
         successList = np.zeros(nrPerturbMax, bool)
         # resStructMin = resStruct
-        for p in range(nrPerturbMax):
-          print('trying perturbation %d' % p)
-          perturbParams = [np.random.normal(initParams[i], stdPerturb[i])
-                           for i in range(len(initParams))]
-          resStruct = scipy.optimize.minimize(likJDMobjFunc, perturbParams, method='Nelder-Mead',
-          options={'disp': True, 'maxiter':1000})
+        # for p in range(nrPerturbMax):
+        #   print('trying perturbation %d' % p)
+        #   perturbParams = [np.random.normal(initParams[i], stdPerturb[i])
+        #                    for i in range(len(initParams))]
+        #   resStruct = scipy.optimize.minimize(likJDMobjFunc, perturbParams, method='Nelder-Mead',
+        #   options={'disp': True, 'maxiter':1000})
+        #
+        #   # p += 1
+        #   successList += [resStruct.success]
+        #   if resStruct.success and resStruct.fun < resStructMin.fun:
+        #     resStructMin = resStruct
+        #     print(ada)
 
-          # p += 1
-          successList += [resStruct.success]
-          if resStruct.success and resStruct.fun < resStructMin.fun:
-            resStructMin = resStruct
-
-        print('resStruct', resStruct)
+        print('resStructMin', resStructMin)
+        liks[d][u] = resStructMin.fun
 
         # print('finalLik', likJDMobjFunc(resStruct.x))
-        disModels[d].parameters[u] = [resStruct.x, initVariance]
+        disModels[d].parameters[u] = [resStructMin.x, initVariance]
 
+    print(liks)
     # print(dasd)
 
   def ssdJDMOneUnitTraj(self, disModel, unitModel, X_arrayScaledDisB, params, unitNr, disNr, Y_arrayCurDis,

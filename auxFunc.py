@@ -208,6 +208,14 @@ def getGammShapeRateFromTranTime(transitionTimePriorMean, transitionTimePriorMin
 
   return bPriorShape, bPriorRate
 
+def getMeanStdBFromTranTime(transitionTimePriorMean, transitionTimePriorMin, transitionTimePriorMax):
+
+  bPriorMean = 16 / (1 * transitionTimePriorMean)
+  bPriorStd = np.abs(16 / (1 * transitionTimePriorMax) - 16 / (1 * transitionTimePriorMin))
+
+
+  return bPriorMean, bPriorStd
+
 def applyScalingToBiomk(dataCrossSB, scalingBiomk2B):
   scaledData = dataCrossSB * scalingBiomk2B[1,:][None, :] + scalingBiomk2B[0,:][None, :]
   return scaledData
