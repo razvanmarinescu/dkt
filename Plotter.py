@@ -276,6 +276,10 @@ class PlotterJDM:
     else:
       nrRows, nrCols = auxFunc.findOptimalRowsCols(nrDis * 2 + nrFuncUnits * 2 + 2)
 
+
+    # nrRows = 2
+    # nrCols = 4
+
     # if (nrDis*2 + nrFuncUnits*2) > nrRows * nrCols:
     #   print('nrRows', nrRows)
     #   print('nrCols', nrCols)
@@ -1236,6 +1240,7 @@ class PlotterGP(ABC):
     trueTrajScaledXB = trajStruct['trueTrajScaledXB']
     yMinAll = trajStruct['yMinAll']
     yMaxAll = trajStruct['yMaxAll']
+    deltaY = (yMaxAll - yMinAll)/4
     min_yB = trajStruct['min_yB']
     max_yB = trajStruct['max_yB']
 
@@ -1252,16 +1257,16 @@ class PlotterGP(ABC):
     if self.plotTrajParams['allTrajOverlap']:
       ax2 = pl.subplot(nrRows, nrCols, nrPlotsSoFar+1)
       pl.title('%s all trajectories' % self.plotTrajParams['title'])
-      ax2.set_ylim([yMinAll, yMaxAll])
+      ax2.set_ylim([yMinAll - deltaY, yMaxAll])
       for b in range(gpModel.nrBiomk):
         ax2.plot(newXTrajScaledZeroOne, predTrajScaledXB[:, b], '-', lw=2
-                 , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
+                 , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b] + ' estim.')
         print('trueXsScaledZeroOne trueTrajScaledXB', trueXsScaledZeroOne.shape, trueTrajScaledXB.shape)
         ax2.plot(trueXsScaledZeroOne, trueTrajScaledXB[:, b], '--', lw=2
-                 , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b])
+                 , c=self.plotTrajParams['colorsTraj'][b], label=self.plotTrajParams['labels'][b] + ' true')
 
       ax2.text(0.0, 0.95, 'MAE = %.3f' % np.mean(maeTraj))
-      ax2.legend(loc='lower right',ncol=1)
+      ax2.legend(loc='lower center',ncol=2, prop={'size':8.5})
       ax2.set_xlabel(xlabel)
       ax2.set_ylabel(ylabel)
       nrPlotsSoFar += 1

@@ -69,23 +69,9 @@ from auxFunc import *
 import evaluationFramework
 from matplotlib import pyplot as pl
 
-hostName = gethostname()
-if hostName == 'razvan-Inspiron-5547':
-  homeDir = '/home/razvan'
-  blenderPath = 'blender'
-elif hostName == 'razvan-Precision-T1700':
-  homeDir = '/home/razvan'
-  blenderPath = 'blender'
-elif args.cluster:
-  homeDir = '/home/rmarines'
-  blenderPath = '/share/apps/blender-2.75/blender'
-else:
-  raise ValueError('Wrong hostname. If running on new machine, add '
-                   'application paths in python code above')
-
 
 plotTrajParams = {}
-plotTrajParams['SubfigTrajWinSize'] = (1600,900)
+plotTrajParams['SubfigTrajWinSize'] = (1200,600)
 plotTrajParams['nrRows'] = args.nrRows
 plotTrajParams['nrCols'] = args.nrCols
 plotTrajParams['diagColors'] = {CTL:'g', MCI:'y', AD:'r',
@@ -95,7 +81,7 @@ plotTrajParams['diagScatterMarkers'] = {CTL:'o', MCI:'o', AD:'o',
 plotTrajParams['legendCols'] = 4
 plotTrajParams['diagLabels'] = {CTL:'CTL', AD:'AD', PCA:'PCA', CTL2:'CTL2'}
 # plotTrajParams['ylimitsRandPoints'] = (-3,2)
-plotTrajParams['blenderPath'] = blenderPath
+# plotTrajParams['blenderPath'] = blenderPath
 plotTrajParams['isSynth'] = True
 plotTrajParams['padTightLayout'] = 1
 
@@ -164,7 +150,7 @@ def main():
   plotTrajParams['yNormMode'] = 'unscaled'
 
   # if False, plot estimated traj. in separate plot from true traj.
-  plotTrajParams['allTrajOverlap'] = False
+  plotTrajParams['allTrajOverlap'] = True
 
   params['unitNames'] = ['Unit%d' % f for f in range(nrFuncUnits)]
 
@@ -176,8 +162,11 @@ def main():
   params['penaltyUnits'] = 20
   params['penaltyDis'] = 1
   params['nrFuncUnits'] = nrFuncUnits
+  params['nrFuncUnitsImgOnly'] = nrFuncUnits
   params['biomkInFuncUnit'] = biomkInFuncUnit
   params['nrBiomkDisModel'] = nrFuncUnits
+  params['nrExtraBiomk'] = 0
+
 
 
   params['nrGlobIterUnit'] = 10 # these parameters are specific for the Joint Model of Disease (JMD)

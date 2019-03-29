@@ -160,21 +160,23 @@ class JointModel(DisProgBuilder.DPMInterface):
         i += 1
     else:
 
-      # i = 70
-      # self.loadCheckpoint(i, 2)
-      # self.makePlots(plotFigs, i, 2)
+      if self.params['plotTrajParams']['isSynth']:
+        i = 10
+        self.loadCheckpoint(i, 5)
+        self.makePlots(plotFigs, i, 5)
+      else:
 
-      i = 0
+        i = 0
 
-      self.loadCheckpoint(i, 2) # for the real data
-      # self.makePlots(plotFigs, i, 2)
-      # print(adsa)
+        self.loadCheckpoint(i, 2) # for the real data
+        # self.makePlots(plotFigs, i, 2)
+        # print(adsa)
 
 
-      # for SuStaIn validation
-      # self.loadCheckpoint(3, 1)  # for the real data
-      # self.makePlots(plotFigs, i, 2)
-      # print(adsa)
+        # for SuStaIn validation
+        # self.loadCheckpoint(3, 1)  # for the real data
+        # self.makePlots(plotFigs, i, 2)
+        # print(adsa)
 
 
     res = None
@@ -207,7 +209,8 @@ class JointModel(DisProgBuilder.DPMInterface):
   def makePlots(self, plotFigs, iterNr, picNr):
     if plotFigs:
       if self.params['plotTrajParams']['isSynth']:
-        fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels, replaceFig=True)
+        fig = self.plotter.plotCompWithTrueParams(self.unitModels, self.disModels,
+            replaceFig=True)
         fig.savefig('%s/compTrueParams%d%d_%s.pdf' % (self.outFolder, iterNr, picNr, self.expName))
         fig.savefig('%s/compTrueParams%d%d_%s.png' % (self.outFolder, iterNr, picNr, self.expName))
         pl.clf()
