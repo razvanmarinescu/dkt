@@ -447,9 +447,22 @@ def validateDRCBiomk(dpmObj, params):
     # print(nonMriDataCurrCol[nnMaskMulti].shape[0])
     assert nnDataMri[:,0].shape[0] == nnDataMri[:, 1].shape[0]
     assert nnDataMri[:,0].shape[0] == nonMriDataCurrCol[nnMaskMulti].shape[0]
-    multivarModel = Rbf(nnDataMri[:,0], nnDataMri[:,1], nnDataMri[:,2], nnDataMri[:,3], nnDataMri[:,4],
-               nnDataMri[:,5], nonMriDataCurrCol[nnMaskMulti], function='cubic')
+    # multivarModel = Rbf(nnDataMri[:,0], nnDataMri[:,1], nnDataMri[:,2], nnDataMri[:,3], nnDataMri[:,4],
+    #            nnDataMri[:,5], nonMriDataCurrCol[nnMaskMulti], function='cubic')
     # print(ads)
+
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import RBF, WhiteKernel
+
+    multivarModelRbf = Rbf(nnDataMri[:,0], nnDataMri[:,1], nnDataMri[:,2], nnDataMri[:,3], nnDataMri[:,4],
+               nnDataMri[:,5], nonMriDataCurrCol[nnMaskMulti], function='cubic')
+
+    kernel = 1.0 * RBF(length_scale=1, length_scale_bounds=(0.1, 10)) \
+             + WhiteKernel(noise_level=0.3, noise_level_bounds=(0.1, 0.1))
+    # print('nnDataMri[:,0:5].shape', nnDataMri[:,0:6].shape)
+    # print(nonMriDataCurrCol[nnMaskMulti].shape)
+    multivarModel = GaussianProcessRegressor(kernel=kernel,
+                                  alpha=0.0).fit(nnDataMri[:,0:6], nonMriDataCurrCol[nnMaskMulti])
 
 
     YvalidDktNonMri[b] = [[] for s in range(nrSubjWithValid)]  # Non-MRI predictions of DKT model for subj in validation set
@@ -475,9 +488,11 @@ def validateDRCBiomk(dpmObj, params):
                                  for u in range(nrMriBiomks)]
       # print('mrValsToPredictCurrSubj', mrValsToPredictCurrSubj)
       assert len(mrValsToPredictCurrSubj) == nrMriBiomks
-      nonMriPredValidMultivar = multivarModel(mrValsToPredictCurrSubj[0], mrValsToPredictCurrSubj[1],
-        mrValsToPredictCurrSubj[2], mrValsToPredictCurrSubj[3], mrValsToPredictCurrSubj[4],
-        mrValsToPredictCurrSubj[5])
+      # nonMriPredValidMultivar = multivarModel(mrValsToPredictCurrSubj[0], mrValsToPredictCurrSubj[1],
+      #   mrValsToPredictCurrSubj[2], mrValsToPredictCurrSubj[3], mrValsToPredictCurrSubj[4],
+      #   mrValsToPredictCurrSubj[5])
+
+      nonMriPredValidMultivar = multivarModel.predict(np.array(mrValsToPredictCurrSubj).reshape(1, -1))
 
       # print(np.array([nonMriPredValidLin]))
       # print(mrValsValidCurrSubj[closestMriIdx])
