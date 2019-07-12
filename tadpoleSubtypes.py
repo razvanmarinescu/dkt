@@ -271,8 +271,8 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
 
   # map controls to the three datasets based on sustain probability.
   # there will be 3 datasets:
-  # 1. CTL-cortical + patients-cortical
-  # 2. CTL-hippocampal + patients-hippocampal
+  # 1. CTL-hippocampal + patients-hippocampal
+  # 2. CTL-cortical + patients-cortical
   # 3. CTL-subcortical + patients-subcortical
 
   # dataDfTadpole.dataset[dataDfTadpole.diag == CTL] = dataDfTadpole.subtype[dataDfTadpole.diag == CTL]
@@ -398,6 +398,7 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   else:
     nrSubjToKeep = minNr
 
+
   assert nrSubjToKeep <= minNr
 
   np.random.seed(1)
@@ -420,6 +421,32 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   allBiomkCols = [x for x in allBiomkCols if not x.startswith('AV1451')]
   dataDfTadpole = dataDfTadpole.loc[:, 'RID': 'AV45 Temporal']
 
+  print(dataDfTadpole)
+
+  # print(np.logical_and(dataDfTadpole.Month_bl == 0, dataDfTadpole.dataset=1))
+
+  dfBl = dataDfTadpole.loc[dataDfTadpole.Month_bl == 0, :]
+  print('Group & Number & Visits & Age & Gender (\\%%F)\\\\')
+  grNames = ['Controls (Hippocampal)', 'Controls (cortical)', 'Controls (subcortical)',
+             'AD (Hippocampal)', 'AD (cortical)', 'AD (subcortical)']
+  for i in [1,4,2,5,3,6]:
+    # print('dfBl\n', dfBl)
+    dfCurr = dfBl.loc[dfBl.diag == i, :]
+    # print('dfCurr\n',dfCurr)
+    # print(np.nanmean(dfCurr.age))
+    # print(np.nanmean(dfCurr.loc[:,'gender-0f1m']))
+    dfGrByRID = dataDfTadpole.loc[dataDfTadpole.diag == i,:].groupby(['RID'], as_index=False)
+    avgNrVisits = np.mean(dfGrByRID.count().age)
+    stdNrVisits = np.std(dfGrByRID.count().age)
+
+
+    print('%s & %d & %.1f $\pm$ %.1f & %.1f $\pm$ %.1f & %d(\\%%)\\\\' % (grNames[i-1], dfCurr.shape[0],
+      avgNrVisits, stdNrVisits, np.nanmean(dfCurr.age), np.nanstd(dfCurr.age),
+      100 * (1 - np.nanmean(dfCurr.loc[:,'gender-0f1m']))))
+
+
+  asda
+
 
   # update 6 Aug 2018: moved normalisation after making the data tiny.
   dataDfTadpole = normaliseData(dataDfTadpole, allBiomkCols)
@@ -441,6 +468,8 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   diagTrainAll = [0, 0, 0]
   visitIndicesTrainAll = [0, 0, 0]
   nrSubgr = 3
+
+
 
   dataDfTadpole.to_csv(finalDataFile.split('.')[0] + '.csv',index=False)
 
@@ -678,9 +707,9 @@ def main():
 
 
   # map which subtypes belong to which disease.
-  # disease 1: subtype 0+1
-  # disease 2: subtype 0+2
-  # disease 3: subtype 0+3
+  # disease 1: subtype 0+1 - Hippocampal
+  # disease 2: subtype 0+2 - cortical
+  # disease 3: subtype 0+3 - subcortical
   # note subtype 0 are controls
   params['diagsSetInDis'] = [np.array([CTL1,SBG1]), np.array([CTL2,SBG2]), np.array([CTL3,SBG3])]
   params['disLabels'] = ['Hippocampal', 'Cortical', 'Subcortical']

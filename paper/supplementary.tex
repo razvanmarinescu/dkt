@@ -1,0 +1,241 @@
+\documentclass{llncs}
+\usepackage{amsmath,amssymb,calc,ifthen}
+\usepackage{float}
+%\usepackage{cancel}
+\usepackage[table,usenames,dvipsnames]{xcolor} % for coloured cells in tables
+\usepackage{tikz}
+% Allows us to click on links and references!
+\usepackage{hyperref}
+\usepackage{url}
+\hypersetup{
+colorlinks,
+citecolor=black,
+filecolor=black,
+linkcolor=black,
+urlcolor=black
+}
+% Nice package for plotting graphs
+% See excellent guide:
+% http://www.tug.org/TUGboat/tb31-1/tb97wright-pgfplots.pdf
+\usetikzlibrary{plotmarks,shapes}
+\usepackage{amsmath,graphicx}
+\usepackage{epstopdf}
+%\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{graphicx}
+% highlight - useful for TODOs and similar
+\usepackage{color}
+\newcommand{\hilight}[1]{\colorbox{yellow}{#1}}
+\newcommand\ci{\perp\!\!\!\perp} % perpendicular sign
+\newcommand*\rfrac[2]{{}^{#1}\!/_{#2}} % diagonal fraction
+\newcommand\SLASH{\char`\\}
+\usepackage{listings}
+% margin size
+\usepackage{pdfpages}
+\usepackage{enumitem} % for nested enumerate numbers 1 1.1 1.1.1
+% \usepackage{breqn}
+% \usepackage[linesnumbered]{algorithm2e}
+% \usepackage{algorithmicx,algpseudocode}
+% \usepackage{wrapfig} % for allowing text wrapped around the algorithm
+% \newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{blue}{#1}}
+% \SetCommentSty{mycommfont}
+
+% \usepackage{titlesec}
+% \titlespacing*{\section}
+% {0pt}{5.5ex plus 1ex minus .2ex}{4.3ex plus .2ex}
+
+\usepackage[linesnumbered,noend]{algorithm2e}
+\newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{blue}{#1}}
+\SetCommentSty{mycommfont}
+
+\setlength{\textfloatsep}{15pt}
+%\setlength{\floatsep}{1pt}
+%\setlength{\topmargin}{1pt}
+
+\renewcommand\floatpagefraction{.95}
+\renewcommand\topfraction{.95}
+\renewcommand\bottomfraction{.95}
+\renewcommand\textfraction{.05}   
+\setcounter{totalnumber}{50}
+\setcounter{topnumber}{50}
+\setcounter{bottomnumber}{50}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\begin{document}
+
+\definecolor{blue3}{HTML}{86B7FC} % med blue
+\definecolor{blue1}{HTML}{B5F1FF} % light blue
+\definecolor{blue2}{HTML}{E0F9FF} % very light blue
+
+\title{Supplementary material: Disease Knowledge Transfer across Neurodegenerative Diseases}
+%
+\titlerunning{Supplementary -- DKT}  % abbreviated title (for running head)
+%                                     also used for the TOC unless
+%                                     \toctitle is used
+%
+
+% * <mrazvan22@gmail.com> 2018-03-02T16:41:47.321Z:
+% 
+% Author list: Me, Marco (writing+model code), Stefano, Alex Young (writing+tadpole), Pere (helped with validation),Neil (tadpole),  Arman, Keir (DTI data), Seb, Danny
+% 
+% ^ <mrazvan22@gmail.com> 2018-03-02T16:55:06.003Z.
+
+% \author{******************}
+
+\author{}
+
+\authorrunning{} % abbreviated author list (for running head)
+
+\institute{}
+
+% \institute{Centre for Medical Image Computing, University College London, UK
+% \and 
+% Queen Square MS Centre, UCL Institute of Neurology, UK
+% \and 
+% Dementia Research Centre, University College London, UK
+% \and
+% University of C\^{o}te d'Azur, Inria Sophia Antipolis, France
+% % Laboratoire d'Analyse Num\'{e}rique, B\^{a}timent 425,\\
+% % F-91405 Orsay Cedex, France}
+% }
+
+
+\maketitle              % typeset the title of the contribution
+
+
+%\newcommand{\expFld}{../resfiles/tad-drcTiny_JMD}
+\newcommand{\expFld}{figures}
+
+
+\newcommand{\lp}{\lambda_{d_i}^{\psi(k)}}
+\newcommand{\lpuu}{\lambda_{d_i}^{\psi(k),(u)}}
+\newcommand{\lpum}{\lambda_{d_i}^{\psi(k),(u-1)}}
+
+
+
+
+\section{Parameter Estimation}
+
+\newcommand{\uu}{^{(u)}}
+\newcommand{\um}{^{(u-1)}}
+
+We estimate the model parameters using a two-stage approach. In the first stage, we perform belief propagation within each agnostic unit and then within each disease model. In the second stage we jointly optimise across all agnostic units and disease models using loopy belief propagation. An overview of the algorithm is given in Figure \ref{fig:dktAlgo}. Given the initial parameters estimated from the first stage (line 1), the algorithm continuously updates the biomarker trajectories within the agnostic units (lines 4-5), dysfunction trajectories (line 8) and subject-specific time shifts (line 10) until convergence. The cost function for all parameters is nearly identical, the main difference being the measurements $(i,j,k)$ over subjects $i$, visits $j$ and biomarkers $k$ that are selected for computing the measurement error. For estimating the trajectory of biomarker $k$ within agnostic unit $\psi(k)$, measurements are taken from $\Omega_k$ representing all measurements of biomarker $k$ from all subjects and visits. For estimating the dysfunction trajectories, $\Omega_{d,l}$ represents the measurement indices from all subjects with disease $d$ (i.e. $d_i = d$) and all biomarkers $k$ that belong to agnostic unit $l$ (i.e. $\psi(k) = l$). Finally, $\Omega_i$ (line 10) represents all measurements from subject $i$, for all biomarkers and visits. 
+
+
+\begin{figure}
+\begin{algorithm}[H]
+\scriptsize
+ Initialise $\boldsymbol{\theta}^{(0)}$, $\boldsymbol{\lambda}^{(0)}$, $\boldsymbol{\beta}^{(0)}$\\
+  \While{$\boldsymbol{\theta}$, $\boldsymbol{\lambda}$, $\boldsymbol{\beta}$ not converged}{
+   \tcp*[l]{Estimate biomarker trajectories (disease agnostic)}
+    \For{$k=1$ to $K$}{
+      ${\theta_k\uu = \argmin_{\theta_k} \sum_{(i,j) \in \Omega_k} \left[y_{ijk} - g\left(f(\beta_i\um + m_{ij}; \lpum) ; \theta_k\right) \right]^2  - log\ p(\theta_k)}$\\
+      ${\epsilon_k\uu = \frac{1}{|\Omega_k|} \sum_{(i,j) \in \Omega_k}    \left[y_{ijk} - g\left(f(\beta_i\um + m_{ij}; \lpum) ; \theta_k\uu \right) \right]^2 }$\\
+    }
+     \tcp*[l]{Estimate dysfunction trajectories (disease specific)} 
+    \For{$d=1 \in \mathbb{D}$}{
+      \For{$l=1 \in \Lambda$}{
+        ${\lambda_{d}^{l, (u)} = \argmin_{\lambda_{d}^{l}} \sum_{(i,j,k) \in \Omega_{d,l}} \left[y_{ijk} - g\left(f(\beta_i\um + m_{ij}; \lambda_{d}^{l}) ; \theta_k\uu 
+        \right) \right]^2  - log\ p(\lambda_{d}^{l})}$\\
+      }
+    }
+    \tcp*[l]{Estimate subject-specific time shifts} 
+    \For{$i=1 \in [1, \dots, S]$}{
+      ${\beta_i\uu = \argmin_{\beta_i} \sum_{(j,k) \in \Omega_i} \left[y_{ijk} - g\left(f(\beta_i + m_{ij}; \lpuu) ; \theta_k\uu
+      \right) \right]^2  - log\ p(\beta_i)}$\\
+    }
+}
+\normalfont
+\end{algorithm}
+\caption[The algorithm for estimating the DKT parameters]{The algorithm used to estimate the DKT parameters, based on loopy belief-propagation.}
+\label{fig:dktAlgo}
+\end{figure}
+
+\section{Generation of synthetic dataset}
+
+We tested DKT on synthetic data, to assess its performance against known
+ground truth. More precisely, we generated data that follows the DKT model
+exactly, and tested DKT's ability to recover biomarker trajectories and subject time-shifts. 
+
+We generated the synthetic data as follows, using parameters from Table \ref{tab:synParams}:
+\begin{itemize}
+ \item We simulate two synthetic diseases, "synthetic PCA" and "synthetic AD"
+ \item We define 6 biomarkers that we allocate to agnostic units $l_0$ and $l_1$ (Table \ref{tab:synParams} top)
+ \item Within each agnostic unit, we define the parameters $theta_0$ -- $theta_5$ corresponding to biomarker trajectories within the agnostic unit.
+ \item For each disease, we define the parameters $\lambda$ corresponding to trajectories of dysfunction scores.
+ \item We then sample data from 100 synthetic AD subjects and 50 PCA subjects with $\beta_i$ as given in Table \ref{tab:synParams} bottom using the model likelihood (Eq. 2 from main paper). For each subject, we generate data for 4 visits, each 1 year apart.
+\end{itemize}
+
+
+ \begin{table}
+ %\fontsize{7}{12}
+ \centering
+ \begin{tabular}{c | c}
+& \textbf{Trajectory parameters} \\
+%\hline
+ Biomarker allocation &  $l_0:\{k_0, k_2, k_4\}$, $l_1: \{k_1, k_3, k_5\}$ \\
+Agnostic unit $l_0$ &  $\theta_0 = (1,5,0.2,0)$, $\theta_2 = (1,5,0.55,0)$,  $\theta_4 = (1,5,0.9,0)$  \\
+Agnostic unit $l_1$ & $\theta_1 = (1,10,0.2,0)$, $\theta_3 = (1,10,0.55,0)$, $\theta_5 = (1,10,0.9,0)$ \\
+  
+"Synthetic AD" & $\lambda_0^0 = (1, 0.3, -4, 0)$  and $\lambda_0^1 = (1, 0.2, 6, 0)$ \\
+ "Synthetic PCA" & $\lambda_1^0 = (1, 0.3, 6, 0)$ and $\lambda_1^1 = (1, 0.2, -4, 0)$ \\
+\hline
+& \textbf{Subject parameters} \\
+ Number of subjects & 100 (synthetic AD) and 50 (synthetic PCA) \\ 
+ Time-shifts $\beta_i$ & $\beta_i \sim U(-13,10)$ years \\
+ Diagnosis & $p(control) \propto Exp (-4.5)$,  $p(patient) \propto Exp (4.5)$\\
+ Data generation & 4 visits/subject, 1 year apart, $\epsilon_k = 0.05$\\ 
+\end{tabular}
+\caption{Parameters used for synthetic data generation, emulating the TADPOLE and DRC datasets.}
+\label{tab:synParams}
+\end{table}
+
+
+
+\section{Demographics of test sets}
+
+The cohort from the Dementia Research Center UK used for validation had the following demongraphics: 10 subjects diagnosed with Posterior Cortical Atrophy, with a mean age of 59.4, 40\% females, as well as 10 age-matched controls with a mean age of 59.3, 50\% females.
+
+
+For the validation on TADPOLE subtypes, we used applied the SuStaIn model on TADPOLE to split the population into three subtypes with different progression: a hippocampal subtype \TODODODO
+When splitting the TADPOLE subjects into three populations with different progressions, the resulting groups had the following demographics:
+
+\begin{table}
+ \begin{tabular}{c | c c c c}
+\textbf{Cohort} & \textbf{Nr. subjects} & \textbf{Nr. visits} & \textbf{Age (baseline)} & \textbf{Gender (\%F)}\\
+\hline
+Controls (Hippocampal) & 31 & 2.3 $\pm$ 1.8 & 74.4 $\pm$ 6.9 & 38\%\\
+AD (Hippocampal) & 21 & 1.5 $\pm$ 0.8 & 74.5 $\pm$ 5.5 & 42\%\\
+\hline
+Controls (cortical) & 21 & 2.3 $\pm$ 1.3 & 70.9 $\pm$ 5.4 & 42\%\\
+AD (cortical) & 35 & 1.7 $\pm$ 0.9 & 72.8 $\pm$ 7.4 & 28\%\\
+\hline
+Controls (subcortical) & 28 & 3.0 $\pm$ 1.5 & 73.7 $\pm$ 6.5 & 42\%\\
+AD (subcortical) & 27 & 1.6 $\pm$ 0.9 & 73.7 $\pm$ 7.5 & 33\%\\
+ \end{tabular}
+ \caption{Demo}
+ \label{tab:demogTadSubtypes}
+\end{table}
+
+
+% \begin{table}
+%  \begin{tabular}{c | c c c}
+%   Cohort & Number of scans & Age & Gender (\%F)\\
+%   Controls & 10 & 59.4 & 50\%\\
+%   PCA & 10 & 59.3 & 40\%\\
+%  \end{tabular}
+% \end{table}
+
+
+
+\bibliographystyle{unsrtnat}
+\begin{thebibliography}{5}
+
+\end{thebibliography}
+
+\clearpage
+
+\end{document}
+
