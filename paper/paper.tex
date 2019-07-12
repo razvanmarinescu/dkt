@@ -106,7 +106,7 @@ urlcolor=black
 
 
 %\newcommand{\expFld}{../resfiles/tad-drcTiny_JMD}
-\newcommand{\expFld}{.}
+\newcommand{\expFld}{figures}
 
 
 \begin{abstract}
@@ -126,7 +126,7 @@ We propose Disease Knowledge Transfer (DKT), a generative model that estimates c
 
 \begin{figure}[h]
  \centering
- \includegraphics[width=0.8\textwidth,trim=0 0 0 0,clip]{disease_knowledge_transfer_symbols.pdf}
+ \includegraphics[width=0.8\textwidth,trim=0 0 0 0,clip]{figures/disease_knowledge_transfer_symbols.pdf}
  \caption{Diagram of the proposed DKT framework. We assume that each disease can be modelled as the evolution of abstract dysfunction scores (Y-axis, top row), each one related to different brain regions. Each region-specific dysfunction score then further models (X-axis, bottom row) the progression of several multimodal biomarkers within that same region. For instance, the temporal dysfunction, modelled as a biomarker in the disease specific model (top row), is the X-axis in the disease agnostic model (temporal unit, bottom row), which aggregates together abnormality from amyloid, tau and MR imaging within the temporal lobe. The biomarker relationships within the bottom units are assumed to be disease agnostic and shared across all diseases modelled. Knowledge transfer between the two diseases can then be achieved via the disease-agnostic units. Mathematical notation from section \ref{sec:method} is shown in red to ease understanding.}
  \label{fig:diagram}
 \end{figure}
@@ -230,30 +230,6 @@ We estimate the model parameters $[\boldsymbol{\theta}, \boldsymbol{\lambda}, \b
 We first test DKT on synthetic data, to assess its performance against known ground truth. More precisely, we generate data that follows the DKT model exactly, and test DKT's ability to recover biomarker trajectories and subject time-shifts. We generate synthetic data from two diseases (50 subjects with "\emph{synthetic PCA}" and 100 subjects with "\emph{synthetic AD}") using the parameters from the bottom-left table in Fig. \ref{fig:dktSynthTrajCompTrue}, emulating the TADPOLE cohort as well as our own cohort. The six biomarkers ($k_1$-$k_6$) have been \emph{a-priori} allocated to two agnostic units $l_0$ and $l_1$. To simulate the lack of multimodal data in the synthetic PCA subjects, we discarded the data from biomarkers $k_0$, $k_1$, $k_4$ and $k_5$ for all these subjects. 
 
 % Remaining biomarkers $k_2$ and $k_3$, for which data was still available in the synthetic PCA cohort, are assumed to be of the same modality (e.g. MRI volume) but to represent measurements from different brain regions (e.g. temporal and occipital). 
- 
-%  \begin{table}
-% \fontsize{6}{8}\selectfont
-%  \centering
-%  \begin{tabular}{c | c}
-% & \textbf{Trajectory parameters} \\
-% %\hline
-%  Biomarker allocation &  $l_0:\{k_0, k_2, k_4\}$, $l_1: \{k_1, k_3, k_5\}$ \\
-% Agnostic unit $l_0$ &  $\theta_0 = (1,5,0.2,0)$, $\theta_2 = (1,5,0.55,0)$,  $\theta_4 = (1,5,0.9,0)$  \\
-% Agnostic unit $l_1$ & $\theta_1 = (1,10,0.2,0)$, $\theta_3 = (1,10,0.55,0)$, $\theta_5 = (1,10,0.9,0)$ \\
-%   
-% "Synthetic AD" & $\lambda_0^0 = (1, 0.3, -4, 0)$  and $\lambda_0^1 = (1, 0.2, 6, 0)$ \\
-%  "Synthetic PCA" & $\lambda_1^0 = (1, 0.3, 6, 0)$ and $\lambda_1^1 = (1, 0.2, -4, 0)$ \\
-% \hline
-% & \textbf{Subject parameters} \\
-%  Number of subjects & 100 (synthetic AD) and 50 (synthetic PCA) \\ 
-%  Time-shifts $\beta_i$ & $\beta_i \sim U(-13,10)$ years \\
-%  Diagnosis & $p(control) \propto Exp (-4.5)$,  $p(patient) \propto Exp (4.5)$\\
-%  Data generation & 4 visits/subject, 1 year apart, $\epsilon_k = 0.05$\\ 
-% \end{tabular}
-% \caption{Parameters used for synthetic data generation, emulating the TADPOLE cohort and our own dataset.}
-% \label{tab:synParams}
-% \end{table}
-
 
 
 \subsection{Data Acquisition and Preprocessing}
@@ -272,7 +248,7 @@ Results on synthetic data in the presence of ground truth (Fig. \ref{fig:dktSynt
 
 \begin{figure}[htp]
 %\includegraphics[width=\textwidth]{../resfiles/synth/synth1_JMD/compTrueParams101_synth1_JMD.pdf}
-\includegraphics[width=0.8\textwidth]{../resfiles/synth/synth1_JMD/compTrueParams105_synth1_JMD.pdf}
+\includegraphics[width=0.8\textwidth]{figures/compTrueParams105_synth1_JMD.pdf}
 \begin{flushright}
 \vspace{-16.0em}
 \fontsize{5}{8.0}\selectfont
