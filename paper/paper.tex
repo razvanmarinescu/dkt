@@ -76,30 +76,38 @@ urlcolor=black
 %                                     \toctitle is used
 %
 
-% * <mrazvan22@gmail.com> 2018-03-02T16:41:47.321Z:
-% 
-% Author list: Me, Marco (writing+model code), Stefano, Alex Young (writing+tadpole), Pere (helped with validation),Neil (tadpole),  Arman, Keir (DTI data), Seb, Danny
-% 
-% ^ <mrazvan22@gmail.com> 2018-03-02T16:55:06.003Z.
+\author{R\u{a}zvan V. Marinescu\inst{1,2} \and Marco Lorenzi\inst{5} \and Stefano Blumberg\inst{1} \and Alexandra L. Young\inst{1} \and Pere Planell-Morell\inst{1} \and Neil P. Oxtoby\inst{1} \and Arman Eshaghi\inst{1,3} \and Keir X. Young\inst{4} \and Sebastian J. Crutch\inst{4} \and Polina Golland\inst{2} \and Daniel C. Alexander\inst{1}, for the Alzheimer's Disease Neuroimaging Initiative} 
 
-% \author{******************}
+% index{Marinescu, Razvan}
+% index{Lorenzi, Marco}
+% index{Blumberg, Stefano}
+% index{Young, Alexandra}
+% index{Planell-Morell, Pere}
+% index{Oxtoby, Neil}
+% index{Eshaghi, Arman}
+% index{Yong, Keir}
+% index{Crutch, Sebastian}
+% index{Goland, Polina}
+% index{Alexander, Daniel}
 
-\author{}
 
 \authorrunning{} % abbreviated author list (for running head)
 
-\institute{}
+% \institute{}
 
-% \institute{Centre for Medical Image Computing, University College London, UK
-% \and 
-% Queen Square MS Centre, UCL Institute of Neurology, UK
-% \and 
-% Dementia Research Centre, University College London, UK
-% \and
-% University of C\^{o}te d'Azur, Inria Sophia Antipolis, France
-% % Laboratoire d'Analyse Num\'{e}rique, B\^{a}timent 425,\\
-% % F-91405 Orsay Cedex, France}
-% }
+\institute{Centre for Medical Image Computing, University College London, UK
+\and 
+Computer Science and Artificial Intelligence Laboratory, MIT, USA
+% \email{razvan@csail.mit.edu}
+\and
+Queen Square MS Centre, UCL Institute of Neurology, UK
+\and 
+Dementia Research Centre, University College London, UK
+\and
+University of C\^{o}te d'Azur, Inria Sophia Antipolis, France
+% Laboratoire d'Analyse Num\'{e}rique, B\^{a}timent 425,\\
+% F-91405 Orsay Cedex, France}
+}
 
 
 \maketitle              % typeset the title of the contribution
@@ -110,9 +118,9 @@ urlcolor=black
 
 
 \begin{abstract}
-We introduce Disease Knowledge Transfer (DKT), a novel technique for transferring biomarker information between related neurodegenerative diseases. DKT infers robust multimodal biomarker trajectories in rare neurodegenerative diseases even when only limited, unimodal data is available, by transferring information from larger multimodal datasets from common neurodegenerative diseases. DKT is a joint-disease generative model of biomarker progressions, which exploits biomarker relationships that are shared across diseases. Our proposed method allows, for the first time, the estimation of plausible \emph{multimodal} biomarker trajectories in Posterior Cortical Atrophy (PCA), a rare neurodegenerative disease where only unimodal MRI data is available. For this we train DKT on a combined dataset containing subjects with two distinct diseases and sizes of data available: 1) a larger, multimodal typical AD (tAD) dataset from the TADPOLE Challenge, and 2) a smaller unimodal Posterior Cortical Atrophy (PCA) dataset from our own clinical center, for which only a limited number of Magnetic Resonance Imaging (MRI) scans are available. Although validation is challenging due to lack of data in PCA, we validate DKT on synthetic data and two patient datasets (TADPOLE and PCA cohorts), showing it can estimate the ground truth parameters in the simulation and predict unseen biomarkers on the two patient datasets. While we demonstrated DKT on Alzheimer's variants, we note DKT is generalisable to other forms of related neurodegenerative diseases.
+We introduce Disease Knowledge Transfer (DKT), a novel technique for transferring biomarker information between related neurodegenerative diseases. DKT infers robust multimodal biomarker trajectories in rare neurodegenerative diseases even when only limited, unimodal data is available, by transferring information from larger multimodal datasets from common neurodegenerative diseases. DKT is a joint-disease generative model of biomarker progressions, which exploits biomarker relationships that are shared across diseases. Our proposed method allows, for the first time, the estimation of plausible \emph{multimodal} biomarker trajectories in Posterior Cortical Atrophy (PCA), a rare neurodegenerative disease where only unimodal MRI data is available. For this we train DKT on a combined dataset containing subjects with two distinct diseases and sizes of data available: 1) a larger, multimodal typical AD (tAD) dataset from the TADPOLE Challenge, and 2) a smaller unimodal Posterior Cortical Atrophy (PCA) dataset from the Dementia Research Centre (DRC), for which only a limited number of Magnetic Resonance Imaging (MRI) scans are available. Although validation is challenging due to lack of data in PCA, we validate DKT on synthetic data and two patient datasets (TADPOLE and PCA cohorts), showing it can estimate the ground truth parameters in the simulation and predict unseen biomarkers on the two patient datasets. While we demonstrated DKT on Alzheimer's variants, we note DKT is generalisable to other forms of related neurodegenerative diseases. Source code for DKT is available online: \url{https://github.com/mrazvan22/dkt}.
 
-% \keywords{Disease Progression Model, Transfer Learning, Manifold Learning, Alzheimer's Disease, Posterior Cortical Atrophy}
+\keywords{Disease Progression Modelling, Transfer Learning, Manifold Learning, Alzheimer's Disease, Posterior Cortical Atrophy}
 \end{abstract}
 
 \section{Introduction}
@@ -122,11 +130,11 @@ The estimation of accurate biomarker signatures in Alzheimer's disease (AD) and 
 
 The problem of limited data in medical imaging has so far been addressed through transfer learning methods. These were successfully used to improve the accuracy of AD diagnosis \cite{hon2017towards} or prediction of MCI conversion \cite{cheng2015domain}, but have two key limitations. First, they use deep learning or other machine learning methods, which are not easily interpretable and don't allow us to understand underlying disease mechanisms that are either specific to rare diseases, or shared across related diseases. Secondly, these models cannot be used to forecast the future evolution of subjects at risk of disease, which is important for selecting the right subjects in clinical trials. 
 
-We propose Disease Knowledge Transfer (DKT), a generative model that estimates continuous multimodal biomarker progressions for multiple diseases simultaneously -- including rare neurodegenerative diseases -- and which inherently performs transfer learning between the modelled phenotypes. This is achieved by exploiting biomarker relationships that are shared across diseases, whilst accounting for differences in the spatial distribution of brain pathology. DKT is interpretable, which allows us to understand underlying disease mechanisms, and can also predict the future evolution of subjects at risk of diseases. We apply DKT on Alzheimer's variants and demonstrate its ability to predict non-MRI trajectories for patients with Posterior Cortical Atrophy, in lack of such data. This is done by fitting DKT to two datasets simultaneously: (1) the TADPOLE Challenge \cite{marinescu2018tadpole} dataset containing subjects from the Alzheimer's Disease Neuroimaging Initiative (ADNI) with MRI, FDG-PET, DTI, AV45 and AV1451 scans and (2) MRI scans from patients with Posterior Cortical Atrophy from our own center. We finally validate DKT on three datasets: 1) simulated data with known ground truth, 2) TADPOLE sub-populations with different progressions and 3) 20 DTI scans from controls and PCA patients from our clinical center.
+We propose Disease Knowledge Transfer (DKT), a generative model that estimates continuous multimodal biomarker progressions for multiple diseases simultaneously -- including rare neurodegenerative diseases -- and which inherently performs transfer learning between the modelled phenotypes. This is achieved by exploiting biomarker relationships that are shared across diseases, whilst accounting for differences in the spatial distribution of brain pathology. DKT is interpretable, which allows us to understand underlying disease mechanisms, and can also predict the future evolution of subjects at risk of diseases. We apply DKT on Alzheimer's variants and demonstrate its ability to predict non-MRI trajectories for patients with Posterior Cortical Atrophy, in lack of such data. This is done by fitting DKT to two datasets simultaneously: (1) the TADPOLE Challenge \cite{marinescu2018tadpole} dataset containing subjects from the Alzheimer's Disease Neuroimaging Initiative (ADNI) with MRI, FDG-PET, DTI, AV45 and AV1451 scans and (2) MRI scans from patients with Posterior Cortical Atrophy from the Dementia Research Centre (DRC), UK. We finally validate DKT on three datasets: 1) simulated data with known ground truth, 2) TADPOLE sub-populations with different progressions and 3) 20 DTI scans from controls and PCA patients from our clinical center.
 
 \begin{figure}[h]
  \centering
- \includegraphics[width=0.8\textwidth,trim=0 0 0 0,clip]{figures/disease_knowledge_transfer_symbols.pdf}
+ \includegraphics[width=0.9\textwidth,trim=0 0 0 0,clip]{figures/disease_knowledge_transfer_symbols.pdf}
  \caption{Diagram of the proposed DKT framework. We assume that each disease can be modelled as the evolution of abstract dysfunction scores (Y-axis, top row), each one related to different brain regions. Each region-specific dysfunction score then further models (X-axis, bottom row) the progression of several multimodal biomarkers within that same region. For instance, the temporal dysfunction, modelled as a biomarker in the disease specific model (top row), is the X-axis in the disease agnostic model (temporal unit, bottom row), which aggregates together abnormality from amyloid, tau and MR imaging within the temporal lobe. The biomarker relationships within the bottom units are assumed to be disease agnostic and shared across all diseases modelled. Knowledge transfer between the two diseases can then be achieved via the disease-agnostic units. Mathematical notation from section \ref{sec:method} is shown in red to ease understanding.}
  \label{fig:diagram}
 \end{figure}
@@ -142,39 +150,40 @@ We propose Disease Knowledge Transfer (DKT), a generative model that estimates c
 
 Fig. \ref{fig:diagram} shows the diagram of the DKT framework. We assume that the progression of each disease can be modelled as a unique evolution of dysfunction trajectories representing region-specific multimodal pathology, further modelled as the progression of several biomarkers within that same region, but acquired using different modalities (Fig. \ref{fig:diagram} bottom). Each group of biomarkers in the bottom row will be called a \emph{disease-agnostic unit} or simply \emph{agnostic unit}, because biomarker dynamics here are assumed to be shared across all diseases modelled.
 
-The assumption that the dynamics of some biomarkers are disease-agnostic (i.e. shared across diseases), is key to DKT. We can make this assumption for two reasons. First, pathology in many related neurodegenerative diseases (e.g. Alzheimer's variants) are hypothesised to share the same underlying mechanisms (e.g. amyloid and tau accumulation), and within one region, such mechanisms lead to similar pathology dynamics across all the disease variants modelled \cite{jack2010hypothetical}, with the key difference that distinct brain regions are affected at different times and with different pathology rates and extent, likely caused by selective vulnerability of networks within these regions \cite{seeley2009neurodegenerative}. Secondly, even if the diseases share different upstream mechanisms (e.g. amyloid vs tau accumulation), downstream biomarkers measuring hypometabolism, white matter degradation and structural markers are likely to follow the same pathological cascade and will have similar dynamics across diseases.
+The assumption that the dynamics of some biomarkers are disease-agnostic (i.e. shared across diseases), is key to DKT. We can make this assumption for two reasons. First, pathology in many related neurodegenerative diseases (e.g. Alzheimer's variants) is hypothesised to share the same underlying mechanisms (e.g. amyloid and tau accumulation), and within one region, such mechanisms lead to similar pathology dynamics across all the disease variants modelled \cite{jack2010hypothetical}, with the key difference that distinct brain regions are affected at different times and with different pathology rates and extent, likely caused by selective vulnerability of networks within these regions \cite{seeley2009neurodegenerative}. Secondly, even if the diseases share different upstream mechanisms (e.g. amyloid vs tau accumulation), downstream biomarkers measuring hypometabolism, white matter degradation and atrophy are likely to follow the same pathological cascade and will have similar dynamics.
 
 % We choose to model the correlations within each agnostic unit using the disease progression model (DPM) by \cite{jedynak2012computational}, but any other DPM can also be used. The DPM allows us to reconstruct unit-specific dysfunction progression manifolds (bottom row, X axis), which can be used for staging subjects. Finally, we use the same model to express the progression within each disease (Figure 1, top) in terms of the dysfunction scores estimated within each agnostic unit. More precisely, the X-axis dysfunction scores from the agnostic units become Y-axis measurements in the disease specific models.
 
 % \subsection{Disease-Specific Model}
 
-We now model the biomarker dynamics that are specific to each disease, by mapping the subjects' disease stages to dysfunction scores. We assume that each subject $i$ at each visit $j$ has an underlying disease stage $s_{ij} = \beta_i + m_{ij}$, where $m_{ij}$ represents the months since baseline visit for subject $i$ at visit $j$ and $\beta_i$ represents the time shift of subject $i$. We then assume that each subject $i$ has a dysfunction score $\gamma_i^l$ corresponding to multimodal pathology in brain region $l$, which is a function of its disease stage:
+We now model the biomarker dynamics that are specific to each disease, by mapping the subjects' disease stages to dysfunction scores. We assume that each subject $i$ at each visit $j$ has an underlying disease stage $s_{ij} = \beta_{i} + m_{ij}$, where $m_{ij}$ represents the months since baseline visit for subject $i$ at visit $j$ and $\beta_{i}$ represents the time shift of subject $i$. We then assume that each subject $i$ at visit $j$ has a dysfunction score $\gamma_{ij}^l$ corresponding to multimodal pathology in brain region $l$, which is a function of its disease stage:
 
 \begin{equation}
 \label{eqDysfunctionScoreDef}
- \gamma_i^l = f(\beta_i + m_{ij}; \lambda_{d_i}^l)
+ \gamma_{ij}^l = f(\beta_{i} + m_{ij}; \lambda_{d_i}^l)
 \end{equation}
-where $f$ is a smooth monotonic function mapping each disease stage to a dysfunction score, having parameters $\lambda_{d_i}^l$ corresponding to agnostic unit $l \in \Lambda$, where $\Lambda$ is the set of all agnostic units. Moreover, $d_i \in \mathbb{D}$ represents the index of the disease corresponding to subject $i$, where $\mathbb{D}$ is the set of all diseases modelled. For example, MCI and tAD subjects from ADNI as well as tAD subjects from our own cohort can all be assigned $d_i=1$, while PCA subjects can be assigned $d_i=2$.  We implement $f$ as a parametric sigmoidal curve similar to \cite{jedynak2012computational}, to enable a robust optimisation and because this accounts for floor and ceiling effects present in AD biomarkers.
+where $f$ is a smooth monotonic function mapping each disease stage to a dysfunction score, having parameters $\lambda_{d_i}^l$ corresponding to agnostic unit $l \in \Lambda$, where $\Lambda$ is the set of all agnostic units. Moreover, $d_i \in \mathbb{D}$ represents the index of the disease corresponding to subject $i$, where $\mathbb{D}$ is the set of all diseases modelled. For example, MCI and tAD subjects from ADNI as well as tAD subjects from the DRC cohort can all be assigned $d_i=1$, while PCA subjects can be assigned $d_i=2$.  We implement $f$ as a parametric sigmoidal curve similar to \cite{jedynak2012computational}, to enable a robust optimisation and because this accounts for floor and ceiling effects present in AD biomarkers -- the monotonicity of this sigmoidal family is also very appropriate for many neurodegenerative diseases due to irreversability.
 
 % \subsection{Disease-Agnostic Model}
 
-We further model the biomarker dynamics that are disease-agnostic, by constructing the mapping from the dysfunction scores $\gamma_i^l$ to the biomarker measurements. We assume a set of given biomarker measurements $Y = [y_{ijk} | (i,j,k) \in \Omega]$ for subject $i$ at visit $j$ in biomarker $k$, where $\Omega$ is the set of available biomarker measurements. We further denote by $\theta_k$ the trajectory parameters for biomarker $k \in K$ within its agnostic unit $\psi(k)$, where $\psi$: \{1, ..., K\} $ \rightarrow \Lambda$ maps each biomarker $k$ to a unique agnostic unit $l \in \Lambda$. These definitions allow us to formulate the likelihood for a single measurement $y_{ijk}$ as follows:
+We further model the biomarker dynamics that are disease-agnostic, by constructing the mapping from the dysfunction scores $\gamma_{ij}^l$ to the biomarker measurements. We assume a set of given biomarker measurements $Y = [y_{ijk} | (i,j,k) \in \Omega]$ for subject $i$ at visit $j$ in biomarker $k$, where $\Omega$ is the set of available biomarker measurements. We further denote by $\theta_k$ the trajectory parameters for biomarker $k \in K$ within its agnostic unit $\psi(k)$, where $\psi$: \{1, ..., K\} $ \rightarrow \Lambda$ maps each biomarker $k$ to a unique agnostic unit $l \in \Lambda$. These definitions allow us to formulate the likelihood for a single measurement $y_{ijk}$ as follows:
 
 
 \begin{equation}
- p(y_{ijk}|\theta_k, \lp, \beta_i, \epsilon_k) = N(y_{ijk}| g( \gamma_i^{\psi(k)} ; \theta_k), \epsilon_k)
+ p(y_{ijk}|\theta_k, \lp, \beta_{i}, \epsilon_k) = N(y_{ijk}| g( \gamma_{ij}^{\psi(k)} ; \theta_k), \epsilon_k)
 \end{equation}
-where $g(\ .\ ; \theta_k)$ represents the trajectory of biomarker $k$ within agnostic unit $\psi(k)$, with parameters $\theta_k$, and is again implemented using a sigmoidal function. Parameters $\lp$ are used to define $\gamma_i^{\psi(k)}$ based on Eq. \ref{eqDysfunctionScoreDef}, where agnostic unit $l$ is now referred to as $\psi(k)$, to clarify this is the unit where biomarker $k$ has been allocated. Variable $\epsilon_k$ denotes the variance of measurements for biomarker $k$.
+where $g(\ .\ ; \theta_k)$ represents the trajectory of biomarker $k$ within agnostic unit $\psi(k)$, with parameters $\theta_k$, and is again implemented using a sigmoidal function for reasons outlined above. Parameters $\lp$ are used to define $\gamma_{ij}^{\psi(k)}$ based on Eq. \ref{eqDysfunctionScoreDef}, where agnostic unit $l$ is now referred to as $\psi(k)$, to clarify this is the unit where biomarker $k$ has been allocated. Variable $\epsilon_k$ denotes the variance of measurements for biomarker $k$.
 
 % \subsection{Extending to Multiple Subjects and Biomarkers}
 
 We extend the above model to multiple subjects, visits and biomarkers to get the full model likelihood:
 \begin{equation}
- p(\boldsymbol{y}|\theta, \lambda, \beta , \epsilon) = \\ \prod_{(i,j,k) \in \Omega} p(y_{ijk}|\theta_k, \lp, \beta_i) 
+\label{eq:dktFinal}
+ p(\boldsymbol{y}|\theta, \lambda, \beta , \epsilon) = \\ \prod_{(i,j,k) \in \Omega} p(y_{ijk}|\theta_k, \lp, \beta_{i}) 
 \end{equation}
 where $\boldsymbol{y} = [y_{ijk} | \forall (i,j,k) \in \Omega ]$ is the vector of all biomarker measurements, while $\boldsymbol{\theta} = [\theta_1, ..., \theta_K]$ represents the stacked parameters for the trajectories of biomarkers in agnostic units, $\boldsymbol{\lambda} = [\lambda_d^{l}|l \in \Lambda, d \in \mathbb{D}]$ are the parameters of the dysfunction trajectories within the disease models, $\boldsymbol{\beta} =[\beta_1, ..., \beta_N]$ are the subject-specific time shifts and $\boldsymbol{\epsilon} = [\epsilon_k | k \in K]$ estimates measurement noise. 
 
-We estimate the model parameters $[\boldsymbol{\theta}, \boldsymbol{\lambda}, \boldsymbol{\beta}, \boldsymbol{\epsilon}]$ using a two-stage approach. In the first stage, we perform belief propagation within each agnostic unit and then within each disease model. In the second stage we jointly optimise across all agnostic units and disease models using loopy belief propagation. 
+We estimate the model parameters $[\boldsymbol{\theta}, \boldsymbol{\lambda}, \boldsymbol{\beta}, \boldsymbol{\epsilon}]$ using loopy belief propagation -- see algorithm in supplementary material. One key advantage of DKT is that the subject's time shift $\beta_{i}$ can be estimated using only a subset (e.g. MRI) of the subject's data -- the model can then infer the missing modalities (e.g. non-MRI) using Eq. \ref{eq:dktFinal}.
 
 
 %The sigmoidal model for $f$ is defined as:
@@ -227,16 +236,16 @@ We estimate the model parameters $[\boldsymbol{\theta}, \boldsymbol{\lambda}, \b
 \subsection{Generating Synthetic Data}
 \label{sec:dktMetSyn}
 
-We first test DKT on synthetic data, to assess its performance against known ground truth. More precisely, we generate data that follows the DKT model exactly, and test DKT's ability to recover biomarker trajectories and subject time-shifts. We generate synthetic data from two diseases (50 subjects with "\emph{synthetic PCA}" and 100 subjects with "\emph{synthetic AD}") using the parameters from the bottom-left table in Fig. \ref{fig:dktSynthTrajCompTrue}, emulating the TADPOLE cohort as well as our own cohort. The six biomarkers ($k_1$-$k_6$) have been \emph{a-priori} allocated to two agnostic units $l_0$ and $l_1$. To simulate the lack of multimodal data in the synthetic PCA subjects, we discarded the data from biomarkers $k_0$, $k_1$, $k_4$ and $k_5$ for all these subjects. 
+We first test DKT on synthetic data, to assess its performance against known ground truth. More precisely, we generate data that follows the DKT model exactly, and test DKT's ability to recover biomarker trajectories and subject time-shifts. We generate synthetic data from two diseases (50 subjects with "\emph{synthetic PCA}" and 100 subjects with "\emph{synthetic AD}") using the parameters from the bottom-left table in Fig. \ref{fig:dktSynthTrajCompTrue}, emulating the TADPOLE and DRC cohorts -- see supplementary material for full details. The six biomarkers ($k_1$-$k_6$) have been \emph{a-priori} allocated to two agnostic units $l_0$ and $l_1$. To simulate the lack of multimodal data in the synthetic PCA subjects, we discarded the data from biomarkers $k_0$, $k_1$, $k_4$ and $k_5$ for all these subjects. 
 
 % Remaining biomarkers $k_2$ and $k_3$, for which data was still available in the synthetic PCA cohort, are assumed to be of the same modality (e.g. MRI volume) but to represent measurements from different brain regions (e.g. temporal and occipital). 
 
 
 \subsection{Data Acquisition and Preprocessing}
 
-We trained DKT on ADNI data from the TADPOLE challenge \cite{marinescu2018tadpole}, since it contained a large number of multimodal biomarkers already pre-processed and aggregated into one table. From the TADPOLE dataset we selected a subset of 230 subjects which had an MRI scan and at least one FDG PET, AV45, AV1451 or DTI scan. In order to model another disease, we further included MRI scans from 76 PCA subjects from our own cohort, along with scans from 67 tAD and 87 age-matched controls.
+We trained DKT on ADNI data from the TADPOLE challenge \cite{marinescu2018tadpole}, since it contained a large number of multimodal biomarkers already pre-processed and aggregated into one table. From the TADPOLE dataset we selected a subset of 230 subjects which had an MRI scan and at least one FDG PET, AV45, AV1451 or DTI scan. In order to model another disease, we further included MRI scans from 76 PCA subjects from the DRC cohort, along with scans from 67 tAD and 87 age-matched controls.
  
-For both datasets, we computed multimodal biomarker measurements corresponding to each brain lobe: MRI volumes using the Freesurfer software, FDG-, AV45- and AV1451-PET standardised uptake value ratios (SUVR) extracted with the standard ADNI pipeline, and DTI fractional anisotropy (FA) measures from adjacent white-matter regions. For every lobe, we regressed out the following covariates: age, gender, total intracranial volume (TIV) and dataset (ADNI vs our own center). Finally, biomarkers were normalized to the [0,1] range. 
+For both datasets, we computed multimodal biomarker measurements corresponding to each brain lobe: MRI volumes using the Freesurfer software, FDG-, AV45- and AV1451-PET standardised uptake value ratios (SUVR) extracted with the standard ADNI pipeline, and DTI fractional anisotropy (FA) measures from adjacent white-matter regions. For every lobe, we regressed out the following covariates: age, gender, total intracranial volume (TIV) and dataset (ADNI vs DRC). Finally, biomarkers were normalized to the [0,1] range. 
 
 % For each lobe, we allocated all multimodal biomarkers corresponding to that lobe to its own agnostic unit.
 
@@ -289,7 +298,7 @@ $\lambda_1^1 = (1, 0.2, -4, 0)$\\
   \label{fig:dktSynthTrajCompTrue}
 \end{figure}
 
-We then apply DKT to real patient data, with the aim of transferring multimodal biomarker trajectories from tAD (TADPOLE dataset) to PCA. The inferred PCA trajectories, shown in Fig. \ref{fig:PCAtrajByModality}, recapitulate known patterns in PCA \cite{crutch2012posterior}, where posterior regions such as occipital and parietal lobes are predominantly affected in later stages. We leave further interpretation of the results here for future work -- our aim here was only to demonstrate the possibility of inferring plausible non-MRI biomarkers in a rare neurodegenerative disease, in lack of such data for these subjects. As far as we are aware, this is the first time a continuous signature of non-MRI biomarkers is estimated for PCA, due to the rarity of the disease and the lack of data. 
+We then apply DKT to real patient data, with the aim of transferring multimodal biomarker trajectories from tAD to PCA. The inferred PCA trajectories, shown in Fig. \ref{fig:PCAtrajByModality}, recapitulate known patterns in PCA \cite{crutch2012posterior}, where posterior regions such as occipital and parietal lobes are predominantly affected in later stages. As opposed to typical AD, we find that the hippocampus is affected later on, further suggesting the model did not transfer too much tAD specific information. Here, we demonstrate the possibility of inferring plausible non-MRI biomarkers in a rare neurodegenerative disease, in lack of such data for these subjects. As far as we are aware, this is the first time a continuous signature of non-MRI biomarkers is estimated for PCA, due to its rarity and lack of data. 
 
 
 % estimated (hypothetical) trajectories in PCA: DTI, FDG, AV45, AV1451.Volumetric trajectories were based on PCA MRI data.
@@ -304,11 +313,11 @@ We then apply DKT to real patient data, with the aim of transferring multimodal 
 \subsection{Validation on DTI Data in tAD and PCA}
 \label{sec:dktResVal}
 
-We further validated DKT by predicting unseen DTI data from two patient datasets: 1) TADPOLE subjects with a different progression from the training subjects, and 2) a separate test set of 20 DTI scans from controls and PCA patients from our own cohort. To split TADPOLE into subgroups with different progression, we used the SuStaIn model by \cite{young2018uncovering}, which resulted into three subgroups: hippocampal, cortical and subcortical, with prominent early atrophy in the hippocampus, cortical and subcortical regions respectively. To evaluate prediction accuracy, we computed the rank correlation between the DKT-predicted biomarker values and the measured values in the test data. We compute the rank correlation instead of mean squared error as it is not susceptible to systemic biases of the models when predicting "unseen data" in a certain disease.
+We further validated DKT by predicting unseen DTI data from two patient datasets: 1) TADPOLE subjects with a different progression from the training subjects, and 2) a separate test set of 20 DTI scans from controls and PCA patients from the DRC -- full demographics are given in the supplementary material. To split TADPOLE into subgroups with different progression, we used the SuStaIn model by \cite{young2018uncovering}, which resulted into three subgroups: hippocampal, cortical and subcortical, with prominent early atrophy in the hippocampus, cortical and subcortical regions respectively. To evaluate prediction accuracy, we computed the rank correlation between the DKT-predicted biomarker values and the measured values in the test data. We compute the rank correlation instead of mean squared error as it is not susceptible to systemic biases of the models when predicting "unseen data" in a certain disease.
 
 % We computed the rank correlation in order to remove the effect of any systemic biases due to the completely different progressive disease and dataset that we are predicting on. We also show the same performance metrics for two simpler models: (1) a \emph{latent stage model}, as described in \cite{jedynak2012computational}, which assumes all tAD and PCA subjects follow the same progression and (2) a \emph{linear univariate model} that predicts the DTI biomarker based on the corresponding MRI biomarker, independently for each region.
 
-Validation results are shown in Table \ref{sec:dktPerfMetrics}, for hippocampal to cortical TADPOLE subgroups (other pairs of subgroups not shown due to lack of space) as well as PCA subjects. When predicting missing DTI markers of the TADPOLE cortical subgroup as well as PCA subjects from our local cohort (Table \ref{sec:dktPerfMetrics}), the DKT correlations are generally high for the cingulate, hippocampus and parietal, and lower for the frontal lobe. DKT also shows favourable performance compared to four other models: the latent-stage model from \cite{jedynak2012computational}, a multivariate Gaussian Process model with RBF kernel that predicts a DTI ROI marker from multiple MRI markers, as well as cubic spline and linear models that predict a regional DTI biomarker directly from its corresponding MRI marker. In particular for predicting DTI FA in the parietal and temporal lobes, DKT has significantly better predictions that almost all methods tested.
+Validation results are shown in Table \ref{sec:dktPerfMetrics}, for hippocampal to cortical TADPOLE subgroups (other pairs of subgroups not shown due to lack of space) as well as PCA subjects. When predicting missing DTI markers of the TADPOLE cortical subgroup as well as PCA subjects from the DRC cohort (Table \ref{sec:dktPerfMetrics}), the DKT correlations are generally high for the cingulate, hippocampus and parietal, and lower for the frontal lobe. DKT also shows favourable performance compared to four other models: the latent-stage model from \cite{jedynak2012computational}, a multivariate Gaussian Process model with RBF kernel that predicts a DTI ROI marker from multiple MRI markers, as well as cubic spline and linear models that predict a regional DTI biomarker directly from its corresponding MRI marker. In particular for predicting DTI FA in the parietal and temporal lobes, DKT has significantly better predictions that almost all methods tested.
 
 \newcommand{\cw}{c}
 
@@ -319,7 +328,7 @@ Validation results are shown in Table \ref{sec:dktPerfMetrics}, for hippocampal 
 \fontsize{7}{10}\selectfont
 \begin{tabular}{c | c c c c c c}
 \textbf{Model} & \textbf{Cingulate} & \textbf{Frontal} & \textbf{Hippocam.} & \textbf{Occipital} & \textbf{Parietal} & \textbf{Temporal}\\
-& \multicolumn{6}{c}{\textbf{TADPOLE subgroups: Hippocampal subgroup to Cortical subgroup}}\\
+& \multicolumn{6}{c}{\textbf{TADPOLE: Hippocampal subgroup to Cortical subgroup}}\\
 DKT (ours) &      0.56 $\pm$ 0.23 &    \textbf{0.35 $\pm$ 0.17} &        \textbf{0.58 $\pm$ 0.14} &     -0.10 $\pm$ 0.29 &     \textbf{0.71 $\pm$ 0.11} &     \textbf{0.34 $\pm$ 0.26} \\
 Latent stage &      0.44 $\pm$ 0.25 &    0.34 $\pm$ 0.21 &       0.34 $\pm$ 0.24* &     \textbf{-0.07 $\pm$ 0.22} &     0.64 $\pm$ 0.16 &    0.08 $\pm$ 0.24* \\
 Multivariate &      \textbf{0.60 $\pm$ 0.18} &   0.11 $\pm$ 0.22* &       0.12 $\pm$ 0.29* &     -0.22 $\pm$ 0.22 &   -0.44 $\pm$ 0.14* &   -0.32 $\pm$ 0.29* \\
@@ -333,7 +342,7 @@ Spline &   0.52 $\pm$ 0.20* &  -0.03 $\pm$ 0.35* &     0.66 $\pm$ 0.11* &   0.09
 Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \textbf{0.64 $\pm$ 0.17} &    0.54 $\pm$ 0.22 &   0.30 $\pm$ 0.21* \\
 \end{tabular}
 \vspace{0.5em}
-\caption[Performance evaluation of DKT and other models]{Performance evaluation of DKT and four other statistical models of decreasing complexity. We show the rank correlation between predicted biomarkers and measured biomarkers in (top) TADPOLE subgroups -- information transfer from hippocampal subgroup to cortical subgroup -- and (bottom) PCA. (*) Statistically significant difference in the performance of DKT vs the other models, based on a two-tailed t-test, Bonferroni corrected.}
+\caption[Performance evaluation of DKT and other models]{Performance evaluation of DKT and four other statistical models of decreasing complexity. We show the rank correlation between predicted biomarkers and measured biomarkers in (top) TADPOLE subgroups and (bottom) PCA. (*) Statistically significant difference in the performance of DKT vs the other models, based on a two-tailed t-test, Bonferroni corrected.}
 % \end{footnotesize}
 \label{sec:dktPerfMetrics}
 \end{table}
@@ -345,13 +354,17 @@ Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \te
 
 In this work we made initial steps at the challenging problem of transfer learning between different neurodegenerative diseases. Our proposed DKT method enabled the estimation of quantitative non-MRI trajectories in a rare disease (PCA) where very limited data was available. To our knowledge, this is the first time a multimodal continuous signature is derived for PCA, as the only other longitudinal study of PCA only computed atrophy measures from MRI scans \cite{lehmann2011cortical}. Our work has however several limitations, which can be addressed in future research: 1) to account for population heterogeneity, DKT can be easily extended to include subject-specific effects; 2) improved schemes for biomarker allocation to agnostic units can take connectivity into account, or derive it from the data automatically; 3) DKT can be further validated on more complex synthetic experiments with a range of datasets generated with different parameters.
 
+\section{Acknowledgements}
+
+This work was supported by the EPSRC Centre For Doctoral Training in Medical Imaging with grant EP/L016478/1 and in part by the Neuroimaging Analysis Center through NIH grant NIH NIBIB NAC P41EB015902. Data collection and sharing for this project was funded by the Alzheimer’s Disease Neuroimaging Initiative (ADNI) (National Institutes of Health Grant U01 AG024904) and DOD ADNI (Department of Defense award number W81XWH-12-2-0012). The Dementia Research Centre is an ARUK coordination center.  
+
 % The framework allows the inference of biomarker trajectories in rare diseases, for which there is not enough data to allow estimation of such trajectories, and accounts for a different spatial distribution of pathology between distinct phenotypes. Our approach is also interpretable, enabling us to understand complex mechanisms underpinning these diseases.
 
 % While we provided an example implementation of DKT using specific models of the biomarker trajectories, measurement noise and link function (the disease progression score), DKT should be considered as a general framework for joint modelling of biomarker trajectories within different diseases simultaneously. The actual implementation of DKT can thus be extended to use non-parametric trajectories, or more complex link functions that estimate not only subject time-shifts but also progression speed or higher order terms.
 % 
 % While here we have focused on Alzheimer's variants such as tAD and PCA, DKT can also be applied to other progressive neurodegenerative diseases of non-Alzheimer's type and even the normal ageing process. While we only used imaging data, cognitive tests can also be included in the disease-specific sub-models of DKT, or even allocated in the agnostic units of the regions that are responsible for those tasks.
 
-% Our work has several limitations: 1) DKT assumes all subjects within a disease follow the same trajectory, without considering heterogeneity within the disease population, 2) the allocation of biomarkers into agnostic units has to be done using \emph{a-priori} human knowledge, 3) for validation, the synthetic experiment we ran was limited to only one setting of parameters mimicking the datasets from TADPOLE and our local centre and 4) the validation on patient data was also done only on a small set of 20 DTI scans, due to lack of multimodal data in PCA.
+% Our work has several limitations: 1) DKT assumes all subjects within a disease follow the same trajectory, without considering heterogeneity within the disease population, 2) the allocation of biomarkers into agnostic units has to be done using \emph{a-priori} human knowledge, 3) for validation, the synthetic experiment we ran was limited to only one setting of parameters mimicking the datasets from TADPOLE and the DRC centre and 4) the validation on patient data was also done only on a small set of 20 DTI scans, due to lack of multimodal data in PCA.
 
 
 

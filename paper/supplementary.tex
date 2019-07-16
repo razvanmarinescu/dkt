@@ -76,30 +76,25 @@ urlcolor=black
 %                                     \toctitle is used
 %
 
-% * <mrazvan22@gmail.com> 2018-03-02T16:41:47.321Z:
-% 
-% Author list: Me, Marco (writing+model code), Stefano, Alex Young (writing+tadpole), Pere (helped with validation),Neil (tadpole),  Arman, Keir (DTI data), Seb, Danny
-% 
-% ^ <mrazvan22@gmail.com> 2018-03-02T16:55:06.003Z.
-
-% \author{******************}
-
-\author{}
+\author{R\u{a}zvan V. Marinescu\inst{1,2} \and Marco Lorenzi\inst{5} \and Stefano Blumberg\inst{1} \and Alexandra L. Young\inst{1} \and Pere Planell-Morell\inst{1} \and Neil P. Oxtoby\inst{1} \and Arman Eshaghi\inst{1,3} \and Keir X. Young\inst{4} \and Sebastian J. Crutch\inst{4} \and Polina Golland\inst{2} \and Daniel C. Alexander\inst{1}, for the Alzheimer's Disease Neuroimaging Initiative}
 
 \authorrunning{} % abbreviated author list (for running head)
 
-\institute{}
+% \institute{}
 
-% \institute{Centre for Medical Image Computing, University College London, UK
-% \and 
-% Queen Square MS Centre, UCL Institute of Neurology, UK
-% \and 
-% Dementia Research Centre, University College London, UK
-% \and
-% University of C\^{o}te d'Azur, Inria Sophia Antipolis, France
-% % Laboratoire d'Analyse Num\'{e}rique, B\^{a}timent 425,\\
-% % F-91405 Orsay Cedex, France}
-% }
+\institute{Centre for Medical Image Computing, University College London, UK
+\and 
+Computer Science and Artificial Intelligence Laboratory, MIT, USA
+\email{razvan@csail.mit.edu}
+\and
+Queen Square MS Centre, UCL Institute of Neurology, UK
+\and 
+Dementia Research Centre, University College London, UK
+\and
+University of C\^{o}te d'Azur, Inria Sophia Antipolis, France
+% Laboratoire d'Analyse Num\'{e}rique, B\^{a}timent 425,\\
+% F-91405 Orsay Cedex, France}
+}
 
 
 \maketitle              % typeset the title of the contribution
@@ -163,7 +158,7 @@ We generated the synthetic data as follows, using parameters from Table \ref{tab
 \begin{itemize}
  \item We simulate two synthetic diseases, "synthetic PCA" and "synthetic AD"
  \item We define 6 biomarkers that we allocate to agnostic units $l_0$ and $l_1$ (Table \ref{tab:synParams} top)
- \item Within each agnostic unit, we define the parameters $theta_0$ -- $theta_5$ corresponding to biomarker trajectories within the agnostic unit.
+ \item Within each agnostic unit, we define the parameters $\{\theta_0$, ..., $\theta_5\}$ corresponding to biomarker trajectories within the agnostic unit.
  \item For each disease, we define the parameters $\lambda$ corresponding to trajectories of dysfunction scores.
  \item We then sample data from 100 synthetic AD subjects and 50 PCA subjects with $\beta_i$ as given in Table \ref{tab:synParams} bottom using the model likelihood (Eq. 2 from main paper). For each subject, we generate data for 4 visits, each 1 year apart.
 \end{itemize}
@@ -196,11 +191,11 @@ Agnostic unit $l_1$ & $\theta_1 = (1,10,0.2,0)$, $\theta_3 = (1,10,0.55,0)$, $\t
 
 \section{Demographics of test sets}
 
-The cohort from the Dementia Research Center UK used for validation had the following demongraphics: 10 subjects diagnosed with Posterior Cortical Atrophy, with a mean age of 59.4, 40\% females, as well as 10 age-matched controls with a mean age of 59.3, 50\% females.
+The cohort from the Dementia Research Centre UK used for validation consisted of 10 subjects diagnosed with Posterior Cortical Atrophy, with a mean age of 59.4, 40\% females, as well as 10 age-matched controls with a mean age of 59.3, 50\% females.
 
 
-For the validation on TADPOLE subtypes, we used applied the SuStaIn model on TADPOLE to split the population into three subtypes with different progression: a hippocampal subtype \TODODODO
-When splitting the TADPOLE subjects into three populations with different progressions, the resulting groups had the following demographics:
+For the validation on TADPOLE subgroups, we used applied the SuStaIn model on TADPOLE to split the population into three subgroups with different progression: hippocampal, cortical and subcortical subypes with prominent atrophy in the hippocampus, cortical and subcortical areas respectively.
+The resulting subgroups had the following demographics:
 
 \begin{table}
  \begin{tabular}{c | c c c c}
@@ -215,27 +210,17 @@ AD (cortical) & 35 & 1.7 $\pm$ 0.9 & 72.8 $\pm$ 7.4 & 28\%\\
 Controls (subcortical) & 28 & 3.0 $\pm$ 1.5 & 73.7 $\pm$ 6.5 & 42\%\\
 AD (subcortical) & 27 & 1.6 $\pm$ 0.9 & 73.7 $\pm$ 7.5 & 33\%\\
  \end{tabular}
- \caption{Demo}
+ \caption{Demographics of the subjects in the three TADPOLE subgroups.}
  \label{tab:demogTadSubtypes}
 \end{table}
 
 
-% \begin{table}
-%  \begin{tabular}{c | c c c}
-%   Cohort & Number of scans & Age & Gender (\%F)\\
-%   Controls & 10 & 59.4 & 50\%\\
-%   PCA & 10 & 59.3 & 40\%\\
-%  \end{tabular}
-% \end{table}
-
-
-
-\bibliographystyle{unsrtnat}
-\begin{thebibliography}{5}
-
-\end{thebibliography}
-
-\clearpage
+% \bibliographystyle{unsrtnat}
+% \begin{thebibliography}{5}
+% 
+% \end{thebibliography}
+% 
+% \clearpage
 
 \end{document}
 
