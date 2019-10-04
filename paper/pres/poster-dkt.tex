@@ -87,7 +87,7 @@
 % \end{tabular}
 % }
 
-\author{\LARGE{R\u{a}zvan Marinescu\inst{1,2}, Marco Lorenzi\inst{3}, Stefano Blumberg\inst{1}, Alexandra Young\inst{1}, Pere Morell\inst{1}},\\ \LARGE{Neil Oxtoby\inst{1}, Arman Eshaghi\inst{1,4}, Keir Young\inst{5}, Sebastian Crutch\inst{5}, Polina Golland\inst{2}, Daniel Alexander\inst{1}}\\
+\author{\LARGE{R\u{a}zvan Marinescu\inst{1,2}, Marco Lorenzi\inst{3}, Stefano Blumberg\inst{1}, Alexandra Young\inst{1}, Pere Morell\inst{1}},\\ \LARGE{Neil Oxtoby\inst{1}, Arman Eshaghi\inst{1,4}, Keir Yong\inst{5}, Sebastian Crutch\inst{5}, Polina Golland\inst{2}, Daniel Alexander\inst{1}}\\
 \begin{tabular}{l p{1cm} l p{1cm} l}
 \large{$^1$Centre for Medical Image Computing, UCL, UK}  & & \large{$^3$University of C\^{o}te d'Azur, Inria Sophia Antipolis, France} & & \large{$^5$Dementia Research Centre, UCL, UK}\\
 \large{$^2$Computer Science and Artificial Intelligence Laboratory, MIT, USA} & & \large{$^4$Queen Square MS Centre, UCL Institute of Neurology, UK} & & 
@@ -116,10 +116,10 @@
 
 
 \begin{document}
-% \hspace{-3cm}								%Align with edge of page, not margin
+							%Align with edge of page, not margin
 % \vspace{2cm}
 % \includegraphics[scale=1,trim=0 0 0 200, clip]{Black_Landscape.pdf}
-
+\hspace{-1cm}	
 \begin{minipage}{50cm}					%Minipage for title contents
 % \vspace{-18cm}
 \maketitle
@@ -216,7 +216,7 @@
  \centering
    \begin{subfigure}{0.49\columnwidth}
    \centering
-   \fnt{1. Each disease characterised by region-specific dysfunction profile}\\
+   \fnt{1. Each disease characterised by region-specific dysfunction trajectories}\\
    $ \gamma_{ij}^l = f(\beta_{i} + m_{ij}; \lambda_{d_i}^l) $\\
 %    \vspace{0.9em}
 %    \includegraphics[width=\textwidth]{diseaseEvol}
@@ -225,7 +225,7 @@
   \begin{subfigure}{0.49\columnwidth}
    \centering
 %    \vspace{-1.2em}
-   \fnt{2. Dysfunction score modelled using region-specific biomarkers}\\
+   \fnt{2. Dysfunction trajectory modelled using region-specific biomarkers}\\
    $ y_{ijk} = g( \gamma_{ij}^{\psi(k)} ; \theta_k) + N(0,\epsilon_k) $
 %    \vspace{0.6em}
 %    \includegraphics[width=\textwidth]{dysfuncEvol}
@@ -277,12 +277,12 @@
 \label{fig:dktAlgo}
 \end{figure}
 
-\heading{Demographics}
+\heading{Datasets}
 
 \begin{itemize}
- \item Dementia Research Center cohort: 76 PCA, 67 tAD, 87 age-matched controls for training, 10 PCA with DTI for validation
- \item TADPOLE Challenge dataset split into three subgroups with different progressions: 21 hippocampal, 35 cortical, 27 subcortical.
- \item Synthetic dataset mimicking the DRC cohort: 50 subjects with "synthetic PCA", 100 subjects with "synthetic AD".
+ \item Dementia Research Center cohort: MRI scans from 76 PCA, 67 tAD, 87 controls for training, 10 PCA with DTI for validation.
+ \item TADPOLE dataset (ADNI) split into three subgroups with different progressions: 21 hippocampal, 35 cortical, 27 subcortical.
+ \item Synthetic dataset mimicking the cohorts above: 50 subjects with "synthetic PCA", 100 subjects with "synthetic AD".
 \end{itemize}
 
 
@@ -314,22 +314,25 @@
 \heading{Results}
 
 \vspace{0.6em}
+\begin{itemize}
+ \item \fnt{In synthetic experiment, the estimated parameters are close to the true parameters.}
 \begin{figure}[H]
-\fnt{In synthetic experiment, the estimated parameters are close to the true parameters}\\
 \includegraphics[width=\columnwidth]{../figures/compTrueParams105_synth1_JMD.pdf}
   \label{fig:dktSynthTrajCompTrue}
 \end{figure}
 
+ \item \fnt{Inferred multimodal trajectories for PCA in lack of such data.}
+ \item \fnt{Results are plausible, suggesting late-stage posterior damage. }
 \begin{figure}[H]
 % \centering
-\fnt{Inferred multimodal trajectories for Posterior Cortical Atrophy are plausible, suggesting late-stage parietal and occipital damage. }
+
  \includegraphics[width=\columnwidth, trim=0 20 0 35, clip]{../figures/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
 %  \caption{Estimated trajectories for the PCA cohort. The only data that were available were the MRI volumetric data. The dynamics of the other biomarkers has been inferred by the model using data from typical AD, and taking into account the different spatial distribution of pathology in PCA vs tAD. }
 %  \label{fig:PCAtrajByModality}
 \end{figure}
 
 
-\noindent \fnt{Our model has favourable performance compared to other models, on two different datasets}
+\item \fnt{Our model has favourable performance compared to other models, on two different datasets.}
 \vspace{0.3em}
 \begin{figure}[H]
 \fontsize{27}{30}\selectfont
@@ -354,6 +357,8 @@ Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \te
 \label{sec:dktPerfMetrics}
 \end{figure}
 
+
+\end{itemize}
 
 \heading{Conclusion}
 
