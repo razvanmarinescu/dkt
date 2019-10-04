@@ -87,7 +87,7 @@
 % \end{tabular}
 % }
 
-\author{R\u{a}zvan V. Marinescu\inst{1,2}, Marco Lorenzi\inst{3}, Stefano B. Blumberg\inst{1}, Alexandra L. Young\inst{1}, Pere Planell-Morell\inst{1}, Neil P. Oxtoby\inst{1},\\ Arman Eshaghi\inst{1,4}, Keir X. Young\inst{5}, Sebastian J. Crutch\inst{5}, Polina Golland\inst{2}, Daniel C. Alexander\inst{1}\\
+\author{\LARGE{R\u{a}zvan Marinescu\inst{1,2}, Marco Lorenzi\inst{3}, Stefano Blumberg\inst{1}, Alexandra Young\inst{1}, Pere Morell\inst{1}},\\ \LARGE{Neil Oxtoby\inst{1}, Arman Eshaghi\inst{1,4}, Keir Young\inst{5}, Sebastian Crutch\inst{5}, Polina Golland\inst{2}, Daniel Alexander\inst{1}}\\
 \begin{tabular}{l p{1cm} l p{1cm} l}
 \large{$^1$Centre for Medical Image Computing, UCL, UK}  & & \large{$^3$University of C\^{o}te d'Azur, Inria Sophia Antipolis, France} & & \large{$^5$Dementia Research Centre, UCL, UK}\\
 \large{$^2$Computer Science and Artificial Intelligence Laboratory, MIT, USA} & & \large{$^4$Queen Square MS Centre, UCL Institute of Neurology, UK} & & 
@@ -124,12 +124,12 @@
 % \vspace{-18cm}
 \maketitle
 \end{minipage}
-\begin{textblock}{0}(10,0.2)
+\begin{textblock}{0}(12.2,0.2)
 \begin{tabular}{l}
+\includegraphics[height=5.5cm]{mit_logo}\includegraphics[height=6cm]{qr_dkt.png}\\
 \includegraphics[height=5cm]{ucl_logo}\\
-\includegraphics[height=5cm]{mit_logo}\\
 \end{tabular}
-\includegraphics[height=6cm]{qr_dkt.png}
+
 
 \end{textblock}
 
@@ -148,7 +148,7 @@
 
 \hrule
 
-\newcommand{\heading}[1]{\textbf{\Huge{#1}}}
+\newcommand{\heading}[1]{\noindent\textbf{\Huge{#1}}}
 
 \begin{multicols}{2}							
 \raggedcolumns							%Don't stretch contents vertically
@@ -158,18 +158,14 @@
 %%%Column1
 \vspace{-3em}
 
-\heading{Aim}: Infer progression of non-MRI biomarkers in rare neurodegenerative diseases by leveraging larger datasets of common neurodegenerative diseases.
+\heading{Aim} Infer progression of non-MRI biomarkers in rare neurodegenerative diseases (NDs) by leveraging larger datasets of common NDs.
 
-\section*{Why}
 
-\begin{itemize}
- \item Rare neurodegenerative diseases not well understood
- \item Identify outcome measures and subjects for clinical trials
-\end{itemize}
+\heading{Why} Posterior Cortical Atrophy (PCA): progression of non-MRI biomarkers not known $\rightarrow$ Identify outcome measures and suitable subjects for PCA clinical trials
 
 \columnbreak
 
-\section*{Challenges}
+\heading{Challenges}
 
 
 
@@ -213,9 +209,9 @@
 \begin{multicols}{2}							
 \raggedcolumns	
 
-\section*{Method}
+\heading{Method}
  
-\vspace{1em}
+\vspace{0.6em}
 \begin{figure}[H]
  \centering
    \begin{subfigure}{0.49\columnwidth}
@@ -242,7 +238,7 @@
 
 
 
-\heading{Inference}: Perform loopy belief propagation
+\heading{Inference:} Loopy belief propagation
 
 % TODO bold out the diferences
 
@@ -284,9 +280,9 @@
 \heading{Demographics}
 
 \begin{itemize}
- \item Dementia Research Center cohort: 76 PCA, 67 tAD, 87 age-matched controls.
- \item TADPOLE Challenge dataset split into three cohorts with different progressions: hippocampal, cortical and subcortical.
- \item Synthetic dataset mimicking the DRC cohort.
+ \item Dementia Research Center cohort: 76 PCA, 67 tAD, 87 age-matched controls for training, 10 PCA with DTI for validation
+ \item TADPOLE Challenge dataset split into three subgroups with different progressions: 21 hippocampal, 35 cortical, 27 subcortical.
+ \item Synthetic dataset mimicking the DRC cohort: 50 subjects with "synthetic PCA", 100 subjects with "synthetic AD".
 \end{itemize}
 
 
@@ -313,11 +309,11 @@
 %  \label{tab:demogTadSubtypes}
 % \end{table}
 
+\columnbreak
 
+\heading{Results}
 
-\section*{Results}
-
-
+\vspace{0.6em}
 \begin{figure}[H]
 \fnt{In synthetic experiment, the estimated parameters are close to the true parameters}\\
 \includegraphics[width=\columnwidth]{../figures/compTrueParams105_synth1_JMD.pdf}
@@ -326,14 +322,15 @@
 
 \begin{figure}[H]
 % \centering
-\fnt{Inferred multimodal trajectories for Posterior Cortical Atrophy are plausible, suggesting late-stage parietal and occipital damage. }\\
- \includegraphics[width=\columnwidth, trim=0 20 0 0, clip]{../figures/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
+\fnt{Inferred multimodal trajectories for Posterior Cortical Atrophy are plausible, suggesting late-stage parietal and occipital damage. }
+ \includegraphics[width=\columnwidth, trim=0 20 0 35, clip]{../figures/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
 %  \caption{Estimated trajectories for the PCA cohort. The only data that were available were the MRI volumetric data. The dynamics of the other biomarkers has been inferred by the model using data from typical AD, and taking into account the different spatial distribution of pathology in PCA vs tAD. }
 %  \label{fig:PCAtrajByModality}
 \end{figure}
 
 
-\fnt{Our model has favourable performance compared to other models, on two different datasets}\\
+\noindent \fnt{Our model has favourable performance compared to other models, on two different datasets}
+\vspace{0.3em}
 \begin{figure}[H]
 \fontsize{27}{30}\selectfont
 \begin{tabular}{c | c c c c c c}
@@ -358,11 +355,11 @@ Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \te
 \end{figure}
 
 
-\section*{Conclusion}
+\heading{Conclusion}
 
 \begin{itemize}
  \item Developed a novel methodology and model for transfer learning across different diseases
-%  \item Inferred, likely for the first time, continuous multimodal trajectories for Posterior Cortical Atrophy
+ \item Inferred multimodal trajectories for Posterior Cortical Atrophy
 %  \item 
 \end{itemize}
 
@@ -384,33 +381,34 @@ Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \te
 \raggedcolumns	
 
 
-
+\vspace{-1em}
 \subsection*{Weblinks}
 \begin{itemize}
 \item Source code: \url{https://github.com/mrazvan22/dkt}
-\item Personal website: \url{https://people.csail.mit.edu/razvan/}
+\item Website: \url{https://people.csail.mit.edu/razvan/}
 \end{itemize}
 }
 
-% \vspace{}
+
 
 \columnbreak
 
-\subsection*{Funders and Grants}
+\subsection*{Funders}
 
 % \begin{figure}[H]
 % \begin{subfigure}{0.48\columnwidth}
-\vspace{1em}
+\vspace{0em}
 % \hspace{2em}
-\includegraphics[height=4.0cm]{epsrc_logo}
+\newcommand{\heightLogos}{3.5cm}
+\includegraphics[height=\heightLogos]{epsrc_logo}
 \hspace{0.5em}
-\includegraphics[height=4cm]{nac_logo} 
+\includegraphics[height=\heightLogos]{nac_logo} 
 \hspace{0.5em}
-\includegraphics[height=4cm]{cdt_logo} 
+\includegraphics[height=\heightLogos]{cdt_logo} 
 \hspace{0.5em}
-\includegraphics[height=4cm]{nih_logo} 
+\includegraphics[height=\heightLogos]{nih_logo} 
 \hspace{0.5em}
-\includegraphics[height=4cm]{aruk_logo} 
+\includegraphics[height=\heightLogos]{aruk_logo} 
 \hspace{0.5em}
 % \end{subfigure}
 % \begin{subfigure}{0.48\columnwidth}
