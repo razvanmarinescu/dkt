@@ -13,15 +13,28 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows,positioning, shapes.symbols,shapes.callouts,patterns,shapes,chains,calc,backgrounds,fadings}
 
+\usepackage[absolute,overlay]{textpos} % for logo next ti title
+
 \usepackage{titlesec}
 \usepackage{tabularx, booktabs} % make width of table columns evenly distributed (see http://tex.stackexchange.com/questions/60601/evenly-distributing-column-widths)
 
 \usepackage{enumitem}
 \usepackage{animate}[2017/05/18]
 
-\usepackage{hyperref}
+\usepackage[hidelinks, colorlinks = true,
+            linkcolor = blue,
+            urlcolor  = blue,
+            citecolor = blue,
+            anchorcolor = blue]{hyperref}
 \usepackage{xcolor}
 \usepackage{newtxtext,newtxmath}
+
+\usepackage[noend]{algorithm2e}
+\newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{blue}{#1}}
+\SetCommentSty{mycommfont}
+
+\usepackage{amssymb} 
+\usepackage{pifont}% for red cross and green tick
 
 % \usepackage{titlepic}
 % \usepackage{columns}
@@ -48,9 +61,9 @@
 \null									%Sets position marker
 % \vspace{5em}
 {
-\color{headingcol}\sffamily\VeryHuge		%Set title font and colour
+\color{headingcol}\sffamily\VeryHuge \textbf		%Set title font and colour
 \@title \par}%
-\vskip 0.6em%
+% \vskip 0.6em%
 {
 \color{black}\sffamily\LARGE				%Set author font and colour
 \lineskip .5em%
@@ -74,14 +87,32 @@
 % \end{tabular}
 % }
 
-\author{R\u{a}zvan V. Marinescu\inst{1,2}, Marco Lorenzi\inst{5}, Stefano B. Blumberg\inst{1}, Alexandra L. Young\inst{1}, Pere Planell-Morell\inst{1}, Neil P. Oxtoby\inst{1}, Arman Eshaghi\inst{1,3}, Keir X. Young\inst{4}, Sebastian J. Crutch\inst{4}, Polina Golland\inst{2}, Daniel C. Alexander\inst{1}\\
+\author{R\u{a}zvan V. Marinescu\inst{1,2}, Marco Lorenzi\inst{3}, Stefano B. Blumberg\inst{1}, Alexandra L. Young\inst{1}, Pere Planell-Morell\inst{1}, Neil P. Oxtoby\inst{1},\\ Arman Eshaghi\inst{1,4}, Keir X. Young\inst{5}, Sebastian J. Crutch\inst{5}, Polina Golland\inst{2}, Daniel C. Alexander\inst{1}\\
 \begin{tabular}{l p{1cm} l p{1cm} l}
-\large{$^1$Centre for Medical Image Computing, University College London}  & & \large{$^2$Queen Square MS Centre, UCL Institute of Neurology} \\
+\large{$^1$Centre for Medical Image Computing, UCL, UK}  & & \large{$^3$University of C\^{o}te d'Azur, Inria Sophia Antipolis, France} & & \large{$^5$Dementia Research Centre, UCL, UK}\\
+\large{$^2$Computer Science and Artificial Intelligence Laboratory, MIT, USA} & & \large{$^4$Queen Square MS Centre, UCL Institute of Neurology, UK} & & 
+ \\
 \end{tabular}
 } 
 
+% \institute{Centre for Medical Image Computing, University College London, UK
+% \and 
+% Computer Science and Artificial Intelligence Laboratory, MIT, USA
+% \email{razvan@csail.mit.edu}
+% \and
+% Queen Square MS Centre, UCL Institute of Neurology, UK
+% \and 
+% Dementia Research Centre, University College London, UK
+% \and
+% University of C\^{o}te d'Azur, Inria Sophia Antipolis, France
+% % Laboratoire d'Analyse Num\'{e}rique, B\^{a}timent 425,\\
+% % F-91405 Orsay Cedex, France}
+% }
+
 \newcommand{\fnt}[1]{\LARGE{#1}}
 
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
 
 
 \begin{document}
@@ -89,15 +120,35 @@
 % \vspace{2cm}
 % \includegraphics[scale=1,trim=0 0 0 200, clip]{Black_Landscape.pdf}
 
-%\colorbox{boxcol}{							%Coloured banner across top
 \begin{minipage}{50cm}					%Minipage for title contents
 % \vspace{-18cm}
 \maketitle
 \end{minipage}
-%}
-% \vspace{-4cm}
+\begin{textblock}{0}(10,0.2)
+\begin{tabular}{l}
+\includegraphics[height=5cm]{ucl_logo}\\
+\includegraphics[height=5cm]{mit_logo}\\
+\end{tabular}
+\includegraphics[height=6cm]{qr_dkt.png}
+
+\end{textblock}
 
 \fnt{
+
+
+\newcommand{\lp}{\lambda_{d_i}^{\psi(k)}}
+\newcommand{\lpuu}{\lambda_{d_i}^{\psi(k),(u)}}
+\newcommand{\lpum}{\lambda_{d_i}^{\psi(k),(u-1)}}
+
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+
+\newcommand{\yes}{{\LARGE \textcolor{green!50!black}{\cmark} \par}}
+\newcommand{\no}{{\LARGE \textcolor{red}{\xmark} \par}}
+
+\hrule
+
+\newcommand{\heading}[1]{\textbf{\Huge{#1}}}
 
 \begin{multicols}{2}							
 \raggedcolumns							%Don't stretch contents vertically
@@ -107,92 +158,160 @@
 %%%Column1
 \vspace{-3em}
 
-
-\section*{Aim}
-
-Propose mechanism to infer progression of non-MRI biomarkers in rare neurodegenerative diseases by leveraging larger datasets of common neurodegenerative diseases.
+\heading{Aim}: Infer progression of non-MRI biomarkers in rare neurodegenerative diseases by leveraging larger datasets of common neurodegenerative diseases.
 
 \section*{Why}
 
-
-\newcommand{\lp}{\lambda_{d_i}^{\psi(k)}}
-\newcommand{\lpuu}{\lambda_{d_i}^{\psi(k),(u)}}
-\newcommand{\lpum}{\lambda_{d_i}^{\psi(k),(u-1)}}
-
 \begin{itemize}
- \item Datasets on rare neurodegenerative diseases (e.g., Posterior Cortical Atrophy) are unimodal (MRI only), cross-sectional and small.
- \item The continuous progression of non-MRI markers in rare neurodegenerative diseases is not well understood
+ \item Rare neurodegenerative diseases not well understood
+ \item Identify outcome measures and subjects for clinical trials
 \end{itemize}
 
-% \vspace{-0.5em}
+\columnbreak
+
+\section*{Challenges}
 
 
- 
+
 % \begin{itemize}
-%  \item by transferring knowledge from larger multimodal datasets of typical Alzheimer's disease
-%  \item jointly model multiple diseases and multiple modalities
+%  \item Datasets on rare neurodegenerative diseases (e.g., Posterior Cortical Atrophy) are unimodal (MRI only), cross-sectional and small.
+%  \item The continuous progression of non-MRI markers in rare neurodegenerative diseases is not well understood
 % \end{itemize}
 
 
+\begin{figure}[H]
+\fnt{
+\begin{subfigure}{0.48\columnwidth}
+  Typical Neurodeg. Diseases
+  
+  \begin{itemize}
+   \item Large datasets \yes
+   \item Multimodal imaging \yes
+   \item Longitudinal \yes
+%    \item Well-understood \yes
+   
+  \end{itemize}
+\end{subfigure}
+\begin{subfigure}{0.48\columnwidth}
+ 
+   Rare Neurodeg. Diseases
+  
+  \begin{itemize}
+   \item Small datasets \no
+   \item MRI only \no
+   \item Cross-sectional \no
+%    \item Poorly understood \no
+  \end{itemize}
+ 
+\end{subfigure}
+ }
+\end{figure}
 
+\end{multicols}
+\hrule
+
+\begin{multicols}{2}							
+\raggedcolumns	
 
 \section*{Method}
-
-
-
-% \begin{itemize}
-%  \item We propose a joint-disease model called Disease Knowledge Transfer:
- \vspace{1em}
- \begin{figure}[H]
+ 
+\vspace{1em}
+\begin{figure}[H]
  \centering
-  \begin{subfigure}{0.49\columnwidth}
+   \begin{subfigure}{0.49\columnwidth}
    \centering
    \fnt{1. Each disease characterised by region-specific dysfunction profile}\\
    $ \gamma_{ij}^l = f(\beta_{i} + m_{ij}; \lambda_{d_i}^l) $\\
 %    \vspace{0.9em}
-   \includegraphics[width=\textwidth]{diseaseEvol}
+%    \includegraphics[width=\textwidth]{diseaseEvol}
    
   \end{subfigure}
   \begin{subfigure}{0.49\columnwidth}
    \centering
 %    \vspace{-1.2em}
    \fnt{2. Dysfunction score modelled using region-specific biomarkers}\\
-   $ p(y_{ijk}|\theta_k, \lp, \beta_{i}, \epsilon_k) = N(y_{ijk}| g( \gamma_{ij}^{\psi(k)} ; \theta_k), \epsilon_k) $
+   $ y_{ijk} = g( \gamma_{ij}^{\psi(k)} ; \theta_k) + N(0,\epsilon_k) $
 %    \vspace{0.6em}
-   \includegraphics[width=\textwidth]{dysfuncEvol}
+%    \includegraphics[width=\textwidth]{dysfuncEvol}
   \end{subfigure}
 
+ \includegraphics[width=\columnwidth]{disease_knowledge_transfer_poster.pdf}
+  \fnt{3. Extend to multiple subjects, biomarkers and diseases}\\
+ $ p(\boldsymbol{y}|\theta, \lambda, \beta , \epsilon) = \prod_{(i,j,k) \in \Omega} p(y_{ijk}|\theta_k, \lp, \beta_{i}) $
  \end{figure}
 
- 
-%    \item each disease has a unique evolution of region-specific dysfunction scores
-%    \item each dysfunction score modelled as the unique evolution of biomarkers within that region
- 
-% \end{itemize}
 
 
+\heading{Inference}: Perform loopy belief propagation
 
-% \subsection{Method Overview}
+% TODO bold out the diferences
 
+\newcommand{\uu}{^{(u)}}
+\newcommand{\um}{^{(u-1)}}
 
-
-
-
-% $ p(y_{ijk}|\theta_k, \lp, \beta_{i}, \epsilon_k) = N(y_{ijk}| g( \gamma_{ij}^{\psi(k)} ; \theta_k), \epsilon_k) $
-
-
-
+\newcommand{\algoFnt}[1]{\Large{#1}}
 
 
 \begin{figure}[H]
- \centering
-  \fnt{3. Extend to multiple subjects, biomarkers and diseases}\\
- $ p(\boldsymbol{y}|\theta, \lambda, \beta , \epsilon) = \prod_{(i,j,k) \in \Omega} p(y_{ijk}|\theta_k, \lp, \beta_{i}) $
- 
- \includegraphics[width=\columnwidth]{../figures/disease_knowledge_transfer_symbols.pdf}
-%  \caption{}
-%  \label{fig:diagram}
+\begin{algorithm}[H]
+\algoFnt
+ Initialise $\boldsymbol{\theta}^{(0)}$, $\boldsymbol{\lambda}^{(0)}$, $\boldsymbol{\beta}^{(0)}$\\
+  \While{$\boldsymbol{\theta}$, $\boldsymbol{\lambda}$, $\boldsymbol{\beta}$ not converged}{
+   \tcp*[l]{\algoFnt{Estimate biomarker trajectories (disease agnostic)}}
+%     \For{$k=1$ to $K$}{
+      ${\theta_k\uu = \argmin_{\theta_k} \textcolor{red}{\sum_{(i,j) \in \Omega_k}} \left[y_{ijk} - g\left(f(\beta_i\um + m_{ij}; \lpum) ; \theta_k\right) \right]^2 }$\\
+%       ${\epsilon_k\uu = \frac{1}{|\Omega_k|} \sum_{(i,j) \in \Omega_k}    \left[y_{ijk} - g\left(f(\beta_i\um + m_{ij}; \lpum) ; \theta_k\uu \right) \right]^2 }$\\
+%     }
+     \tcp*[l]{\algoFnt{Estimate dysfunction trajectories (disease specific)}} 
+%     \For{$d=1 \in \mathbb{D}$}{
+%       \For{$l=1 \in \Lambda$}{
+        ${\lambda_{d}^{l, (u)} = \argmin_{\lambda_{d}^{l}} \textcolor{red}{\sum_{(i,j,k) \in \Omega_{d,l}}} \left[y_{ijk} - g\left(f(\beta_i\um + m_{ij}; \lambda_{d}^{l}) ; \theta_k\uu 
+        \right) \right]^2 }$\\
+%       }
+%     }
+    \tcp*[l]{\algoFnt{Estimate subject-specific time shifts}} 
+%     \For{$i=1 \in [1, \dots, S]$}{
+      ${\beta_i\uu = \argmin_{\beta_i} \textcolor{red}{\sum_{(j,k) \in \Omega_i}} \left[y_{ijk} - g\left(f(\beta_i + m_{ij}; \lpuu) ; \theta_k\uu
+      \right) \right]^2 }$\\
+%     }
+}
+% \normalfont
+\end{algorithm}
+% \caption[The algorithm for estimating the DKT parameters]{The algorithm used to estimate the DKT parameters, based on loopy belief-propagation.}
+\label{fig:dktAlgo}
 \end{figure}
+
+\heading{Demographics}
+
+\begin{itemize}
+ \item Dementia Research Center cohort: 76 PCA, 67 tAD, 87 age-matched controls.
+ \item TADPOLE Challenge dataset split into three cohorts with different progressions: hippocampal, cortical and subcortical.
+ \item Synthetic dataset mimicking the DRC cohort.
+\end{itemize}
+
+
+% The cohort from the Dementia Research Centre UK used for validation consisted of 10 subjects diagnosed with Posterior Cortical Atrophy, with a mean age of 59.4, 40\% females, as well as 10 age-matched controls with a mean age of 59.3, 50\% females.
+% 
+% 
+% For the validation on TADPOLE subgroups, we used applied the SuStaIn model on TADPOLE to split the population into three subgroups with different progression: hippocampal, cortical and subcortical subypes with prominent atrophy in the hippocampus, cortical and subcortical areas respectively.
+% The resulting subgroups had the following demographics:
+% 
+% \begin{table}
+%  \begin{tabular}{c | c c c c}
+% \textbf{Cohort} & \textbf{Nr. subjects} & \textbf{Nr. visits} & \textbf{Age (baseline)} & \textbf{Gender (\%F)}\\
+% \hline
+% Controls (Hippocampal) & 31 & 2.3 $\pm$ 1.8 & 74.4 $\pm$ 6.9 & 38\%\\
+% AD (Hippocampal) & 21 & 1.5 $\pm$ 0.8 & 74.5 $\pm$ 5.5 & 42\%\\
+% \hline
+% Controls (cortical) & 21 & 2.3 $\pm$ 1.3 & 70.9 $\pm$ 5.4 & 42\%\\
+% AD (cortical) & 35 & 1.7 $\pm$ 0.9 & 72.8 $\pm$ 7.4 & 28\%\\
+% \hline
+% Controls (subcortical) & 28 & 3.0 $\pm$ 1.5 & 73.7 $\pm$ 6.5 & 42\%\\
+% AD (subcortical) & 27 & 1.6 $\pm$ 0.9 & 73.7 $\pm$ 7.5 & 33\%\\
+%  \end{tabular}
+%  \caption{Demographics of the subjects in the three TADPOLE subgroups.}
+%  \label{tab:demogTadSubtypes}
+% \end{table}
 
 
 
@@ -200,24 +319,22 @@ Propose mechanism to infer progression of non-MRI biomarkers in rare neurodegene
 
 
 \begin{figure}[H]
-\fnt{Synthetic experiment shows that the model can recover the underlying parameters}\\
-\includegraphics[width=0.4\textwidth]{../figures/compTrueParams105_synth1_JMD.pdf}
+\fnt{In synthetic experiment, the estimated parameters are close to the true parameters}\\
+\includegraphics[width=\columnwidth]{../figures/compTrueParams105_synth1_JMD.pdf}
   \label{fig:dktSynthTrajCompTrue}
 \end{figure}
 
 \begin{figure}[H]
-\centering
-\fnt{Inferred trajectories for Posterior Cortical Atrophy}\\
- \includegraphics[width=0.4\textwidth, trim=0 20 0 0, clip]{../figures/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
+% \centering
+\fnt{Inferred multimodal trajectories for Posterior Cortical Atrophy are plausible, suggesting late-stage parietal and occipital damage. }\\
+ \includegraphics[width=\columnwidth, trim=0 20 0 0, clip]{../figures/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
 %  \caption{Estimated trajectories for the PCA cohort. The only data that were available were the MRI volumetric data. The dynamics of the other biomarkers has been inferred by the model using data from typical AD, and taking into account the different spatial distribution of pathology in PCA vs tAD. }
 %  \label{fig:PCAtrajByModality}
 \end{figure}
 
 
-\begin{table}[H]
-\centering
-\fnt{Our model has favourable performance compared to other models}\\
-\vspace{1em}
+\fnt{Our model has favourable performance compared to other models, on two different datasets}\\
+\begin{figure}[H]
 \fontsize{27}{30}\selectfont
 \begin{tabular}{c | c c c c c c}
 \textbf{Model} & \textbf{Cingulate} & \textbf{Frontal} & \textbf{Hippocam.} & \textbf{Occipital} & \textbf{Parietal} & \textbf{Temporal}\\
@@ -238,11 +355,16 @@ Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \te
 % \caption[Performance evaluation of DKT and other models]{Performance evaluation of DKT and four other statistical models of decreasing complexity. }
 % \end{footnotesize}
 \label{sec:dktPerfMetrics}
-\end{table}
+\end{figure}
 
 
 \section*{Conclusion}
 
+\begin{itemize}
+ \item Developed a novel methodology and model for transfer learning across different diseases
+%  \item Inferred, likely for the first time, continuous multimodal trajectories for Posterior Cortical Atrophy
+%  \item 
+\end{itemize}
 
 
 
@@ -256,36 +378,50 @@ Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \te
 
 
 \begin{multicols}{2}
- 							%Use 3-column layout
+
+\Large{
+
 \raggedcolumns	
 
-\subsection*{References}
 
-\large{
-\begin{tabular}{l p{0.5cm} l}
- 1. Fontejin et al., Neuroimg., 2012 & & 2. Young et al., Nat. Comms., 2018\\
- 3. Villemagne et al., Lancet Neurol., 2013 & & 4. Marinescu et al., IPMI, 2017\\
-\end{tabular}
-
-\columnbreak
 
 \subsection*{Weblinks}
 \begin{itemize}
-\item UCL Progression of Neurodegenerative Disease (POND): cmic.cs.ucl.ac.uk/pond/
-\item UCL Centre for Medical Image Computing: www.ucl.ac.uk/cmic/
+\item Source code: \url{https://github.com/mrazvan22/dkt}
+\item Personal website: \url{https://people.csail.mit.edu/razvan/}
 \end{itemize}
 }
 
+% \vspace{}
 
+\columnbreak
+
+\subsection*{Funders and Grants}
+
+% \begin{figure}[H]
+% \begin{subfigure}{0.48\columnwidth}
 \vspace{1em}
 % \hspace{2em}
-\includegraphics[height=4.0cm]{epsrc_logo.jpg}
+\includegraphics[height=4.0cm]{epsrc_logo}
 \hspace{0.5em}
-\includegraphics[height=4.0cm]{pondLogo.png} 
+\includegraphics[height=4cm]{nac_logo} 
 \hspace{0.5em}
-\includegraphics[height=4cm]{cdt_logo.png} 
+\includegraphics[height=4cm]{cdt_logo} 
+\hspace{0.5em}
+\includegraphics[height=4cm]{nih_logo} 
 \hspace{0.5em}
 \includegraphics[height=4cm]{aruk_logo} 
+\hspace{0.5em}
+% \end{subfigure}
+% \begin{subfigure}{0.48\columnwidth}
+%  \begin{itemize}
+%  \item  EPSRC grant EP/L016478/1
+%  \item  NIH grant NIBIB NAC P41EB015902
+% \end{itemize}
+% \end{subfigure}
+
+% \end{figure}
+
 
 
 \end{multicols}
