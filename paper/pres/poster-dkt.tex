@@ -87,13 +87,16 @@
 % \end{tabular}
 % }
 
-\author{\LARGE{R\u{a}zvan Marinescu\inst{1,2}, Marco Lorenzi\inst{3}, Stefano Blumberg\inst{1}, Alexandra Young\inst{1}, Pere Morell\inst{1}},\\ \LARGE{Neil Oxtoby\inst{1}, Arman Eshaghi\inst{1,4}, Keir Yong\inst{5}, Sebastian Crutch\inst{5}, Polina Golland\inst{2}, Daniel Alexander\inst{1}}\\
-\begin{tabular}{l p{1cm} l p{1cm} l}
-\large{$^1$Centre for Medical Image Computing, UCL, UK}  & & \large{$^3$University of C\^{o}te d'Azur, Inria Sophia Antipolis, France} & & \large{$^5$Dementia Research Centre, UCL, UK}\\
-\large{$^2$Computer Science and Artificial Intelligence Laboratory, MIT, USA} & & \large{$^4$Queen Square MS Centre, UCL Institute of Neurology, UK} & & 
- \\
-\end{tabular}
-} 
+% \author{\LARGE{R\u{a}zvan Marinescu\inst{1,2}, Marco Lorenzi\inst{3}, Stefano Blumberg\inst{1}, Alexandra Young\inst{1}, Pere Morell\inst{1}},\\ \LARGE{Neil Oxtoby\inst{1}, Arman Eshaghi\inst{1,4}, Keir Yong\inst{5}, Sebastian Crutch\inst{5}, Polina Golland\inst{2}, Daniel Alexander\inst{1}}\\}
+
+\author{\LARGE{R\u{a}zvan V. Marinescu, Marco Lorenzi, Stefano B. Blumberg, Alexandra L. Young, Pere Morell},\\ \LARGE{Neil Oxtoby, Arman Eshaghi, Keir Yong, Sebastian Crutch, Polina Golland, Daniel C. Alexander}\\}
+
+% \begin{tabular}{l p{1cm} l p{1cm} l}
+% \large{$^1$Centre for Medical Image Computing, UCL, UK}  & & \large{$^3$University of C\^{o}te d'Azur, Inria Sophia Antipolis, France} & & \large{$^5$Dementia Research Centre, UCL, UK}\\
+% \large{$^2$Computer Science and Artificial Intelligence Laboratory, MIT, USA} & & \large{$^4$Queen Square MS Centre, UCL Institute of Neurology, UK} & & 
+%  \\
+% \end{tabular}
+ 
 
 % \institute{Centre for Medical Image Computing, University College London, UK
 % \and 
@@ -124,10 +127,10 @@
 % \vspace{-18cm}
 \maketitle
 \end{minipage}
-\begin{textblock}{0}(12.2,0.2)
+\begin{textblock}{0}(9.95,0.2)
 \begin{tabular}{l}
-\includegraphics[height=5.5cm]{mit_logo}\includegraphics[height=6cm]{qr_dkt.png}\\
-\includegraphics[height=5cm]{ucl_logo}\\
+\includegraphics[height=5.5cm]{mit_logo}\includegraphics[height=5.5cm]{inria_logo}\includegraphics[height=6cm]{qr_dkt.png}\\
+\hspace{11.45cm}\includegraphics[height=5cm]{ucl_logo}\\
 \end{tabular}
 
 
@@ -136,9 +139,9 @@
 \fnt{
 
 
-\newcommand{\lp}{\lambda_{d_i}^{\psi(k)}}
-\newcommand{\lpuu}{\lambda_{d_i}^{\psi(k),(u)}}
-\newcommand{\lpum}{\lambda_{d_i}^{\psi(k),(u-1)}}
+\newcommand{\lp}{\lambda_{d_i}^{k}}
+\newcommand{\lpuu}{\lambda_{d_i}^{k,(u)}}
+\newcommand{\lpum}{\lambda_{d_i}^{k,(u-1)}}
 
 \newcommand{\cmark}{\ding{51}}%
 \newcommand{\xmark}{\ding{55}}%
@@ -146,7 +149,9 @@
 \newcommand{\yes}{{\LARGE \textcolor{green!50!black}{\cmark} \par}}
 \newcommand{\no}{{\LARGE \textcolor{red}{\xmark} \par}}
 
+\vspace{0.2em}
 \hrule
+\vspace{0.2em}
 
 \newcommand{\heading}[1]{\noindent\textbf{\Huge{#1}}}
 
@@ -158,58 +163,61 @@
 %%%Column1
 \vspace{-3em}
 
-\heading{Aim} Infer progression of non-MRI biomarkers in rare neurodegenerative diseases (NDs) by leveraging larger datasets of common NDs.
+\heading{Aim}\;\;\;\;Infer progression of multimodal biomarkers in rare neurodegenerative diseases (NDs) by leveraging larger datasets of common NDs.
 
 
-\heading{Why} Posterior Cortical Atrophy (PCA): progression of non-MRI biomarkers not known $\rightarrow$ Identify outcome measures and suitable subjects for PCA clinical trials
+\heading{Why}\;\;\;\;Posterior Cortical Atrophy (PCA): progression of \underline{multimodal} biomarkers not known $\rightarrow$ Identify outcome measures and suitable subjects for PCA clinical trials
 
 \columnbreak
 
-\heading{Challenges}
-
-
-
-% \begin{itemize}
-%  \item Datasets on rare neurodegenerative diseases (e.g., Posterior Cortical Atrophy) are unimodal (MRI only), cross-sectional and small.
-%  \item The continuous progression of non-MRI markers in rare neurodegenerative diseases is not well understood
-% \end{itemize}
-
+% \heading{Challenges}
+% 
+% \begin{figure}[H]
+% \fnt{
+% 
+% \begin{subfigure}{0.48\columnwidth}
+%  
+%    Rare Neurodeg. Diseases
+%   
+%   \begin{itemize}
+%    \item Small datasets \no
+%    \item MRI only \no
+%    \item Cross-sectional \no
+% %    \item Poorly understood \no
+%   \end{itemize}
+%  
+% \end{subfigure}
+%  }
+% \end{figure}
 
 \begin{figure}[H]
-\fnt{
-\begin{subfigure}{0.48\columnwidth}
-  Typical Neurodeg. Diseases
-  
-  \begin{itemize}
-   \item Large datasets \yes
-   \item Multimodal imaging \yes
-   \item Longitudinal \yes
-%    \item Well-understood \yes
-   
-  \end{itemize}
-\end{subfigure}
-\begin{subfigure}{0.48\columnwidth}
- 
-   Rare Neurodeg. Diseases
-  
-  \begin{itemize}
-   \item Small datasets \no
-   \item MRI only \no
-   \item Cross-sectional \no
-%    \item Poorly understood \no
-  \end{itemize}
- 
-\end{subfigure}
- }
+ \centering
+ \includegraphics[width=\columnwidth]{DKT_data_availability}
 \end{figure}
+
 
 \end{multicols}
 \hrule
+\vspace{0.2em}
 
 \begin{multicols}{2}							
 \raggedcolumns	
 
-\heading{Method}
+\heading{1. Intuition}
+
+\begin{itemize}
+ \item Diseases affect different brain regions un-equally, but underlyining mechanisms are the same (amyloid cascade)
+ \item \textbf{Idea:} each brain region follows ``its own disease course'', common across diseases $\rightarrow$ dysfunction score
+\end{itemize}
+
+\begin{figure}[H]
+
+\includegraphics[width=\columnwidth]{DKT_intuition}
+ 
+\end{figure}
+
+
+\heading{2. Method}
  
 \vspace{0.6em}
 \begin{figure}[H]
@@ -226,7 +234,7 @@
    \centering
 %    \vspace{-1.2em}
    \fnt{2. Dysfunction trajectory modelled using region-specific biomarkers}\\
-   $ y_{ijk} = g( \gamma_{ij}^{\psi(k)} ; \theta_k) + N(0,\epsilon_k) $
+   $ y_{ijk} = g( \gamma_{ij}^{k} ; \theta_k) + N(0,\epsilon_k) $
 %    \vspace{0.6em}
 %    \includegraphics[width=\textwidth]{dysfuncEvol}
   \end{subfigure}
@@ -237,8 +245,10 @@
  \end{figure}
 
 
+\columnbreak
 
-\heading{Inference:} Loopy belief propagation
+
+\heading{3. Inference with belief propagation} 
 
 % TODO bold out the diferences
 
@@ -247,11 +257,14 @@
 
 \newcommand{\algoFnt}[1]{\Large{#1}}
 
+% \begin{itemize}
+%  \item Uses loopy belief propagation
+% \end{itemize}
 
 \begin{figure}[H]
 \begin{algorithm}[H]
-\algoFnt
- Initialise $\boldsymbol{\theta}^{(0)}$, $\boldsymbol{\lambda}^{(0)}$, $\boldsymbol{\beta}^{(0)}$\\
+\algoFnt{
+%  Initialise $\boldsymbol{\theta}^{(0)}$, $\boldsymbol{\lambda}^{(0)}$, $\boldsymbol{\beta}^{(0)}$\\
   \While{$\boldsymbol{\theta}$, $\boldsymbol{\lambda}$, $\boldsymbol{\beta}$ not converged}{
    \tcp*[l]{\algoFnt{Estimate biomarker trajectories (disease agnostic)}}
 %     \For{$k=1$ to $K$}{
@@ -271,55 +284,34 @@
       \right) \right]^2 }$\\
 %     }
 }
+}
 % \normalfont
 \end{algorithm}
 % \caption[The algorithm for estimating the DKT parameters]{The algorithm used to estimate the DKT parameters, based on loopy belief-propagation.}
 \label{fig:dktAlgo}
 \end{figure}
 
-\heading{Datasets}
+
+
+\heading{4. Datasets}
 
 \begin{itemize}
  \item Dementia Research Center cohort: MRI scans from 76 PCA, 67 tAD, 87 controls for training, 10 PCA with DTI for validation.
  \item TADPOLE dataset (ADNI) split into three subgroups with different progressions: 21 hippocampal, 35 cortical, 27 subcortical.
- \item Synthetic dataset mimicking the cohorts above: 50 subjects with "synthetic PCA", 100 subjects with "synthetic AD".
+%  \item Synthetic dataset mimicking the cohorts above: 50 subjects with "synthetic PCA", 100 subjects with "synthetic AD".
 \end{itemize}
 
 
-% The cohort from the Dementia Research Centre UK used for validation consisted of 10 subjects diagnosed with Posterior Cortical Atrophy, with a mean age of 59.4, 40\% females, as well as 10 age-matched controls with a mean age of 59.3, 50\% females.
-% 
-% 
-% For the validation on TADPOLE subgroups, we used applied the SuStaIn model on TADPOLE to split the population into three subgroups with different progression: hippocampal, cortical and subcortical subypes with prominent atrophy in the hippocampus, cortical and subcortical areas respectively.
-% The resulting subgroups had the following demographics:
-% 
-% \begin{table}
-%  \begin{tabular}{c | c c c c}
-% \textbf{Cohort} & \textbf{Nr. subjects} & \textbf{Nr. visits} & \textbf{Age (baseline)} & \textbf{Gender (\%F)}\\
-% \hline
-% Controls (Hippocampal) & 31 & 2.3 $\pm$ 1.8 & 74.4 $\pm$ 6.9 & 38\%\\
-% AD (Hippocampal) & 21 & 1.5 $\pm$ 0.8 & 74.5 $\pm$ 5.5 & 42\%\\
-% \hline
-% Controls (cortical) & 21 & 2.3 $\pm$ 1.3 & 70.9 $\pm$ 5.4 & 42\%\\
-% AD (cortical) & 35 & 1.7 $\pm$ 0.9 & 72.8 $\pm$ 7.4 & 28\%\\
-% \hline
-% Controls (subcortical) & 28 & 3.0 $\pm$ 1.5 & 73.7 $\pm$ 6.5 & 42\%\\
-% AD (subcortical) & 27 & 1.6 $\pm$ 0.9 & 73.7 $\pm$ 7.5 & 33\%\\
-%  \end{tabular}
-%  \caption{Demographics of the subjects in the three TADPOLE subgroups.}
-%  \label{tab:demogTadSubtypes}
-% \end{table}
-
-\columnbreak
-
-\heading{Results}
-
 \vspace{0.6em}
+\heading{5. Results}
+
+% \vspace{0.6em}
 \begin{itemize}
- \item \fnt{In synthetic experiment, the estimated parameters are close to the true parameters.}
-\begin{figure}[H]
-\includegraphics[width=\columnwidth]{../figures/compTrueParams105_synth1_JMD.pdf}
-  \label{fig:dktSynthTrajCompTrue}
-\end{figure}
+%  \item \fnt{In synthetic experiment, the estimated parameters are close to the true parameters.}
+% \begin{figure}[H]
+% \includegraphics[width=\columnwidth]{../figures/compTrueParams105_synth1_JMD.pdf}
+%   \label{fig:dktSynthTrajCompTrue}
+% \end{figure}
 
  \item \fnt{Inferred multimodal trajectories for PCA in lack of such data.}
  \item \fnt{Results are plausible, suggesting late-stage posterior damage. }
@@ -340,13 +332,13 @@
 \textbf{Model} & \textbf{Cingulate} & \textbf{Frontal} & \textbf{Hippocam.} & \textbf{Occipital} & \textbf{Parietal} & \textbf{Temporal}\\
 & \multicolumn{6}{c}{\textbf{TADPOLE: Hippocampal subgroup to Cortical subgroup}}\\
 DKT (ours) &      0.56 $\pm$ 0.23 &    \textbf{0.35 $\pm$ 0.17} &        \textbf{0.58 $\pm$ 0.14} &     -0.10 $\pm$ 0.29 &     \textbf{0.71 $\pm$ 0.11} &     \textbf{0.34 $\pm$ 0.26} \\
-Latent stage &      0.44 $\pm$ 0.25 &    0.34 $\pm$ 0.21 &       0.34 $\pm$ 0.24* &     \textbf{-0.07 $\pm$ 0.22} &     0.64 $\pm$ 0.16 &    0.08 $\pm$ 0.24* \\
+AD model &      0.44 $\pm$ 0.25 &    0.34 $\pm$ 0.21 &       0.34 $\pm$ 0.24* &     \textbf{-0.07 $\pm$ 0.22} &     0.64 $\pm$ 0.16 &    0.08 $\pm$ 0.24* \\
 Multivariate &      \textbf{0.60 $\pm$ 0.18} &   0.11 $\pm$ 0.22* &       0.12 $\pm$ 0.29* &     -0.22 $\pm$ 0.22 &   -0.44 $\pm$ 0.14* &   -0.32 $\pm$ 0.29* \\
 Spline &    -0.24 $\pm$ 0.25* &  -0.06 $\pm$ 0.27* &        0.58 $\pm$ 0.17 &     -0.16 $\pm$ 0.27 &    0.23 $\pm$ 0.25* &    0.10 $\pm$ 0.25* \\
 Linear &    -0.24 $\pm$ 0.25* &   0.20 $\pm$ 0.25* &        0.58 $\pm$ 0.17 &     -0.16 $\pm$ 0.27 &    0.23 $\pm$ 0.25* &    0.13 $\pm$ 0.23* \\
 & \multicolumn{6}{c}{\textbf{typical Alzheimer's to Posterior Cortical Atrophy}}\\
 DKT (ours) &    0.77 $\pm$ 0.11 &    0.39 $\pm$ 0.26 &      0.75 $\pm$ 0.09 &    0.60 $\pm$ 0.14 &    \textbf{0.55 $\pm$ 0.24} &    \textbf{0.35 $\pm$ 0.22} \\
-Latent stage &    \textbf{0.80 $\pm$ 0.09} &    \textbf{0.53 $\pm$ 0.17} &      \textbf{0.80 $\pm$ 0.12} &    0.56 $\pm$ 0.18 &    0.50 $\pm$ 0.21 &    0.32 $\pm$ 0.24 \\
+AD model &    \textbf{0.80 $\pm$ 0.09} &    \textbf{0.53 $\pm$ 0.17} &      \textbf{0.80 $\pm$ 0.12} &    0.56 $\pm$ 0.18 &    0.50 $\pm$ 0.21 &    0.32 $\pm$ 0.24 \\
 Multivariate &   0.73 $\pm$ 0.09 &   0.45 $\pm$ 0.22  &    0.71 $\pm$ 0.08 & -0.28 $\pm$ 0.21* &  0.53 $\pm$ 0.22  &  0.25 $\pm$ 0.23* \\
 Spline &   0.52 $\pm$ 0.20* &  -0.03 $\pm$ 0.35* &     0.66 $\pm$ 0.11* &   0.09 $\pm$ 0.25* &    0.53 $\pm$ 0.20 &   0.30 $\pm$ 0.21* \\
 Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \textbf{0.64 $\pm$ 0.17} &    0.54 $\pm$ 0.22 &   0.30 $\pm$ 0.21* \\
@@ -360,7 +352,7 @@ Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \te
 
 \end{itemize}
 
-\heading{Conclusion}
+\heading{6. Conclusion}
 
 \begin{itemize}
  \item Developed a novel methodology and model for transfer learning across different diseases
