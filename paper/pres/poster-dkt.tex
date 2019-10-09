@@ -163,10 +163,10 @@
 %%%Column1
 \vspace{-3em}
 
-\heading{Aim:}\;\;\;\;Infer progression of multimodal biomarkers in rare neurodegenerative diseases (NDs) by leveraging larger datasets of common NDs.
+\heading{Aim}\;\;\;\;Infer progression of multimodal biomarkers in rare neurodegenerative diseases (NDs) by leveraging larger datasets of common, related variants.
 
 
-\heading{Why:}\;\;\;\;Posterior Cortical Atrophy (PCA): progression of \underline{multimodal} biomarkers not known $\rightarrow$ Identify outcome measures and suitable subjects for PCA clinical trials.
+\heading{Why}\;\;\;\;Posterior Cortical Atrophy (PCA): progression of \underline{multimodal} biomarkers not known $\rightarrow$ Identify outcome measures and suitable subjects for PCA clinical trials
 
 \columnbreak
 
@@ -206,13 +206,13 @@
 \heading{1. Intuition}
 
 \begin{itemize}
- \item Diseases affect different brain regions un-equally, but underlyining mechanisms are the same (amyloid cascade).
- \item \textbf{Idea:} each brain region follows ``its own disease course'', common across diseases.
+ \item Diseases affect different brain regions un-equally, but underlyining mechanisms are the same (amyloid cascade)
+ \item \textbf{Idea:} each brain region follows ``its own disease course'', common across diseases $\rightarrow$ dysfunction score
 \end{itemize}
 
 \begin{figure}[H]
-
-\includegraphics[width=\columnwidth]{DKT_intuition}
+\centering
+\includegraphics[width=1\columnwidth]{DKT_intuition}
  
 \end{figure}
 
@@ -234,14 +234,19 @@
    \centering
 %    \vspace{-1.2em}
    \fnt{2. Dysfunction trajectory modelled using region-specific biomarkers}\\
-   $ y_{ijk} = g( \gamma_{ij}^{k} ; \theta_k) + N(0,\epsilon_k) $
+   $ y_{ij}^k = g( \gamma_{ij}^{k} ; \theta_k) + N(0,\epsilon_k) $\\
+%    \fnt{$y_{ijk}$ = measure in subject $i$, visit $j$, region $k$.}
+   
 %    \vspace{0.6em}
 %    \includegraphics[width=\textwidth]{dysfuncEvol}
   \end{subfigure}
+% \vspace{-2em}
 
- \includegraphics[width=\columnwidth]{disease_knowledge_transfer_poster.pdf}
+ \includegraphics[width=\columnwidth,trim=0 0 0 00,clip]{disease_knowledge_transfer_poster.pdf}
+
+ 
   \fnt{3. Extend to multiple subjects, biomarkers and diseases}\\
- $ p(\boldsymbol{y}|\theta, \lambda, \beta , \epsilon) = \prod_{(i,j,k) \in \Omega} p(y_{ijk}|\theta_k, \lp, \beta_{i}) $
+ $ p(\boldsymbol{y}|\theta, \lambda, \beta , \epsilon) = \prod_{(i,j,k) \in \Omega} p(y_{ij}^k|\theta_k, \lp, \beta_{i}) $
  \end{figure}
 
 
@@ -296,8 +301,8 @@
 \heading{4. Datasets}
 
 \begin{itemize}
- \item Dementia Research Center cohort: MRI scans from 76 PCA, 67 tAD, 87 controls for training, 10 PCA with DTI for validation.
  \item TADPOLE dataset (ADNI) split into three subgroups with different progressions: 21 hippocampal, 35 cortical, 27 subcortical.
+\item Dementia Research Center cohort: MRI scans from 76 PCA, 67 tAD, 87 controls for training, 10 PCA with DTI for validation.
 %  \item Synthetic dataset mimicking the cohorts above: 50 subjects with "synthetic PCA", 100 subjects with "synthetic AD".
 \end{itemize}
 
@@ -312,17 +317,6 @@
 % \includegraphics[width=\columnwidth]{../figures/compTrueParams105_synth1_JMD.pdf}
 %   \label{fig:dktSynthTrajCompTrue}
 % \end{figure}
-
- \item \fnt{Inferred multimodal trajectories for PCA in lack of such data.}
- \item \fnt{Results are plausible, suggesting late-stage posterior damage. }
-\begin{figure}[H]
-% \centering
-
- \includegraphics[width=\columnwidth, trim=0 20 0 35, clip]{../figures/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
-%  \caption{Estimated trajectories for the PCA cohort. The only data that were available were the MRI volumetric data. The dynamics of the other biomarkers has been inferred by the model using data from typical AD, and taking into account the different spatial distribution of pathology in PCA vs tAD. }
-%  \label{fig:PCAtrajByModality}
-\end{figure}
-
 
 \item \fnt{Our model has favourable performance compared to other models, on two different datasets.}
 \vspace{0.3em}
@@ -348,6 +342,20 @@ Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \te
 % \end{footnotesize}
 \label{sec:dktPerfMetrics}
 \end{figure}
+
+
+ \item \fnt{Inferred multimodal trajectories for PCA in lack of such data.}
+ \item \fnt{Results are plausible, suggesting late-stage posterior damage. }
+\begin{figure}[H]
+% \centering
+
+ \includegraphics[width=\columnwidth, trim=0 20 0 35, clip]{../figures/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
+%  \caption{Estimated trajectories for the PCA cohort. The only data that were available were the MRI volumetric data. The dynamics of the other biomarkers has been inferred by the model using data from typical AD, and taking into account the different spatial distribution of pathology in PCA vs tAD. }
+%  \label{fig:PCAtrajByModality}
+\end{figure}
+
+
+
 
 
 \end{itemize}
