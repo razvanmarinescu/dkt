@@ -456,7 +456,7 @@ class PlotterJDM:
 
 
 
-    font = {'family': 'normal', 'size': 13}
+    font = {'family': 'normal', 'size': 22}
 
     import matplotlib
     matplotlib.rc('font', **font)
@@ -484,10 +484,14 @@ class PlotterJDM:
     colorsTraj = [colorsys.hsv_to_rgb(hue, 1, 1) for hue in
       np.linspace(0, 1, num=nrBiomkPerGroup, endpoint=False)]
 
+    groupReplaceMap = {'AV45': 'Amyloid (AV45)', 'AV1451': 'Tau (AV1451)', 'Volume': 'MRI Atrophy'}
+
     for g in range(nrBiomkGroups):
       biomkIndInGr[g] = np.array(range(g * nrBiomkPerGroup, (g+1)*nrBiomkPerGroup))
 
       groupName = params['labels'][biomkIndInGr[g][0]].split(' ')[0]
+      if groupName in groupReplaceMap.keys():
+        groupName = groupReplaceMap[groupName]
 
       # print('groupName', groupName)
       # print('biomkIndInGr[g]', biomkIndInGr[g])
@@ -553,8 +557,11 @@ class PlotterJDM:
       #   for x in group:
       #     x.set_visible(False)
 
+
+    pl.subplots_adjust(wspace=0.3, hspace=0.3)
+
     fig.text(0.55, 0.04, 'Disease Progression (months)', ha='center')
-    fig.text(0.08, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
+    fig.text(0.04, 0.5, 'Biomarker Value (normalised)', va='center', rotation='vertical')
 
     if replaceFig:
       fig.show()

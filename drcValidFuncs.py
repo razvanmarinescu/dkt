@@ -690,13 +690,16 @@ def validateDRCBiomk(dpmObj, params):
   diagValidFiltDktModel[diagValidFiltDktModel == CTL2] = CTL_DKT
   diagValidFiltDktModel[diagValidFiltDktModel == PCA] = PCA_DKT
 
-  # plot just the trajectories by modality groups
-  # for d in range(dpmObj.nrDis):
-  #   fig = dpmObj.plotter.plotTrajInDisSpaceOverlap(dpmObj, d, params, replaceFig=True)
-  #   fig.savefig('%s/trajDisSpaceOverlap_%s_%s.png' % (params['outFolder'],
-  #     params['disLabels'][d], params['expName']))
+  #plot just the trajectories by modality groups
+  for d in range(dpmObj.nrDis):
+    fig = dpmObj.plotter.plotTrajInDisSpaceOverlap(dpmObj, d, params, replaceFig=True)
+    figName = '%s/trajDisSpaceOverlap_%s_%s' % (params['outFolder'],
+      params['disLabels'][d], params['expName'])
+    fig.savefig('%s.png' % figName)
+    fig.savefig('%s.pdf' % figName)
+    print('Fig saved:%s.pdf ' % figName)
 
-  plotFigs = True
+  plotFigs = False
   if plotFigs:
 
     # for u in range(dpmObj.nrFuncUnits):

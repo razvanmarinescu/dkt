@@ -139,9 +139,9 @@
 \fnt{
 
 
-\newcommand{\lp}{\lambda_{d_i}^{k}}
-\newcommand{\lpuu}{\lambda_{d_i}^{k,(u)}}
-\newcommand{\lpum}{\lambda_{d_i}^{k,(u-1)}}
+\newcommand{\lp}{\lambda_{d_i}^{\psi(k)}}
+\newcommand{\lpuu}{\lambda_{d_i}^{\psi(k),(u)}}
+\newcommand{\lpum}{\lambda_{d_i}^{\psi(k),(u-1)}}
 
 \newcommand{\cmark}{\ding{51}}%
 \newcommand{\xmark}{\ding{55}}%
@@ -234,8 +234,8 @@
    \centering
 %    \vspace{-1.2em}
    \fnt{2. Dysfunction trajectory modelled using region-specific biomarkers}\\
-   $ y_{ij}^k = g( \gamma_{ij}^{k} ; \theta_k) + N(0,\epsilon_k) $\\
-%    \fnt{$y_{ijk}$ = measure in subject $i$, visit $j$, region $k$.}
+   $ y_{ij}^k = g( \gamma_{ij}^{\psi(k)} ; \theta_k) + N(0,\epsilon_k) $\\
+%    \fnt{$y_{ij}^k$ = measure in subject $i$, visit $j$, region $k$.}
    
 %    \vspace{0.6em}
 %    \includegraphics[width=\textwidth]{dysfuncEvol}
@@ -273,19 +273,19 @@
   \While{$\boldsymbol{\theta}$, $\boldsymbol{\lambda}$, $\boldsymbol{\beta}$ not converged}{
    \tcp*[l]{\algoFnt{Estimate biomarker trajectories (disease agnostic)}}
 %     \For{$k=1$ to $K$}{
-      ${\theta_k\uu = \argmin_{\theta_k} \textcolor{red}{\sum_{(i,j) \in \Omega_k}} \left[y_{ijk} - g\left(f(\beta_i\um + m_{ij}; \lpum) ; \theta_k\right) \right]^2 }$\\
-%       ${\epsilon_k\uu = \frac{1}{|\Omega_k|} \sum_{(i,j) \in \Omega_k}    \left[y_{ijk} - g\left(f(\beta_i\um + m_{ij}; \lpum) ; \theta_k\uu \right) \right]^2 }$\\
+      ${\theta_k\uu = \argmin_{\theta_k} \textcolor{red}{\sum_{(i,j) \in \Omega_k}} \left[y_{ij}^k - g\left(f(\beta_i\um + m_{ij}; \lpum) ; \theta_k\right) \right]^2 }$\\
+%       ${\epsilon_k\uu = \frac{1}{|\Omega_k|} \sum_{(i,j) \in \Omega_k}    \left[y_{ij}^k - g\left(f(\beta_i\um + m_{ij}; \lpum) ; \theta_k\uu \right) \right]^2 }$\\
 %     }
      \tcp*[l]{\algoFnt{Estimate dysfunction trajectories (disease specific)}} 
 %     \For{$d=1 \in \mathbb{D}$}{
 %       \For{$l=1 \in \Lambda$}{
-        ${\lambda_{d}^{l, (u)} = \argmin_{\lambda_{d}^{l}} \textcolor{red}{\sum_{(i,j,k) \in \Omega_{d,l}}} \left[y_{ijk} - g\left(f(\beta_i\um + m_{ij}; \lambda_{d}^{l}) ; \theta_k\uu 
+        ${\lambda_{d}^{l, (u)} = \argmin_{\lambda_{d}^{l}} \textcolor{red}{\sum_{(i,j,k) \in \Omega_{d,l}}} \left[y_{ij}^k - g\left(f(\beta_i\um + m_{ij}; \lambda_{d}^{l}) ; \theta_k\uu 
         \right) \right]^2 }$\\
 %       }
 %     }
     \tcp*[l]{\algoFnt{Estimate subject-specific time shifts}} 
 %     \For{$i=1 \in [1, \dots, S]$}{
-      ${\beta_i\uu = \argmin_{\beta_i} \textcolor{red}{\sum_{(j,k) \in \Omega_i}} \left[y_{ijk} - g\left(f(\beta_i + m_{ij}; \lpuu) ; \theta_k\uu
+      ${\beta_i\uu = \argmin_{\beta_i} \textcolor{red}{\sum_{(j,k) \in \Omega_i}} \left[y_{ij}^k - g\left(f(\beta_i + m_{ij}; \lpuu) ; \theta_k\uu
       \right) \right]^2 }$\\
 %     }
 }
@@ -349,7 +349,9 @@ Linear &   0.52 $\pm$ 0.20* &    0.34 $\pm$ 0.27 &     0.66 $\pm$ 0.11* &    \te
 \begin{figure}[H]
 % \centering
 
- \includegraphics[width=\columnwidth, trim=0 20 0 35, clip]{../figures/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
+%  \includegraphics[width=\columnwidth, trim=0 20 0 35, clip]{trajDisSpaceOverlap_PCA_tadDrcTiny_JMD}
+  \includegraphics[width=\columnwidth, trim=0 20 0 35, clip]{../figures/trajDisSpaceOverlap_PCA_tad-drcTinyPen5_JMD.png}
+ 
 %  \caption{Estimated trajectories for the PCA cohort. The only data that were available were the MRI volumetric data. The dynamics of the other biomarkers has been inferred by the model using data from typical AD, and taking into account the different spatial distribution of pathology in PCA vs tAD. }
 %  \label{fig:PCAtrajByModality}
 \end{figure}
