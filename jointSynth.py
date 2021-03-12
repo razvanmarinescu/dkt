@@ -9,7 +9,6 @@ import os
 import colorsys
 import copy
 
-import MarcoModel
 import SigmoidModel
 
 parser = argparse.ArgumentParser(description='Launches voxel-wise/point-wise DPM on ADNI'
@@ -62,7 +61,6 @@ if args.agg:
   # print(asds)
 
 import genSynthData
-import GPModel
 import ParHierModel
 import Plotter
 from auxFunc import *

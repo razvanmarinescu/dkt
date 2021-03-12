@@ -12,8 +12,6 @@ import Plotter
 import copy
 import colorsys
 
-import MarcoModel
-
 import DisProgBuilder
 
 class JMDBuilderOnePass(DisProgBuilder.DPMBuilder):

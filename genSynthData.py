@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import pickle
-from GPModel import *
+#from GPModel import *
 from env import *
 import scipy
 import scipy.stats
@@ -9,7 +9,6 @@ from auxFunc import *
 import ParHierModel
 import pandas as pd
 
-import MarcoModel
 import auxFunc
 
 
@@ -125,8 +124,8 @@ def generateDataJMD(nrSubjLong, nrBiomk, nrTimepts, shiftsLowerLim, shiftsUpperL
 
 
     # put everything in Marco's format.
-    # X - list of length NR_BIOMK.  X[b] - list of NR_SUBJ_LONG   X[b][s] - list of visit months for subject b and biomarker s
-    # Y - list of length NR_BIOMK.  Y[b] - list of NR_SUBJ_LONG   Y[b][s] - list of biomarker values for subject b and biomarker s
+    # X - list of length NR_BIOMK.  X[b] - list of NR_SUBJ_LONG   X[b][s] - list of visit months for subject s and biomarker b
+    # Y - list of length NR_BIOMK.  Y[b] - list of NR_SUBJ_LONG   Y[b][s] - list of biomarker values for subject s and biomarker b
     # RID - list of length NR_SUBJ_LONG
     X, Y, RID, visitIndices = convertToMarcoFormat(dataCrossSB, labels, yearsSinceBlScanCross, partCodeCross, diagCross)
 

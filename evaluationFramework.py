@@ -18,9 +18,7 @@ from DisProgBuilder import *
 
 # joint disease models
 import JointModel
-import MarcoModelWrapper
 import Plotter
-import MarcoModel
 import SigmoidModel
 import SigmoidWrapper
 import LinearModel
@@ -43,15 +41,6 @@ def runModels(params, expName, modelToRun, runAllExpFunc):
     modelName = 'JMD'
     expNameCurrModel = '%s_%s' % (expName, modelName)
     params['currModel'] = 14
-    res += [runAllExpFunc(params, expNameCurrModel, dpmBuilder)]
-    modelNames += [modelName]
-
-  if np.any(modelToRun == 15):
-    # Marco's Model
-    dpmBuilder = MarcoModelWrapper.MarcoModelBuilder(params['plotTrajParams'])
-    modelName = 'MarcoModel'
-    expNameCurrModel = '%s_%s' % (expName, modelName)
-    params['currModel'] = 15
     res += [runAllExpFunc(params, expNameCurrModel, dpmBuilder)]
     modelNames += [modelName]
 

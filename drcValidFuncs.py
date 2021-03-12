@@ -11,7 +11,7 @@ def addDRCValidData(validDf):
   '''perform validation on DTI data from the DRC '''
 
   #dtiSS = pd.read_csv('../data/DRC/DTI/DTI_summary_forRaz.xlsx')
-  dtiSS = pd.read_csv('DTI_summary_forRaz.csv')
+  dtiSS = pd.read_csv('data_processed/DTI_summary_forRaz.csv')
   mappingIDtoRegion = {0 : ["Unclassified", "UNC"] ,
     1: ["Middle cerebellar peduncle", "ICP"], # TBC
     2: ["Pontine Crossing tract","PCT"], # TBC

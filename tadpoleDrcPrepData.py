@@ -218,18 +218,18 @@ def normaliseData(dataDfAll, validDf, allBiomkCols):
 
 def prepareData(finalDataFile, tinyData, addExtraBiomk):
 
-  tadpoleFile = 'TADPOLE_D1_D2.csv'
+  tadpoleFile = 'data_processed/TADPOLE_D1_D2.csv'
   # dataDfTadpole = loadTadpole(tadpoleFile)
   # dataDfTadpole.to_csv('tadpoleCleanDf.csv', sep=',', quotechar='"')
-  dataDfTadpole = pd.read_csv('tadpoleCleanDf.csv')
+  dataDfTadpole = pd.read_csv('data_processed/tadpoleCleanDf.csv')
 
   # print(dsa)
 
-  drcFile = 'drcVolsFSX.csv'
+  drcFile = 'data_processed/drcVolsFSX.csv'
 
   # dataDfDrc = loadDRC(drcFile,columnsFormat=dataDfTadpole.columns)
   # dataDfDrc.to_csv('drcCleanDf.csv')
-  dataDfDrc = pd.read_csv('drcCleanDf.csv')
+  dataDfDrc = pd.read_csv('data_processed/drcCleanDf.csv')
 
   dataDfAll = pd.concat([dataDfTadpole, dataDfDrc], ignore_index=True)
   dataDfAll = dataDfAll[[x for x in dataDfAll.columns if x != 'Unnamed: 0']]
@@ -237,7 +237,7 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   # add extra number to RID to ensure no collisions occur with RIDs of other datasets
   dataDfAll['RID'] = dataDfAll['RID']*10 + dataDfAll['dataset']
 
-  dataDfAll.to_csv('tadpoleDrcAll.csv')
+  dataDfAll.to_csv('data_processed/tadpoleDrcAll.csv')
 
   # exact same format as dataDfAll. make deep copy of the DRC data only
 
@@ -253,7 +253,7 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   outFilePrefix = 'befReg'
   # visValidDf(validDf, outFilePrefix)
 
-  validDf.to_csv('validDf.csv')
+  validDf.to_csv('data_processed/validDf.csv')
   # print(asdas)
 
   print('validDf', validDf)

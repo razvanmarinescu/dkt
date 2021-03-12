@@ -68,7 +68,6 @@ if args.agg:
   # print(asds)
 
 import genSynthData
-import GPModel
 import ParHierModel
 import Plotter
 from auxFunc import *
@@ -160,7 +159,7 @@ def main():
   pd.set_option('display.max_columns', 50)
   tinyData = args.tinyData
 
-  finalDataFile = 'tadDrc.npz'
+  finalDataFile = 'data_processed/tadDrc.npz'
   expName = 'tadDrc'
 
   if args.tinyData:

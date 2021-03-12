@@ -11,7 +11,6 @@ from matplotlib import pyplot as pl
 import Plotter
 import copy
 import colorsys
-import MarcoModel
 import JointModelOnePass
 
 import DisProgBuilder
