@@ -23,6 +23,12 @@ To reproduce the results with ADNI + DRC data from pre-trained model, using save
 python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 14  --nrRows 4 --nrCols 6 --penalty 5 --runPartStd LL --tinyData
 ```
 
+To run DKT on 3 pre-defined subgroups from TADPOLE (Hippocampal, Cortical, Subcortical) defined by the SuStaIn model (Young et al, Nature Comms, 2018), run:
+
+```
+  python3 tadpoleSubtypes.py --runIndex 0 --nrProc 1 --modelToRun 14  --nrRows 4 --nrCols 6 --runPartStd RR --tinyData
+```
+
 To run model comparison from saved checkpoints, run:
 ```
 python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 0  --nrRows 5 --nrCols 7 --runPartStd LL --tinyData
@@ -38,3 +44,12 @@ For example, to train on the TADPOLE + DRC data, run:
 ```
 python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 14  --nrRows 4 --nrCols 6 --penalty 5 --runPartStd RR --tinyData
 ```
+
+## Running other models
+
+To run the Disease progression Score model by Jedynak et al, NeuroImage, 2012, simply run:
+
+```
+  python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 17  --nrRows 5 --nrCols 7 --runPartStd RR --tinyData
+```
+

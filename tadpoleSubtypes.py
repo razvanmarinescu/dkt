@@ -68,7 +68,6 @@ if args.agg:
   # print(asds)
 
 import genSynthData
-import GPModel
 import ParHierModel
 import Plotter
 from auxFunc import *
@@ -231,7 +230,7 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
   tadpoleFile = 'TADPOLE_D1_D2.csv'
   # dataDfTadpole = loadTadpole(tadpoleFile)
   # dataDfTadpole.to_csv('tadpoleCleanDf.csv', sep=',', quotechar='"')
-  dataDfTadpole = pd.read_csv('tadpoleCleanDf.csv')
+  dataDfTadpole = pd.read_csv('data_processed/tadpoleCleanDf.csv')
 
   print('dataDfTadpole', dataDfTadpole)
   print('RID', dataDfTadpole.RID)
@@ -445,7 +444,6 @@ def prepareData(finalDataFile, tinyData, addExtraBiomk):
       100 * (1 - np.nanmean(dfCurr.loc[:,'gender-0f1m']))))
 
 
-  asda
 
 
   # update 6 Aug 2018: moved normalisation after making the data tiny.
