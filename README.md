@@ -1,9 +1,11 @@
 
 # Disease Knowledge Transfer across Neurodegenerative Diseases
-## Razvan V. Marinescu, Marco Lorenzi, Stefano B. Blumberg, Alexandra L. Young, Pere P. Morell, Neil P. Oxtoby, Arman Eshaghi, Keir X. Yong, Sebastian J. Crutch, Polina Golland, Daniel C. Alexander
+Razvan V. Marinescu, Marco Lorenzi, Stefano B. Blumberg, Alexandra L. Young, Pere P. Morell, Neil P. Oxtoby, Arman Eshaghi, Keir X. Yong, Sebastian J. Crutch, Polina Golland, Daniel C. Alexander
 
 ![overall diagram](disease_knowledge_transfer.png)
 
+paper: https://arxiv.org/pdf/1901.03517.pdf
+poster: https://github.com/razvanmarinescu/dkt/blob/master/poster-dkt.pdf
 
 ## Installation
 
