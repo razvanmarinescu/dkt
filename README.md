@@ -2,6 +2,9 @@
 # Disease Knowledge Transfer across Neurodegenerative Diseases
 ## Razvan V. Marinescu, Marco Lorenzi, Stefano B. Blumberg, Alexandra L. Young, Pere P. Morell, Neil P. Oxtoby, Arman Eshaghi, Keir X. Yong, Sebastian J. Crutch, Polina Golland, Daniel C. Alexander
 
+![overall diagram](disease_knowledge_transfer.png)
+
+
 ## Installation
 
 ``` 
@@ -29,7 +32,8 @@ To run DKT on 3 pre-defined subgroups from TADPOLE (Hippocampal, Cortical, Subco
   python3 tadpoleSubtypes.py --runIndex 0 --nrProc 1 --modelToRun 14  --nrRows 4 --nrCols 6 --runPartStd RR --tinyData
 ```
 
-To run model comparison from saved checkpoints, run:
+To run model comparison from saved checkpoints, run with --modelToRun=0 (i.e. run all models). This only works in LL mode. 
+
 ```
 python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 0  --nrRows 5 --nrCols 7 --runPartStd LL --tinyData
 ```
@@ -37,9 +41,7 @@ python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 0  --nrRows 5 --nrCo
 
 ## Training new models
 
-To train a new model, run the commands above with "RR" flags. If you run on a different dataset, you have to put them in the same .csv format as those under data/ and data_processed/.
-
-For example, to train on the TADPOLE + DRC data, run:
+To train a new model, run the commands above with "RR" flags. If you run on a different dataset, you have to put them in the same .csv format as those under data/ and data_processed/. For example, to train on the TADPOLE + DRC data, run:
 
 ```
 python3 tadpoleDrc.py --runIndex 0 --nrProc 10 --modelToRun 14  --nrRows 4 --nrCols 6 --penalty 5 --runPartStd RR --tinyData
