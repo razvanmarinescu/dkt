@@ -30,7 +30,8 @@
 \usepackage{newtxtext,newtxmath}
 
 \usepackage[noend]{algorithm2e}
-\newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{blue}{#1}}
+\definecolor{comCol}{rgb}{0.0,0.0,0.0}
+\newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{comCol}{#1}}
 \SetCommentSty{mycommfont}
 
 \usepackage{amssymb} 
@@ -138,10 +139,13 @@
 
 \fnt{
 
+\definecolor{thetaCol}{rgb}{0.8,0.2,0.2}
+\definecolor{lambdaCol}{rgb}{0.0,0.5,0.0}
+\definecolor{betaCol}{rgb}{0,0.2,0.8}
 
-\newcommand{\lp}{\lambda_{d_i}^{\psi(k)}}
-\newcommand{\lpuu}{\lambda_{d_i}^{\psi(k),(u)}}
-\newcommand{\lpum}{\lambda_{d_i}^{\psi(k),(u-1)}}
+\newcommand{\lp}{\textcolor{lambdaCol}{\lambda_{d_i}^{\psi(k)}}}
+\newcommand{\lpuu}{\textcolor{lambdaCol}{\lambda_{d_i}^{\psi(k),(u)}}}
+\newcommand{\lpum}{\textcolor{lambdaCol}{\lambda_{d_i}^{\psi(k),(u-1)}}}
 
 \newcommand{\cmark}{\ding{51}}%
 \newcommand{\xmark}{\ding{55}}%
@@ -166,7 +170,7 @@
 \heading{Aim}\;\;\;\;Infer progression of multimodal biomarkers in rare neurodegenerative diseases (NDs) by leveraging larger datasets of common, related variants.
 
 
-\heading{Why}\;\;\;\;Posterior Cortical Atrophy (PCA): progression of \underline{multimodal} biomarkers not known $\rightarrow$ Identify outcome measures and suitable subjects for PCA clinical trials
+\heading{Why}\;\;\;\;Posterior Cortical Atrophy (PCA): progression of \underline{multimodal} biomarkers not known $\rightarrow$ Identify outcome measures and suitable subjects for PCA clinical trials.
 
 \columnbreak
 
@@ -200,14 +204,16 @@
 \hrule
 \vspace{0.2em}
 
+
+
 \begin{multicols}{2}							
 \raggedcolumns	
 
 \heading{1. Intuition}
 
 \begin{itemize}
- \item Diseases affect different brain regions un-equally, but underlyining mechanisms are the same (amyloid cascade)
- \item \textbf{Idea:} each brain region follows ``its own disease course'', common across diseases $\rightarrow$ dysfunction score
+ \item Diseases affect different brain regions un-equally, but underlyining mechanisms are the same (amyloid cascade).
+ \item \textbf{Idea:} a brain region follows ``the same pathology course'' for both diseases, but to different extents and with different speed.
 \end{itemize}
 
 \begin{figure}[H]
@@ -224,8 +230,8 @@
  \centering
    \begin{subfigure}{0.49\columnwidth}
    \centering
-   \fnt{1. Each disease characterised by region-specific dysfunction trajectories}\\
-   $ \gamma_{ij}^l = f(\beta_{i} + m_{ij}; \lambda_{d_i}^l) $\\
+   \fnt{1. Each disease characterised by region-specific \textcolor{lambdaCol}{dysfunction trajectories}}\\
+   $ \gamma_{ij}^l = f(\textcolor{betaCol}{\beta_{i}} + m_{ij}; \textcolor{lambdaCol}{\lambda_{d_i}^l}) $\\
 %    \vspace{0.9em}
 %    \includegraphics[width=\textwidth]{diseaseEvol}
    
@@ -233,8 +239,8 @@
   \begin{subfigure}{0.49\columnwidth}
    \centering
 %    \vspace{-1.2em}
-   \fnt{2. Dysfunction trajectory modelled using region-specific biomarkers}\\
-   $ y_{ij}^k = g( \gamma_{ij}^{\psi(k)} ; \theta_k) + N(0,\epsilon_k) $\\
+   \fnt{2. Dysfunction trajectory modelled using region-specific \textcolor{thetaCol}{biomarker trajectories}}\\
+   $ y_{ij}^k = g( \gamma_{ij}^{\psi(k)} ; \textcolor{thetaCol}{\theta_k}) + N(0,\epsilon_k) $\\
 %    \fnt{$y_{ij}^k$ = measure in subject $i$, visit $j$, region $k$.}
    
 %    \vspace{0.6em}
@@ -246,7 +252,7 @@
 
  
   \fnt{3. Extend to multiple subjects, biomarkers and diseases}\\
- $ p(\boldsymbol{y}|\theta, \lambda, \beta , \epsilon) = \prod_{(i,j,k) \in \Omega} p(y_{ij}^k|\theta_k, \lp, \beta_{i}) $
+ $ p(\boldsymbol{y}|\textcolor{thetaCol}{\theta}, \textcolor{lambdaCol}{\lambda}, \textcolor{betaCol}{\beta}, \epsilon) = \prod_{(i,j,k) \in \Omega} p(y_{ij}^k|\textcolor{thetaCol}{\theta_k}, \lp, \textcolor{betaCol}{\beta_{i}}) $
  \end{figure}
 
 
@@ -262,6 +268,8 @@
 
 \newcommand{\algoFnt}[1]{\Large{#1}}
 
+
+
 % \begin{itemize}
 %  \item Uses loopy belief propagation
 % \end{itemize}
@@ -270,22 +278,22 @@
 \begin{algorithm}[H]
 \algoFnt{
 %  Initialise $\boldsymbol{\theta}^{(0)}$, $\boldsymbol{\lambda}^{(0)}$, $\boldsymbol{\beta}^{(0)}$\\
-  \While{$\boldsymbol{\theta}$, $\boldsymbol{\lambda}$, $\boldsymbol{\beta}$ not converged}{
-   \tcp*[l]{\algoFnt{Estimate biomarker trajectories (disease agnostic)}}
+  \While{$\boldsymbol{\textcolor{thetaCol}{\theta}}$, $\boldsymbol{\textcolor{lambdaCol}{\lambda}}$, $\boldsymbol{\textcolor{betaCol}{\beta}}$ not converged}{
+   \tcp*[l]{\algoFnt{Estimate \textcolor{thetaCol}{biomarker trajectories} (disease agnostic)}}
 %     \For{$k=1$ to $K$}{
-      ${\theta_k\uu = \argmin_{\theta_k} \textcolor{red}{\sum_{(i,j) \in \Omega_k}} \left[y_{ij}^k - g\left(f(\beta_i\um + m_{ij}; \lpum) ; \theta_k\right) \right]^2 }$\\
+      ${\textcolor{thetaCol}{\theta_k\uu} = \argmin_{\textcolor{thetaCol}{\theta_k}} \textcolor{black}{\sum_{(i,j) \in \Omega_k}} \left[y_{ij}^k - g\left(f(\textcolor{betaCol}{\beta_i\um} + m_{ij}; \lpum) ; \textcolor{thetaCol}{\theta_k}\right) \right]^2 }$\\
 %       ${\epsilon_k\uu = \frac{1}{|\Omega_k|} \sum_{(i,j) \in \Omega_k}    \left[y_{ij}^k - g\left(f(\beta_i\um + m_{ij}; \lpum) ; \theta_k\uu \right) \right]^2 }$\\
 %     }
-     \tcp*[l]{\algoFnt{Estimate dysfunction trajectories (disease specific)}} 
+     \tcp*[l]{\algoFnt{Estimate \textcolor{lambdaCol}{dysfunction trajectories} (disease specific)}} 
 %     \For{$d=1 \in \mathbb{D}$}{
 %       \For{$l=1 \in \Lambda$}{
-        ${\lambda_{d}^{l, (u)} = \argmin_{\lambda_{d}^{l}} \textcolor{red}{\sum_{(i,j,k) \in \Omega_{d,l}}} \left[y_{ij}^k - g\left(f(\beta_i\um + m_{ij}; \lambda_{d}^{l}) ; \theta_k\uu 
+        ${\textcolor{lambdaCol}{\lambda_{d}^{l, (u)}} = \argmin_{\textcolor{lambdaCol}{\lambda_{d}^{l}}} \textcolor{black}{\sum_{(i,j,k) \in \Omega_{d,l}}} \left[y_{ij}^k - g\left(f(\textcolor{betaCol}{\beta_i\um} + m_{ij}; \textcolor{lambdaCol}{\lambda_{d}^{l}}) ; \textcolor{thetaCol}{\theta_k\uu} 
         \right) \right]^2 }$\\
 %       }
 %     }
-    \tcp*[l]{\algoFnt{Estimate subject-specific time shifts}} 
+    \tcp*[l]{\algoFnt{Estimate \textcolor{betaCol}{subject-specific time shifts}}} 
 %     \For{$i=1 \in [1, \dots, S]$}{
-      ${\beta_i\uu = \argmin_{\beta_i} \textcolor{red}{\sum_{(j,k) \in \Omega_i}} \left[y_{ij}^k - g\left(f(\beta_i + m_{ij}; \lpuu) ; \theta_k\uu
+      ${\textcolor{betaCol}{\beta_i\uu} = \argmin_{\textcolor{betaCol}{\beta_i}} \textcolor{black}{\sum_{(j,k) \in \Omega_i}} \left[y_{ij}^k - g\left(f(\textcolor{betaCol}{\beta_i} + m_{ij}; \lpuu) ; \textcolor{thetaCol}{\theta_k\uu}
       \right) \right]^2 }$\\
 %     }
 }
